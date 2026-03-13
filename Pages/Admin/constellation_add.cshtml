@@ -1,0 +1,25 @@
+@page
+@model KosmosCore.Pages.Admin.ConstellationAddModel
+@{
+    ViewData["Title"] = "Добавление созвездия";
+}
+<div class="container-fluid" style="margin-top: 30px;">
+    <h3 align="center">Добавление созвездия</h3>
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <table class="table table-bordered" style="width: 50%; margin: 0 auto;">
+            <tr>
+                <td>Название созвездия</td>
+                <td>
+                    <input asp-for="Input.ConstellationName" class="form-control" />
+                    <span asp-validation-for="Input.ConstellationName" class="text-danger"></span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center">
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </td>
+            </tr>
+        </table>
+    </form>
+</div>

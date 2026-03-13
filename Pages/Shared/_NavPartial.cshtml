@@ -1,0 +1,29 @@
+@{
+    var isActive = new Func<string, string>(page =>
+        ViewContext.RouteData.Values["page"]?.ToString()?.Equals(page, StringComparison.OrdinalIgnoreCase) == true
+            ? "active" : "");
+}
+<ul class="nav nav-pills">
+    <li><a href="~/" class="@isActive("/Index")">Главная</a></li>
+    <li><a href="~/test" class="@isActive("/Test")">Профориентационный тест</a></li>
+    <li><a href="~/spec" class="@isActive("/Spec")">Направления подготовки</a></li>
+    <li><a href="~/proj" class="@isActive("/Proj")">Атлас профессий</a></li>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <li style="margin-right: 5px;">
+            <form method="post" asp-page="/Default" asp-page-handler="LoggingOut" style="display:inline;">
+                <button type="submit" class="btn-link nav-link">Выйти (@User.Identity.Name)</button>
+            </form>
+        </li>
+    }
+    else
+    {
+        <li style="margin-right: 5px;">
+            <a href="~/login">Войти</a>
+        </li>
+    }
+    @if (User.IsInRole("admin"))
+    {
+        <li><a href="~/admin/spec_view">Личный кабинет</a></li>
+    }
+</ul>
