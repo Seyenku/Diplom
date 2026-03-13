@@ -1,0 +1,99 @@
+@page
+@model KosmosCore.Pages.ProjModel
+@{
+    ViewData["Title"] = "Атлас профессий будущего";
+}
+
+@section Head {
+    <script src="~/js/three.js" asp-append-version="true"></script>
+    <script src="~/js/CSS2DRenderer.js" asp-append-version="true"></script>
+    <script src="~/js/OrbitControls.js" asp-append-version="true"></script>
+    <script src="~/js/EffectComposer.js" asp-append-version="true"></script>
+    <script src="~/js/RenderPass.js" asp-append-version="true"></script>
+    <script src="~/js/ShaderPass.js" asp-append-version="true"></script>
+    <script src="~/js/ShaderExtras.js" asp-append-version="true"></script>
+    <style>
+    .previousProfBtn {
+        background: #2B3442;
+        width: 100px;
+        position: absolute;
+        left: 1em;
+        border-radius: 4px;
+    }
+    .previousProfBtn:hover {
+        background: #D0D0D0;
+        color: #000000;
+    }
+    .nextProfBtn {
+        background: #2B3442;
+        width: 100px;
+        position: absolute;
+        right: 1em;
+        border-radius: 4px;
+    }
+    .nextProfBtn:hover {
+        background: #D0D0D0;
+    }
+    .graphics_option {
+        background: #2B3442;
+        font-size: 13px;
+        width: 90%;
+        height: 40px;
+        border-radius: 4px;
+        font-family: Century Gothic;
+        color: #FFFFFF;
+        bottom: 10px;
+    }
+    </style>
+}
+
+<div id="modelLoading" style="background: #2B3442; width: 25%; left: 37.5%; position: relative; border-radius: 4px; margin-top: 1%;">
+    <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100%; text-align: center;">Загрузка трёхмерной модели</p>
+</div>
+<div id="graphics_selector_div" style="background: #2B3442; width: 25%; left: 37.5%; position: relative; border-radius: 4px; margin-top: 4%;">
+    <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100%; text-align: center;">Выберите уровень графики:</p>
+    <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100%; text-align: center;"><b>Низкий</b> - Только трёхмерные модели. Допольнительные эффекты отсутствуют. Рекомендуется для мобильных устройств.</p>
+    <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100%; text-align: center;"><b>Средний</b> - Присутствует сглаживание (WebGL antialiasing). Присутствует диффузное освещение. Количество полигонов увеличено.</p>
+    <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100%; text-align: center;"><b>Высокий</b> - Присутствует сглаживание (FXAA). Присутствует диффузное освещение. Присутствует постобработка. Количество полигонов максимальное.</p>
+    <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100%; text-align: center;">Уровень графики можно изменить перезагрузив страницу.</p>
+    <p style="width: 100%; text-align: center;">    
+        <select class="graphics_option" id="graphics_selector">
+            <option value="1" class="graphics_option">Низкий</option>
+            <option value="2" class="graphics_option">Средний</option>
+            <option value="3" class="graphics_option">Высокий</option>
+        </select>
+    </p>
+    <p style="text-align: center;">
+        <button class="graphics_option" onclick="mainFunction(); return false;">Загрузить модель</button>
+    </p>
+</div>
+<div id="web_gl" style="margin: 0; padding: 0; width: 100%; position: relative">
+    <div id="previousProf" class="previousProfBtn" hidden="hidden">
+        <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100px; text-align: center; cursor: pointer; margin-top: 10%;">Предыдущая профессия</p>
+    </div>
+    <div id="nextProf" class="nextProfBtn" hidden="hidden">
+        <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100px; text-align: center; cursor: pointer; margin-top: 10%;">Следующая профессия</p>
+    </div>
+    <div id="initialPosition" style="background: #2B3442; width: 6.25%; position: absolute; left: 46.875%; border-radius: 4px;" hidden="hidden">
+        <p style="font-family: Century Gothic; font-size: 13px; color: #FFFFFF; width: 100%; text-align: center; margin-top: 10%;">Двойной щелчёк для возврата</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Data from server — typed ViewModel serialized to JSON
+        var planetsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Planets));
+        var constellationsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Constellations));
+
+        function mainFunction() {
+            // Use planetsData and constellationsData arrays
+            var planets = planetsData.map(function(p) { return p.name; });
+            var rs = planetsData.map(function(p) { return p.r.toString(); });
+            var wss = planetsData.map(function(p) { return p.ws.toString(); });
+            var hss = planetsData.map(function(p) { return p.hs.toString(); });
+            var textures = planetsData.map(function(p) { return p.texture.toString(); });
+            var id_ss = planetsData.map(function(p) { return p.idS.toString(); });
+            var sozvezds = constellationsData;
+        }
+    </script>
+}

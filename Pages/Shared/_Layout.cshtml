@@ -1,0 +1,74 @@
+@namespace KosmosCore.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - KosmosCore</title>
+    
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;" />
+    
+    <link rel="stylesheet" href="~/css/StyleSheet.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/bootstrap.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script src="~/js/particles.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+    <header>
+        <div class="header">
+            <div id="particles-js" style="height: 20vh;" class="header_dd gradient">
+                <partial name="_NavPartial" />
+            </div>
+        </div>
+    </header>
+
+    <main role="main" class="container" style="min-height: 590px; padding: 0;">
+        @RenderBody()
+    </main>
+
+    <footer class="footer" style="color: #fff; padding-bottom: 0; position:initial; margin-bottom: 0;">
+        <table style="width:70%; color:#fff;" border="0" align="center">
+            <tr>
+                <td style="text-align:right; width:50%; padding:30px; color:#000">
+                    <img src="~/images/anoamusrk.png" style="float:left; vertical-align:top; width:15%;" alt="anoamusrk" />
+                    <small style="color:#fff;">Copyright © Автономная некоммерческая организация "Ассоциация молодых ученых и специалистов Республики Коми" совместно с ФГБОУ ВО "СГУ имени Питирима Сорокина"</small>
+                </td>
+                <td style="text-align:right; padding:30px; color:#000000">
+                    <img src="~/images/itnit.png" style="float:left; vertical-align:top; width:15%;" alt="itnit" />
+                    <small style="color:#fff;">Портал разрабатывается и тестируется на базе института точных наук и информационных технологий СГУ им. Питирима Сорокина</small>
+                </td>
+            </tr>
+        </table>
+    </footer>
+
+    <script src="~/js/app.js" asp-append-version="true"></script>
+    <script src="~/js/stats.js" asp-append-version="true"></script>
+    <script>
+        var count_particles, stats, update;
+        if (typeof Stats !== 'undefined') {
+            stats = new Stats;
+            stats.setMode(0);
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.left = '0px';
+            stats.domElement.style.top = '0px';
+            document.body.appendChild(stats.domElement);
+            count_particles = document.querySelector('.js-count-particles');
+            update = function () {
+                stats.begin();
+                stats.end();
+                if (window.pJSDom && window.pJSDom[0] && window.pJSDom[0].pJS && window.pJSDom[0].pJS.particles && window.pJSDom[0].pJS.particles.array) {
+                    if(count_particles) count_particles.innerText = window.pJSDom[0].pJS.particles.array.length;
+                }
+                requestAnimationFrame(update);
+            };
+            requestAnimationFrame(update);
+        }
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
