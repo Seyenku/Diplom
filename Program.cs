@@ -15,9 +15,6 @@ string connectionString = builder.Configuration.GetConnectionString("DefaultConn
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(connectionString));
 
 // --- Repository DI (Scoped) ---
-builder.Services.AddScoped<IPlanetRepository, PlanetRepository>();
-builder.Services.AddScoped<IConstellationRepository, ConstellationRepository>();
-builder.Services.AddScoped<ISpecSkillRepository, SpecSkillRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // --- Services ---

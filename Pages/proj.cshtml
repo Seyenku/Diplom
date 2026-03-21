@@ -80,20 +80,5 @@
 </div>
 
 @section Scripts {
-    <script>
-        // Data from server — typed ViewModel serialized to JSON
-        var planetsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Planets));
-        var constellationsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Constellations));
-
-        function mainFunction() {
-            // Use planetsData and constellationsData arrays
-            var planets = planetsData.map(function(p) { return p.name; });
-            var rs = planetsData.map(function(p) { return p.r.toString(); });
-            var wss = planetsData.map(function(p) { return p.ws.toString(); });
-            var hss = planetsData.map(function(p) { return p.hs.toString(); });
-            var textures = planetsData.map(function(p) { return p.texture.toString(); });
-            var id_ss = planetsData.map(function(p) { return p.idS.toString(); });
-            var sozvezds = constellationsData;
-        }
-    </script>
+    <script></script>
 }
