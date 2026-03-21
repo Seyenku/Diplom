@@ -6,14 +6,22 @@
 html, body {
     font-size: 16px;
     font-family: 'Century Gothic', 'Verdana';
-    /*margin: 0;
-	padding: 0;*/
     height: 100%;
+    width: 100%;
+}
+body {
+    display: flex;
+    flex-direction:column;
+    min-height:100vh;
+    margin:0;
+}
+
+main {
+    flex-grow: 1;
     width: 100%;
 }
 
 .wrapper {
-    /*min-height: 100%;*/
     height: auto !important;
     width: 100%;
 }
@@ -22,37 +30,147 @@ html, body {
     font-family: 'Century Gothic', 'Verdana';
 }
 
-.navbarr {
-    /*margin: 0;*/
+/* Навигация */
+.site-nav {
     background-color: #2b3442;
-    font-size: 16px;
-    font-family: 'Century Gothic';
-    /*overflow: hidden;
-    display: block;*/
-    width: 660px;
-    margin: 0 auto 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.site-nav__brand {
+    color: #fff;
+    font-family: 'Century Gothic', 'Verdana', sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.site-nav__links {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+    .site-nav__links li a {
+        display: block;
+        padding: 6px 14px;
+        font-size: 14px;
+        font-family: 'Century Gothic', 'Verdana', sans-serif;
+        color: rgba(255, 255, 255, 0.72);
+        text-decoration: none;
+        border-radius: 6px;
+        transition: background 0.18s ease, color 0.18s ease;
+        white-space: nowrap;
+    }
+
+        .site-nav__links li a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .site-nav__links li a.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+
+.site-nav__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.site-nav__username {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+}
+
+.site-nav__btn {
+    display: inline-block;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-family: 'Century Gothic', 'Verdana', sans-serif;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.18s ease;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+/* Кнопка «Войти» / «Выйти» */
+.site-nav__btn--ghost {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    color: #fff;
+}
+
+    .site-nav__btn--ghost:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+    }
+
+/* Кнопка «Личный кабинет» */
+.site-nav__btn--accent {
+    border: 1px solid rgba(124, 214, 148, 0.45);
+    background: rgba(124, 214, 148, 0.15);
+    color: #7CD694;
+}
+
+    .site-nav__btn--accent:hover {
+        background: rgba(124, 214, 148, 0.28);
+        color: #7CD694;
+    }
+
+/* Адаптив */
+@media (max-width: 768px) {
+    .site-nav {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 10px 16px;
+        gap: 8px;
+    }
+
+    .site-nav__links {
+        order: 3;
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 6px 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .site-nav__username {
+        display: none;
+    }
 }
 
 .header {
-    /*background-color: #2c2828/*#4C9DA3;*/
-    /*font-size: 14px;
-    margin: 0 auto;*/
-    /*height: auto;*/
-    /*width: 100%;*/
+    flex-shrink: 0;
 }
 
-    .header li {
-        font-family: 'Century Gothic';
-        color: blueviolet;
-        font-size: 11px;
-    }
+.header li {
+    font-family: 'Century Gothic';
+    color: blueviolet;
+    font-size: 11px;
+}
 
 .header_dd {
     background-color: #7CD694;
     background-size: cover;
     font-size: 14px;
-    /*height: 200px;*/
-    /*padding-top:30px;*/
     height: 100vh;
     background-position: center bottom;
 }
@@ -70,15 +188,10 @@ html, body {
         color: #fff;
     }
 
-.header-text {
-    /*margin-bottom: 25px;*/
-}
 .header-proj {
     background-color: #000;
     font-size: 13px;
-    }
-
-
+}
 
 .header_dd h1 {
     font-size: 40px;
@@ -112,35 +225,7 @@ html, body {
     transition: all 0.4s;
 }
 
-.footer {
-    background-color: #2b3442;
-    font-size: 15px;
-    font-family: 'Century Gothic';
-    padding: 0;
-    height: 160px;
-    color: #fff !important;
-    margin: 0 auto;
-    width: 100%;
-    position: sticky;
-}
 
-/*.icon-bar {
-    background-color: #fff;
-}
-
-.navbar {
-    margin-bottom: 0px;
-	min-height: 40px;
-    width: 100%;
-}
-
-.navbar-toggle {
-	padding: 4px 10px;
-}
-
-.nav-pills > li > a, .nav-list > li > a {
-    border-radius: 8px;
-}*/
 
 .nav-pills > li.active > a,
 .nav-pills > li.active > a:hover,
@@ -155,15 +240,11 @@ html, body {
     }
 }
 
-.active > a {
+.active > a,
+.active > a:hover {
     background-color: #fff !important;
     color: #897862 !important;
 }
-
-    .active > a:hover {
-        background-color: #fff !important;
-        color: #897862 !important;
-    }
 
 @keyframes round {
     25% {
@@ -173,19 +254,6 @@ html, body {
     60% {
         opacity: 1;
     }
-}
-
-/*картинки под хэдером*/
-/*-----------------------------------------*/
-.image {
-    width: 380px;
-    height: 380px;
-    background-size: cover;
-    background-position: center;
-    box-sizing: border-box;
-    margin-bottom: 30px;
-
-
 }
 
 .rules {
@@ -206,27 +274,20 @@ html, body {
     text-align: center;
 }
 
-/*.atlas-card {
-    margin-right: 0;
-}*/
-
 .rules a {
     font-size: 25px;
     text-align: center;
     font-family: 'Century Gothic';
     font-weight: bold;
     margin: 20px auto 30px;
-
     white-space: nowrap;
-    }
+}
 
 .rules p {
     font-size: 18px;
     line-height: 30px;
-    margin-bottom:140px;
+    margin-bottom: 140px;
     margin-top: 20px;
-
-    /*text-align: center;*/
 }
 
 .module {
@@ -242,7 +303,8 @@ html, body {
     opacity: 0.85;
 }
 
-    .atlas:hover {
+    .atlas:hover,
+    .naprav:hover {
         opacity: 1;
         transition: all 0.4s ease;
         -webkit-transform: scale(1.1);
@@ -255,81 +317,130 @@ html, body {
     opacity: 0.9;
 }
 
-    .naprav:hover {
-        opacity: 1;
-        transition: all 0.4s ease;
-        -webkit-transform: scale(1.1);
-        -ms-transform: scale(1.1);
-        transform: scale(1.1);
+/* О проекте */
+.proekt-content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.proekt-title {
+    font-size: 28px;
+    text-align: center;
+    font-family: 'Century Gothic', sans-serif;
+    font-weight: bold;
+    margin: 60px 0 40px;
+}
+
+.proekt-section {
+    margin-bottom: 40px;
+}
+
+    .proekt-section h3 {
+        font-size: 22px;
+        text-align: left;
+        font-family: 'Century Gothic', sans-serif;
+        font-weight: bold;
+        margin-bottom: 15px;
     }
 
-/*-----------------------------------------*/
+    .proekt-section p {
+        font-size: 18px;
+        line-height: 1.6;
+        text-align: justify;
+        margin: 0;
+    }
 
-
-
-/*О проекте*/
-/*-----------------------------------------*/
-.proekt p {
-    font-size: 18px;
-    line-height: 30px;
-    margin: auto 280px 90px 280px;
-    text-align: justify;
-    /*position:*/   
-    /*text-indent: 3.2em;*/
-
+/* --- Карточки --- */
+.rules-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    max-width: 900px;
+    margin: 0 auto 60px;
+    padding: 0 20px;
 }
 
-
-
-.proekt h1 {
-    font-size: 25px;
+.card-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    font-family: 'Century Gothic';
+    min-width: 0;
+}
+
+    .card-item .image {
+        display: block;
+        width: 100%;
+        max-width: 380px;
+        aspect-ratio: 1 / 1;
+        background-size: cover;
+        background-position: center;
+        margin-bottom: 25px;
+        transition: transform 0.4s ease;
+    }
+
+.card-link {
+    font-size: 22px;
+    font-family: 'Century Gothic', sans-serif;
     font-weight: bold;
-    margin-bottom: 70px;
-    margin-top: 80px;
+    margin-bottom: 15px;
+    text-decoration: none;
+    color: #333;
+    transition: color 0.3s ease;
 }
 
-.proekt proekt-p p{
-    margin-top: 5px;
+    .card-link:hover {
+        color: #007bff;
+    }
+
+.card-text {
+    font-size: 16px;
+    color: #555;
+    line-height: 1.4;
+    margin: 0;
 }
 
-.proekt h3 {
-    font-size: 20px;
-    text-align: left;
-    font-family: 'Century Gothic';
-    font-weight: bold;
-    margin: 50px 280px 30px 280px;
-    white-space: nowrap;
+@media (max-width: 768px) {
+    .rules-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .proekt-title {
+        font-size: 24px;
+        margin: 40px 0 25px;
+    }
+
+    .proekt-section h3 {
+        font-size: 20px;
+    }
+
+    .proekt-section p {
+        font-size: 16px;
+        text-align: left;
+    }
 }
-/*-----------------------------------------*/
-
-
 
 .test {
-    margin-left: 170px;
+    margin-left: 0px;
     line-height: 22px;
     font-size: 13px;
 }
 
-.test h3 {
-    font-size: 16px;
-}
+    .test h3 {
+        font-size: 16px;
+    }
 
-.test p{
-    padding-left: 60px;
-}
+    .test p {
+        padding-left: 60px;
+    }
 
-.test image a{
-    text-align: center;
-}
+    .test image a {
+        text-align: center;
+    }
 
-
-/*стили для таблицы специальностей*/
-/*-----------------------------------------*/
-
-.table-spec h1{
-   
+.table-spec h1 {
     font-size: 30px;
     text-align: center;
     font-family: 'Century Gothic';
@@ -338,20 +449,12 @@ html, body {
     margin-top: 20px;
 }
 
-.table-spec {
-/*border-bottom-style: none;*/
-}
-/*-----------------------------------------*/
-
-
-
 .label {
     color: #FFF;
     font-family: sans-serif;
     padding: 2px;
     background: rgba( 0, 0, 0, .6 );
 }
-
 
 .labelproj {
     color: #fff;
@@ -366,58 +469,44 @@ html, body {
     font-size: 13px;
     font-family: 'Century Gothic';
     color: #fbf619;
-    /*color: rgba(215, 127, 20, 0.79);*/
     font-weight: bold;
-
 }
 
-
-
-/*логин пароль*/
-/*-----------------------------------------*/
+/* логин пароль */
 .form-group {
-    width: 500px;
-    height: 400px;
-    margin: 0 auto;
     width: 380px;
+    height: 400px;
     margin: 70px auto;
     padding: 3px 2px 2px 2px;
     background: white;
-    /*border: 0px solid #ebebeb;*/
-    /*box-shadow: rgba(0,0,0,0.14902) 0px 1px 1px 0px,rgba(0,0,0,0.09804) 0px 1px 2px 0px;*/
-    position: center;
     font-family: 'Century Gothic';
     font-size: 16px;
-
-
 }
 
-.form-group titletext {
-    margin-bottom: 20px;
-}
+    .form-group titletext {
+        margin-bottom: 20px;
+    }
+
 .input {
     font-size: 18px;
-	padding: 8px 10px 10px 5px;
-	display: block;
-	background: #fff;
-	color: #636363;
-	width: 100%;
-	border: none;
-	border-radius: 1px;
-	border-bottom: 1px solid #757575;
-
+    padding: 8px 10px 10px 5px;
+    display: block;
+    background: #fff;
+    color: #636363;
+    width: 100%;
+    border: none;
+    border-radius: 1px;
+    border-bottom: 1px solid #757575;
 }
-
 
 .higl {
     position: absolute;
-	height: 60%; 
-	width: 100px; 
-	top: 75%; 
-	left: 0;
-	pointer-events: none;
-	opacity: 0.5;
-
+    height: 60%;
+    width: 100px;
+    top: 75%;
+    left: 0;
+    pointer-events: none;
+    opacity: 0.5;
 }
 
 .buttn {
@@ -438,28 +527,9 @@ html, body {
     -o-transition: all 0.4s;
     transition: all 0.4s;
     margin: 30px 75px auto 60px;
-
 }
 
-
-.label-login {
-    
-    /*color: #999;
-    font-size: 18px;
-    font-weight: normal;
-    position: absolute;
-    pointer-events: none;
-    left: 5px;
-    top: 10px;
-    transition: all 0.2s ease;*/
-}
-/*-----------------------------------------*/
-
-
-
-
-/*стили для таблицы в админке*/
-/*-----------------------------------------*/
+/* стили для таблицы в админке */
 .adm-table {
     font-size: 10px;
     border-collapse: collapse;
@@ -496,15 +566,11 @@ html, body {
 .adm-pager a, .adm-pager span {
     margin-right: 10px;
 }
-/*-----------------------------------------*/
-
-
-
 
 .gradient {
     background-color: #2b3442;
-    background-image: repeating-radial-gradient(ellipse farthest-corner at right bottom,rgb(72, 85, 108) 0%,rgb(27, 33, 43) 73.8%,rgb(20, 25, 34) 84.1%,rgb(20, 25, 34) 94%,rgb(53, 59, 69) 100%);
-    background-image: -ms-repeating-radial-gradient(right bottom, ellipse farthest-corner,rgb(72, 85, 108) 0%,rgb(27, 33, 43) 73.8%,rgb(20, 25, 34) 84.1%,rgb(20, 25, 34) 94%,rgb(53, 59, 69) 100%);
+    background-image: repeating-radial-gradient(ellipse farthest-corner at right bottom, rgb(72, 85, 108) 0%, rgb(27, 33, 43) 73.8%, rgb(20, 25, 34) 84.1%, rgb(20, 25, 34) 94%, rgb(53, 59, 69) 100%);
+    background-image: -ms-repeating-radial-gradient(right bottom, ellipse farthest-corner, rgb(72, 85, 108) 0%, rgb(27, 33, 43) 73.8%, rgb(20, 25, 34) 84.1%, rgb(20, 25, 34) 94%, rgb(53, 59, 69) 100%);
 }
 
 @media \0screen\,screen\9 {

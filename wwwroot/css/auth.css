@@ -156,6 +156,7 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
     letter-spacing: 0.02em;
     margin-top: 6px;
+    text-align:center;
 }
 
 .auth-btn:hover {

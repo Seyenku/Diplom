@@ -13,7 +13,7 @@
     
     <link rel="stylesheet" href="~/css/StyleSheet.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/bootstrap.min.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/KosmosCore.styles.css" asp-append-version="true" />
     <script src="~/js/particles.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Head", required: false)
@@ -21,29 +21,27 @@
 <body>
     <header>
         <div class="header">
-            <div id="particles-js" style="height: 20vh;" class="header_dd gradient">
+            <div id="particles-js" style="height: 10vh;" class="header_dd gradient">
                 <partial name="_NavPartial" />
             </div>
         </div>
     </header>
 
-    <main role="main" class="container" style="min-height: 590px; padding: 0;">
+    <main role="main" class="container" style="padding: 0;">
         @RenderBody()
     </main>
 
-    <footer class="footer" style="color: #fff; padding-bottom: 0; position:initial; margin-bottom: 0;">
-        <table style="width:70%; color:#fff;" border="0" align="center">
-            <tr>
-                <td style="text-align:right; width:50%; padding:30px; color:#000">
-                    <img src="~/images/anoamusrk.png" style="float:left; vertical-align:top; width:15%;" alt="anoamusrk" />
-                    <small style="color:#fff;">Copyright © Автономная некоммерческая организация "Ассоциация молодых ученых и специалистов Республики Коми" совместно с ФГБОУ ВО "СГУ имени Питирима Сорокина"</small>
-                </td>
-                <td style="text-align:right; padding:30px; color:#000000">
-                    <img src="~/images/itnit.png" style="float:left; vertical-align:top; width:15%;" alt="itnit" />
-                    <small style="color:#fff;">Портал разрабатывается и тестируется на базе института точных наук и информационных технологий СГУ им. Питирима Сорокина</small>
-                </td>
-            </tr>
-        </table>
+    <footer class="site-footer">
+        <div class="footer-grid">
+            <div class="footer-block">
+                <img src="~/images/anoamusrk.png" alt="anoamusrk" class="footer-logo" />
+                <small class="footer-text">Copyright © Автономная некоммерческая организация "Ассоциация молодых ученых и специалистов Республики Коми" совместно с ФГБОУ ВО "СГУ имени Питирима Сорокина"</small>
+            </div>
+            <div class="footer-block">
+                <img src="~/images/itnit.png" alt="itnit" class="footer-logo" />
+                <small class="footer-text">Портал разрабатывается и тестируется на базе института точных наук и информационных технологий СГУ им. Питирима Сорокина</small>
+            </div>
+        </div>
     </footer>
 
     <script src="~/js/app.js" asp-append-version="true"></script>
