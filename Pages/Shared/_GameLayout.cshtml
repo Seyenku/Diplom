@@ -1,0 +1,83 @@
+@namespace KosmosCore.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Stellar Vocation</title>
+
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval';
+                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                   font-src 'self' https://fonts.gstatic.com;
+                   connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://localhost:* ws: wss:;" />
+
+    <!-- Three.js WebGPU + Nodes (защищено через Html.Raw от вырезания type="importmap" в Razor) -->
+    @Html.Raw(@"<script type=""importmap"">
+    {
+        ""imports"": {
+            ""three"": ""/js/three.webgpu.nodes.min.js"",
+            ""three/webgpu"": ""/js/three.webgpu.nodes.min.js"",
+            ""three/tsl"": ""/js/three.tsl.min.js""
+        }
+    }
+    </script>")
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" />
+    <link rel="stylesheet" href="~/css/game.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+
+    <div id="game-root">
+
+        <!-- Оверлей перехода между экранами -->
+        <div id="screen-transition-overlay" aria-live="polite" aria-atomic="true"></div>
+
+        <!-- Three.js Canvas (постоянно в DOM — не пересоздаётся при смене экрана) -->
+        <canvas id="game-canvas" aria-hidden="true"></canvas>
+
+        <!-- Контейнер активного экрана (AJAX-подгрузка Partial) -->
+        <section id="screen-container"
+                 role="main"
+                 tabindex="-1"
+                 aria-label="Активный экран игры">
+        </section>
+
+        <!-- HUD (поверх canvas, видим только в игровом состоянии) -->
+        <aside id="hud-overlay" class="hud-overlay hidden" aria-label="Игровой HUD"></aside>
+
+        <!-- ИИ «Гайд» — глобальная панель, независимая от экрана -->
+        <aside id="guide-panel" class="guide-panel hidden" aria-label="ИИ Гайд — советник навигатора"></aside>
+
+        <!-- Шаблоны экранов, которые грузятся через JS (пусто при старте) -->
+        @RenderBody()
+    </div>
+
+    <!-- Данные для bootstrap: каталог планет, апгрейды, настройки по умолчанию -->
+    <script id="game-init-data" type="application/json">
+        @Html.Raw(ViewData["GameInitData"] ?? "null")
+    </script>
+
+    <!-- Загружаем библиотеки Three.js и пробрасываем в window -->
+    <script type="module">
+        import * as THREE from 'three/webgpu';
+        import * as TSL from 'three/tsl';
+        
+        window.THREE = THREE;
+        window.THREE_Nodes = THREE;
+        window.TSL = TSL;
+    </script>
+    
+    <!-- Точка входа SPA (ES-модуль) -->
+    <script type="module" src="~/js/game/main.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

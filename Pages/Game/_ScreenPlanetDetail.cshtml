@@ -1,0 +1,54 @@
+<!-- _ScreenPlanetDetail.cshtml — Описание планеты / профессии -->
+<div class="screen" id="screen-planet-detail"
+     style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem;gap:1.5rem;">
+
+    <!-- Заголовок -->
+    <div style="text-align:center;max-width:680px;width:100%;">
+        <p id="planet-category" class="game-subtitle" style="font-size:0.7rem;">…</p>
+        <h1 id="planet-name" class="game-title" style="font-size:2rem;margin-top:0.25rem;">…</h1>
+        <p id="planet-description" style="color:var(--color-text-muted);margin-top:0.75rem;line-height:1.7;font-size:0.95rem;">…</p>
+    </div>
+
+    <!-- Карточки с деталями -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;width:100%;max-width:760px;">
+
+        <!-- Hard skills -->
+        <div class="game-card">
+            <h3 style="font-family:var(--font-display);font-size:0.85rem;color:var(--color-primary);margin-bottom:0.75rem;letter-spacing:0.05em;">HARD SKILLS</h3>
+            <ul id="hard-skills-list" style="list-style:none;display:flex;flex-direction:column;gap:0.4rem;"></ul>
+        </div>
+
+        <!-- Soft skills -->
+        <div class="game-card">
+            <h3 style="font-family:var(--font-display);font-size:0.85rem;color:var(--color-accent);margin-bottom:0.75rem;letter-spacing:0.05em;">SOFT SKILLS</h3>
+            <ul id="soft-skills-list" style="list-style:none;display:flex;flex-direction:column;gap:0.4rem;"></ul>
+        </div>
+
+        <!-- Требования кристаллов -->
+        <div class="game-card">
+            <h3 style="font-family:var(--font-display);font-size:0.85rem;color:var(--color-crystal1);margin-bottom:0.75rem;letter-spacing:0.05em;">НУЖНЫЕ КРИСТАЛЛЫ</h3>
+            <div id="crystal-requirements" style="display:flex;flex-wrap:wrap;gap:0.5rem;"></div>
+        </div>
+
+        <!-- Риски -->
+        <div class="game-card">
+            <h3 style="font-family:var(--font-display);font-size:0.85rem;color:#f87171;margin-bottom:0.75rem;letter-spacing:0.05em;">РИСКИ</h3>
+            <ul id="risks-list" style="list-style:none;display:flex;flex-direction:column;gap:0.4rem;"></ul>
+        </div>
+
+    </div>
+
+    <!-- Кнопки -->
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;max-width:500px;width:100%;margin-top:0.5rem;">
+        <button id="btn-play-minigame" class="btn-game btn-primary" style="flex:1;min-width:180px;"
+                onclick="window._planetDetail?.startMiniGame()">
+            🎮 Пробная посадка
+        </button>
+        <button class="btn-game btn-secondary" style="flex:1;min-width:140px;" onclick="window._spa?.goBack()">
+            ← Назад
+        </button>
+        <button class="btn-game btn-secondary" style="flex:1;min-width:140px;" onclick="window._spa?.goto('galaxy-map')">
+            🌌 Карта
+        </button>
+    </div>
+</div>

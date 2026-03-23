@@ -14,8 +14,14 @@ string connectionString = builder.Configuration.GetConnectionString("DefaultConn
 
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(connectionString));
 
+// --- Memory Cache (для кэширования каталогов планет и апгрейдов) ---
+builder.Services.AddMemoryCache();
+
 // --- Repository DI (Scoped) ---
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserRepository,        UserRepository>();
+builder.Services.AddScoped<IPlanetRepository,      PlanetRepository>();
+builder.Services.AddScoped<IShipUpgradeRepository, ShipUpgradeRepository>();
+builder.Services.AddScoped<IGameSaveRepository,    GameSaveRepository>();
 
 // --- Services ---
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();
@@ -24,9 +30,9 @@ builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Login";
+        options.LoginPath        = "/Login";
         options.AccessDeniedPath = "/Error";
-        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.ExpireTimeSpan   = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
     });
 
@@ -34,8 +40,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
-    options.Cookie.HttpOnly = true;
+    options.IdleTimeout        = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly    = true;
     options.Cookie.IsEssential = true;
 });
 
@@ -44,7 +50,6 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -52,15 +57,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSession();
-
 app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+app.MapRazorPages().WithStaticAssets();
 
 app.Run();

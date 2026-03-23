@@ -1,0 +1,68 @@
+<!-- _HudOverlay.cshtml — Игровой HUD (поверх canvas) -->
+<div id="hud-content"
+     style="position:absolute;inset:0;pointer-events:none;display:grid;grid-template-rows:auto 1fr auto;padding:0.75rem;">
+
+    <!-- Верхняя панель HUD -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;pointer-events:all;">
+
+        <!-- Кристаллы по направлениям -->
+        <div id="hud-crystals" style="display:flex;flex-wrap:wrap;gap:0.4rem;max-width:60%;">
+            <!-- JS рендерит crystal-badge для каждого направления -->
+        </div>
+
+        <!-- Кнопки быстрого доступа -->
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button title="Карта" onclick="window._spa?.goto('galaxy-map')"
+                    style="background:rgba(5,10,26,0.75);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:6px 10px;cursor:pointer;font-size:1rem;transition:background var(--transition-ui);">
+                🌌
+            </button>
+            <button title="Гайд" onclick="window._spa?.toggleGuide()"
+                    style="background:rgba(5,10,26,0.75);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:6px 10px;cursor:pointer;font-size:1rem;transition:background var(--transition-ui);">
+                🤖
+            </button>
+            <button title="Пауза" onclick="window._spa?.pause()"
+                    style="background:rgba(5,10,26,0.75);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:6px 10px;cursor:pointer;font-size:1rem;transition:background var(--transition-ui);">
+                ⏸
+            </button>
+        </div>
+    </div>
+
+    <!-- Центр пуст (three.js canvas) -->
+    <div></div>
+
+    <!-- Нижняя панель HUD — статы корабля -->
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;pointer-events:all;
+                background:rgba(5,10,26,0.6);border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:0.5rem 1rem;">
+
+        <!-- Мини-радар пояса -->
+        <canvas id="hud-radar" width="56" height="56" style="border-radius:50%;border:1px solid var(--color-border);"></canvas>
+
+        <!-- Щиты / здоровье -->
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:100px;">
+            <p style="font-size:0.65rem;color:var(--color-text-muted);letter-spacing:0.08em;">ЩИТЫ</p>
+            <div style="background:rgba(15,23,42,0.8);border-radius:2px;height:6px;overflow:hidden;">
+                <div id="hud-shield-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#4fc3f7,#818cf8);transition:width 0.3s;"></div>
+            </div>
+        </div>
+
+        <!-- Энергия/топливо -->
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:100px;">
+            <p style="font-size:0.65rem;color:var(--color-text-muted);letter-spacing:0.08em;">ЭНЕРГИЯ</p>
+            <div style="background:rgba(15,23,42,0.8);border-radius:2px;height:6px;overflow:hidden;">
+                <div id="hud-energy-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#39ff14,#a3e635);transition:width 0.3s;"></div>
+            </div>
+        </div>
+
+        <!-- Скорость -->
+        <div>
+            <p style="font-size:0.65rem;color:var(--color-text-muted);letter-spacing:0.08em;">СКОРОСТЬ</p>
+            <p id="hud-speed" style="font-family:var(--font-display);font-size:0.9rem;color:var(--color-primary);">100%</p>
+        </div>
+
+        <!-- Индикатор синхронизации -->
+        <div id="hud-sync-indicator" style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--color-text-muted);">
+            <span id="hud-sync-dot" style="width:6px;height:6px;border-radius:50%;background:#39ff14;"></span>
+            <span id="hud-sync-text">Сохранено</span>
+        </div>
+    </div>
+</div>

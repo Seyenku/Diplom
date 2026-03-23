@@ -2,19 +2,19 @@ using System.Data;
 using System.Data.Common;
 using Dapper;
 using Microsoft.Extensions.Logging;
-using KosmosCore.Data.Repositories.Interfaces;
 using KosmosCore.Data.Models;
+using KosmosCore.Data.Repositories.Interfaces;
 
 namespace KosmosCore.Data.Repositories.Implementations;
 
 public class UserRepository : IUserRepository
 {
-    private readonly IDbConnection _dbConnection;
+    private readonly IDbConnection _db;
     private readonly ILogger<UserRepository> _logger;
 
-    public UserRepository(IDbConnection dbConnection, ILogger<UserRepository> logger)
+    public UserRepository(IDbConnection db, ILogger<UserRepository> logger)
     {
-        _dbConnection = dbConnection;
+        _db     = db;
         _logger = logger;
     }
 
@@ -23,16 +23,19 @@ public class UserRepository : IUserRepository
         try
         {
             const string sql = @"
-                SELECT id AS Id, login AS Login, pass AS Pass, role AS Role
-                FROM users 
-                WHERE login = @Username AND pass = @PasswordHash";
+                SELECT id        AS Id,
+                       login     AS Login,
+                       pass_hash AS PassHash,
+                       role      AS Role
+                FROM dbo.users
+                WHERE login = @Username AND pass_hash = @PasswordHash";
 
-            return await _dbConnection.QuerySingleOrDefaultAsync<User>(
+            return await _db.QuerySingleOrDefaultAsync<User>(
                 new CommandDefinition(sql, new { Username = username, PasswordHash = passwordHash }, cancellationToken: ct));
         }
         catch (DbException ex)
         {
-            _logger.LogError(ex, "A SQL error occurred while authenticating user {Username}.", username);
+            _logger.LogError(ex, "SQL error while authenticating user {Username}", username);
             throw;
         }
     }
@@ -41,32 +44,14 @@ public class UserRepository : IUserRepository
     {
         try
         {
-            const string sql = "SELECT COUNT(1) FROM users WHERE login = @Username";
-            var count = await _dbConnection.ExecuteScalarAsync<int>(
+            const string sql = "SELECT COUNT(1) FROM dbo.users WHERE login = @Username";
+            var count = await _db.ExecuteScalarAsync<int>(
                 new CommandDefinition(sql, new { Username = username }, cancellationToken: ct));
             return count > 0;
         }
         catch (DbException ex)
         {
-            _logger.LogError(ex, "A SQL error occurred while checking if user {Username} exists.", username);
-            throw;
-        }
-    }
-
-    public async Task CreateUserAsync(string username, string passwordHash, int role = 0, CancellationToken ct = default)
-    {
-        try
-        {
-            const string sql = @"
-                INSERT INTO users (login, pass, role) 
-                VALUES (@Username, @PasswordHash, @Role)";
-
-            await _dbConnection.ExecuteAsync(
-                new CommandDefinition(sql, new { Username = username, PasswordHash = passwordHash, Role = role }, cancellationToken: ct));
-        }
-        catch (DbException ex)
-        {
-            _logger.LogError(ex, "A SQL error occurred while creating user {Username}.", username);
+            _logger.LogError(ex, "SQL error while checking user existence {Username}", username);
             throw;
         }
     }

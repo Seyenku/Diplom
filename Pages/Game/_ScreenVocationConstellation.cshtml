@@ -1,0 +1,37 @@
+<!-- _ScreenVocationConstellation.cshtml — Созвездие Призвания -->
+<div class="screen" id="screen-vocation-constellation"
+     style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem;gap:1.5rem;">
+
+    <div style="text-align:center;max-width:680px;width:100%;">
+        <h1 class="game-title" style="font-size:1.5rem;">🌠 Созвездие Призвания</h1>
+        <p style="color:var(--color-text-muted);margin-top:0.5rem;font-size:0.9rem;line-height:1.6;">
+            На основе твоего игрового пути система определила 3–5 профессий, которые тебе ближе всего.
+        </p>
+    </div>
+
+    <!-- Визуализация созвездия (SVG, рендерится через JS) -->
+    <div style="width:100%;max-width:700px;aspect-ratio:4/3;background:rgba(5,10,26,0.7);border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden;position:relative;">
+        <svg id="constellation-svg" viewBox="0 0 700 525" style="width:100%;height:100%;">
+            <!-- JS → VocationConstellation.init() рендерит звёзды и линии -->
+        </svg>
+        <p id="constellation-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-muted);font-size:0.9rem;">
+            Открой больше планет, чтобы сформировалось Созвездие…
+        </p>
+    </div>
+
+    <!-- Список рекомендаций -->
+    <div id="recommendations-list" style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:0.75rem;"></div>
+
+    <!-- Кнопки -->
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;max-width:500px;width:100%;">
+        <button id="btn-export-pdf" class="btn-game btn-primary" onclick="window._vocationConst?.exportPdf()" style="flex:1;min-width:160px;">
+            📄 Экспорт в PDF
+        </button>
+        <button class="btn-game btn-secondary" onclick="window._vocationConst?.showPath()" style="flex:1;min-width:160px;">
+            🗺 Путь развития
+        </button>
+        <button class="btn-game btn-secondary" onclick="window._spa?.goto('galaxy-map')" style="flex:1;min-width:120px;">
+            ← Карта
+        </button>
+    </div>
+</div>

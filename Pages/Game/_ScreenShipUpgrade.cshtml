@@ -1,0 +1,37 @@
+<!-- _ScreenShipUpgrade.cshtml — Мастерская корабля -->
+<div class="screen" id="screen-ship-upgrade"
+     style="width:100%;min-height:100vh;display:flex;flex-direction:column;padding:2rem;gap:1.5rem;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+        <h1 class="game-title" style="font-size:1.5rem;">⚙ Мастерская корабля</h1>
+        <button class="btn-game btn-secondary" onclick="window._spa?.goBack()" style="padding:8px 16px;font-size:0.8rem;">← Назад</button>
+    </div>
+
+    <!-- Статы корабля -->
+    <div class="game-card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;padding:1rem;">
+        <div style="text-align:center;">
+            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">СКОРОСТЬ</p>
+            <p id="ship-stat-speed" style="font-family:var(--font-display);font-size:1.4rem;color:var(--color-primary);">100%</p>
+        </div>
+        <div style="text-align:center;">
+            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">ЩИТЫ</p>
+            <p id="ship-stat-shield" style="font-family:var(--font-display);font-size:1.4rem;color:var(--color-accent);">100%</p>
+        </div>
+        <div style="text-align:center;">
+            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">СКАНЕР</p>
+            <p id="ship-stat-scanner" style="font-family:var(--font-display);font-size:1.4rem;color:var(--color-crystal1);">1</p>
+        </div>
+        <div style="text-align:center;">
+            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">ВМЕСТИМОСТЬ</p>
+            <p id="ship-stat-capacity" style="font-family:var(--font-display);font-size:1.4rem;color:#fb923c;">50</p>
+        </div>
+    </div>
+
+    <!-- Дерево апгрейдов (рендерится через JS) -->
+    <div id="upgrade-tree" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;">
+        <!-- JS → ShipUpgrade.init() заполняет этот контейнер -->
+        <p style="color:var(--color-text-muted);grid-column:1/-1;text-align:center;padding:2rem;">
+            Загрузка апгрейдов…
+        </p>
+    </div>
+</div>

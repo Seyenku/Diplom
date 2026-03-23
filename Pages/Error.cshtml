@@ -1,26 +1,67 @@
 ﻿@page
 @model ErrorModel
 @{
-    ViewData["Title"] = "Error";
+    ViewData["Title"] = "Произошла ошибка";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-icon mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" class="text-secondary opacity-50" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1a.05.05 0 0 1 .1-.1h.8a.05.05 0 0 1 .1.1v4.7a.05.05 0 0 1-.1.1h-.8a.05.05 0 0 1-.1-.1V7.1z"/>
+                </svg>
+            </div>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+            <h1 class="display-4 fw-bold text-dark">Упс! Что-то пошло не так</h1>
+            <p class="lead text-muted mb-4">
+                Мы уже в курсе проблемы и работаем над её решением. Пожалуйста, попробуйте обновить страницу позже.
+            </p>
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to the <strong>Development</strong> environment displays detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+            @if (Model.ShowRequestId)
+            {
+                <div class="alert alert-light border shadow-sm d-inline-block px-4">
+                    <span class="text-uppercase small fw-bold text-muted">ID запроса:</span>
+                    <code class="ms-2 text-primary">@Model.RequestId</code>
+                </div>
+            }
+
+            <div class="mt-5">
+                <a href="/" class="btn btn-primary btn-lg px-5 shadow-sm">Вернуться на главную</a>
+            </div>
+
+            @* Блок для разработчиков *@
+            <hr class="my-5 opacity-25" />
+
+            <div class="card border-warning bg-light text-start shadow-sm">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Режим разработки
+                </div>
+                <div class="card-body">
+                    <p class="card-text small text-secondary">
+                        Подробная информация об ошибке доступна только в среде <strong>Development</strong>.
+                        В продакшене этот блок должен быть скрыт, чтобы избежать утечки конфиденциальных данных.
+                    </p>
+                    <p class="mb-0 small">
+                        <strong>Совет:</strong> Установите переменную <code>ASPNETCORE_ENVIRONMENT</code> в значение <code>Development</code> для локальной отладки.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .error-icon svg {
+        animation: pulse 2s infinite ease-in-out;
+    }
+    @@keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+</style>

@@ -1,0 +1,64 @@
+<!-- _ScreenNebulaScanning.cshtml — Экран сканирования туманности -->
+<div class="screen" id="screen-nebula-scan"
+     style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:1.5rem;">
+
+    <div style="text-align:center;">
+        <h1 class="game-title" style="font-size:1.5rem;">🔭 Сканирование туманности</h1>
+        <p id="nebula-name" style="color:var(--color-text-muted);margin-top:0.25rem;">Неизвестная туманность</p>
+    </div>
+
+    <div class="game-card" style="max-width:500px;width:100%;display:flex;flex-direction:column;gap:1.25rem;">
+
+        <!-- Описание механики -->
+        <p style="color:var(--color-text-muted);font-size:0.9rem;line-height:1.6;">
+            Распредели <strong style="color:var(--color-primary);">Кристаллы Знаний</strong> по направлениям.
+            Чем точнее совпадение с требованиями туманности — тем выше шанс открыть новую профессию.
+        </p>
+
+        <!-- Слайдеры кристаллов -->
+        <div id="crystal-sliders" style="display:flex;flex-direction:column;gap:0.75rem;">
+            @{
+                var dirs = new[] {
+                    ("it",     "💻 Информационные технологии"),
+                    ("bio",    "🧬 Биотехнологии"),
+                    ("math",   "📐 Математика и точные науки"),
+                    ("eco",    "🌿 Экология"),
+                    ("design", "🎨 Дизайн и творчество"),
+                    ("med",    "⚕ Медицина"),
+                    ("neuro",  "🧠 Нейронауки"),
+                    ("physics","⚛ Физика"),
+                };
+            }
+            @foreach (var (key, label) in dirs)
+            {
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <label for="crystal-@key" style="font-size:0.85rem;">@label</label>
+                        <span id="val-@key" class="crystal-badge">0</span>
+                    </div>
+                    <input type="range" id="crystal-@key" min="0" max="20" value="0"
+                           data-dir="@key"
+                           oninput="window._nebulaScan?.updateSlider(this)"
+                           style="width:100%;accent-color:var(--color-crystal1);" />
+                </div>
+            }
+        </div>
+
+        <!-- Индикатор шанса -->
+        <div style="text-align:center;padding:0.75rem;background:rgba(79,195,247,0.05);border:1px solid rgba(79,195,247,0.15);border-radius:var(--radius-sm);">
+            <p style="font-size:0.8rem;color:var(--color-text-muted);">Расчётный шанс открытия</p>
+            <p id="scan-chance" style="font-family:var(--font-display);font-size:1.5rem;color:var(--color-primary);margin-top:0.25rem;">—</p>
+        </div>
+
+        <!-- Кнопки -->
+        <div style="display:flex;gap:0.75rem;">
+            <button class="btn-game btn-secondary" style="flex:1;" onclick="window._spa?.goBack()">Отмена</button>
+            <button id="btn-scan" class="btn-game btn-primary" style="flex:2;" onclick="window._nebulaScan?.startScan()">
+                🔭 Запустить сканер
+            </button>
+        </div>
+    </div>
+
+    <!-- Лог результата (появляется после сканирования) -->
+    <div id="scan-result-log" class="game-card hidden" style="max-width:500px;width:100%;font-size:0.9rem;line-height:1.7;"></div>
+</div>

@@ -1,17 +1,17 @@
 #from_educ
-id-int
+id-int (key)
 from_educ-ntext
 
 #galaxy
-idG-int
+idG-int (key)
 galaxy-nvarchar(255)
 
 #img
-idT-int
+idT-int (key)
 nameTex-nvarchar(50)
 
 #planets
-idP-int
+idP-int (key)
 planet-nvarchar(255)
 r-int
 ws-int
@@ -20,12 +20,12 @@ texture-int
 id_s-int
 
 #sozvezd
-idS-int
+idS-int (key)
 sozvezd-nvarchar(255)
 galaxy-int
 
 #spec
-id-int
+id-int (key)
 spec-nvarchar(MAX)
 code-nvarchar(MAX)
 form_educ-int
@@ -39,18 +39,18 @@ uch_plan-nvarchar(MAX)
 key_words-nvarchar(MAX)
 
 #spec_skill
-id-int
+id-int (key)
 spec-int
 planet-int
 
 #users
-id-int
+id-int (key)
 login-nvarchar(255)
 pass-nvarchar(255)
 role-int
 
 #years_and_price
-idY-int
+idY-int (key)
 spec-int
 year-int
 price-decimal(8,2)

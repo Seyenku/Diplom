@@ -1,0 +1,41 @@
+<!-- _ScreenOnboarding.cshtml — Интерактивный онбординг -->
+<div class="screen" id="screen-onboarding" style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;">
+
+    <div class="game-card" style="max-width:600px;width:100%;position:relative;">
+
+        <!-- Прогресс тура -->
+        <div style="display:flex;gap:6px;margin-bottom:1.5rem;">
+            <div id="step-dot-0" class="step-dot active" style="width:8px;height:8px;border-radius:50%;background:var(--color-primary);transition:background var(--transition-ui);"></div>
+            <div id="step-dot-1" class="step-dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-border);transition:background var(--transition-ui);"></div>
+            <div id="step-dot-2" class="step-dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-border);transition:background var(--transition-ui);"></div>
+            <div id="step-dot-3" class="step-dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-border);transition:background var(--transition-ui);"></div>
+            <div id="step-dot-4" class="step-dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-border);transition:background var(--transition-ui);"></div>
+        </div>
+
+        <!-- Иконка шага -->
+        <div id="step-icon" style="font-size:3rem;text-align:center;margin-bottom:1rem;">🚀</div>
+
+        <!-- Заголовок и текст шага -->
+        <h2 id="step-title" class="game-title" style="font-size:1.25rem;text-align:center;margin-bottom:0.75rem;">
+            Добро пожаловать!
+        </h2>
+        <p id="step-text" style="color:var(--color-text-muted);text-align:center;line-height:1.7;font-size:0.95rem;">
+            Ты — последний Звёздный Навигатор. Твоя миссия — исследовать Галактику Призвания и открыть профессии будущего.
+        </p>
+
+        <!-- Кнопки навигации тура -->
+        <div style="display:flex;gap:1rem;margin-top:2rem;justify-content:space-between;align-items:center;">
+            <button id="btn-tour-back" class="btn-game btn-secondary"
+                    onclick="window._onboarding?.prevStep()"
+                    style="visibility:hidden;padding:8px 20px;font-size:0.8rem;">← Назад</button>
+
+            <button id="btn-tour-skip" class="btn-game btn-secondary"
+                    onclick="window._onboarding?.skip()"
+                    style="padding:8px 16px;font-size:0.75rem;opacity:0.6;">Пропустить</button>
+
+            <button id="btn-tour-next" class="btn-game btn-primary"
+                    onclick="window._onboarding?.nextStep()"
+                    style="padding:8px 24px;font-size:0.9rem;">Далее →</button>
+        </div>
+    </div>
+</div>

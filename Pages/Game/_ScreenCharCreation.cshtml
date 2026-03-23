@@ -1,0 +1,46 @@
+<!-- _ScreenCharCreation.cshtml — Создание персонажа -->
+<div class="screen" id="screen-char-creation" style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:2rem;">
+
+    <div style="text-align:center">
+        <h1 class="game-title" style="font-size:2rem;">Создание Навигатора</h1>
+        <p style="color:var(--color-text-muted);margin-top:0.5rem;">Как тебя зовут, Звёздный Навигатор?</p>
+    </div>
+
+    <form id="char-creation-form"
+          style="display:flex;flex-direction:column;gap:1.5rem;width:min(460px,92vw);"
+          onsubmit="return false;">
+
+        <!-- Имя -->
+        <div>
+            <label for="navigator-name" style="font-family:var(--font-display);font-size:0.78rem;letter-spacing:0.1em;color:var(--color-text-muted);">ИМЯ НАВИГАТОРА</label>
+            <input id="navigator-name" type="text" maxlength="24" placeholder="Введи имя…"
+                   style="width:100%;margin-top:0.5rem;padding:12px 16px;border-radius:var(--radius-sm);background:rgba(15,23,42,0.7);border:1px solid var(--color-border);color:var(--color-text);font-family:var(--font-body);font-size:1rem;outline:none;transition:border-color var(--transition-ui);"
+                   oninput="document.getElementById('name-error').textContent=''" />
+            <p id="name-error" style="color:#f87171;font-size:0.8rem;margin-top:0.25rem;min-height:1em;"></p>
+        </div>
+
+        <!-- Выбор аватара -->
+        <div>
+            <p style="font-family:var(--font-display);font-size:0.78rem;letter-spacing:0.1em;color:var(--color-text-muted);margin-bottom:0.75rem;">АВАТАР</p>
+            <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;">
+                @foreach (var av in new[] { "🧑‍🚀","👩‍🚀","🤖","🦾","🌟","🛸","👽","🔭" })
+                {
+                    <button type="button" class="avatar-btn"
+                            data-avatar="@av"
+                            onclick="window._charCreation?.selectAvatar(this)"
+                            style="background:rgba(15,23,42,0.7);border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:12px;font-size:1.6rem;cursor:pointer;transition:border-color var(--transition-ui),box-shadow var(--transition-ui);">
+                        @av
+                    </button>
+                }
+            </div>
+            <p id="avatar-error" style="color:#f87171;font-size:0.8rem;margin-top:0.25rem;min-height:1em;"></p>
+        </div>
+
+        <button id="btn-start-game" class="btn-game btn-primary" onclick="window._charCreation?.submit()">
+            Начать путешествие 🚀
+        </button>
+
+        <button type="button" class="btn-game btn-secondary" onclick="window._spa?.goBack()"
+                style="font-size:0.8rem;padding:8px;">← Назад</button>
+    </form>
+</div>
