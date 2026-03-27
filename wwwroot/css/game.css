@@ -35,11 +35,8 @@
     box-sizing: border-box;
 }
 
-html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: var(--color-bg-deep);
+/* html и body стили удалены, чтобы не ломать портал. Цвета и шрифты перенесены на .game-page-container */
+.game-page-container {
     color: var(--color-text);
     font-family: var(--font-body);
     font-size: 16px;
@@ -49,9 +46,33 @@ html, body {
 /* ── Корневой контейнер игры ───────────────────── */
 #game-root {
     position: relative;
+    width: 100%;
+    height: 65vh;
+    min-height: 480px;
+    max-height: 800px;
+    overflow: hidden;
+    background: var(--color-bg-deep);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+#game-root:fullscreen {
     width: 100vw;
     height: 100vh;
-    overflow: hidden;
+    min-height: none;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+}
+
+#game-root:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    min-height: none;
+    max-height: none;
+    border-radius: 0;
+    border: none;
 }
 
 /* ── Three.js canvas (слой 0) ─────────────────── */

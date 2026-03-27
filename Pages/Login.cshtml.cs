@@ -53,7 +53,7 @@ public class LoginModel : PageModel
             return Page();
         }
 
-        var roleName = user.Role == 1 ? "admin" : "user";
+        var roleName = "admin";
 
         var claims = new List<Claim>
         {

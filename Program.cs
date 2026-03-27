@@ -20,8 +20,6 @@ builder.Services.AddMemoryCache();
 // --- Repository DI (Scoped) ---
 builder.Services.AddScoped<IUserRepository,        UserRepository>();
 builder.Services.AddScoped<IPlanetRepository,      PlanetRepository>();
-builder.Services.AddScoped<IShipUpgradeRepository, ShipUpgradeRepository>();
-builder.Services.AddScoped<IGameSaveRepository,    GameSaveRepository>();
 
 // --- Services ---
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();

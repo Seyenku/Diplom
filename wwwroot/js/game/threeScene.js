@@ -44,7 +44,7 @@ export async function initThreeScene(canvasId) {
     if (_renderer.init) await _renderer.init();
 
     _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    _renderer.setSize(window.innerWidth, window.innerHeight);
+    _renderer.setSize(canvas.parentNode.clientWidth, canvas.parentNode.clientHeight);
     _renderer.setClearColor(0x050a1a, 1);
 
     window.addEventListener('resize', _onResize);
@@ -73,7 +73,9 @@ function _buildScene(name) {
     if (!T) return null;
 
     const scene  = new T.Scene();
-    const camera = new T.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+    const canvas = _renderer.domElement;
+    const container = canvas.parentNode;
+    const camera = new T.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 2000);
     camera.position.z = 300;
 
     switch (name) {
@@ -157,9 +159,15 @@ function _startRenderLoop() {
 function _onResize() {
     if (!_renderer || !_currentScene) return;
     const { camera } = _currentScene;
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const canvas = _renderer.domElement;
+    const container = canvas.parentNode;
+    
+    // Если контейнер скрыт или имеет нулевой размер, избегаем ошибок
+    if (container.clientWidth === 0 || container.clientHeight === 0) return;
+
+    camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
-    _renderer.setSize(window.innerWidth, window.innerHeight);
+    _renderer.setSize(container.clientWidth, container.clientHeight);
 }
 
 export { _renderer as renderer };

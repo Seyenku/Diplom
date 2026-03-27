@@ -9,67 +9,49 @@ using KosmosCore.Data.Repositories.Interfaces;
 
 namespace KosmosCore.Data.Repositories.Implementations;
 
-public class PlanetRepository : IPlanetRepository
+public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<PlanetRepository> logger) : IPlanetRepository
 {
     private const string CacheKey = "planet_catalog";
 
-    private readonly IDbConnection    _db;
-    private readonly IMemoryCache     _cache;
-    private readonly ILogger<PlanetRepository> _logger;
-
-    public PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<PlanetRepository> logger)
-    {
-        _db     = db;
-        _cache  = cache;
-        _logger = logger;
-    }
-
     public async Task<IReadOnlyList<Planet>> GetAllAsync(CancellationToken ct = default)
     {
-        if (_cache.TryGetValue(CacheKey, out IReadOnlyList<Planet>? cached) && cached is not null)
+        if (cache.TryGetValue(CacheKey, out IReadOnlyList<Planet>? cached) && cached is not null)
             return cached;
 
         try
         {
             const string sql = @"
-                SELECT id             AS Id,
-                       system_id      AS SystemId,
-                       name           AS Name,
-                       category       AS Category,
-                       description    AS Description,
-                       hard_skills    AS HardSkills,
-                       soft_skills    AS SoftSkills,
-                       risks          AS Risks,
-                       crystal_req_it      AS CrystalReqIt,
-                       crystal_req_bio     AS CrystalReqBio,
-                       crystal_req_math    AS CrystalReqMath,
-                       crystal_req_eco     AS CrystalReqEco,
-                       crystal_req_design  AS CrystalReqDesign,
-                       crystal_req_med     AS CrystalReqMed,
-                       crystal_req_neuro   AS CrystalReqNeuro,
-                       crystal_req_physics AS CrystalReqPhysics,
-                       is_starter_visible  AS IsStarterVisible
-                FROM dbo.planets
-                ORDER BY id";
+                SELECT p.Id                AS Id,
+                       p.Title             AS Title,
+                       c.Name              AS ClusterName,
+                       pd.Description      AS Description,
+                       pd.HardSkills       AS HardSkills,
+                       pd.SoftSkills       AS SoftSkills,
+                       pd.Risks            AS Risks,
+                       p.ScanCost          AS ScanCost
+                FROM dbo.Planets p
+                LEFT JOIN dbo.Clusters c ON p.ClusterId = c.Id
+                LEFT JOIN dbo.PlanetDetails pd ON p.Id = pd.PlanetId
+                ORDER BY p.Id";
 
-            var result = (await _db.QueryAsync<Planet>(
+            var result = (await db.QueryAsync<Planet>(
                 new CommandDefinition(sql, cancellationToken: ct))).ToList();
 
             var list = result.AsReadOnly();
 
-            _cache.Set(CacheKey, list, TimeSpan.FromMinutes(30));
+            cache.Set(CacheKey, list, TimeSpan.FromMinutes(30));
             return list;
         }
         catch (DbException ex)
         {
-            _logger.LogError(ex, "SQL error in PlanetRepository.GetAllAsync");
+            logger.LogError(ex, "SQL error in PlanetRepository.GetAllAsync");
             throw;
         }
     }
 
-    public async Task<Planet?> GetBySystemIdAsync(string systemId, CancellationToken ct = default)
+    public async Task<Planet?> GetByIdAsync(int id, CancellationToken ct = default)
     {
         var all = await GetAllAsync(ct);
-        return all.FirstOrDefault(p => p.SystemId == systemId);
+        return all.FirstOrDefault(p => p.Id == id);
     }
 }

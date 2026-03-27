@@ -7,7 +7,6 @@ namespace KosmosCore.Models.ViewModels;
 public class GameInitDto
 {
     public IReadOnlyList<PlanetDto>    Catalog        { get; init; } = [];
-    public IReadOnlyList<UpgradeDto>   Upgrades       { get; init; } = [];
     public GameSettingsDto             DefaultSettings { get; init; } = GameSettingsDto.Default;
 }
 
@@ -38,22 +37,6 @@ public class PlanetDto
 
     /// <summary>Открыта ли планета по умолчанию (видна без сканирования).</summary>
     public bool IsStarterVisible { get; init; }
-}
-
-// ────────────────────────────────────────────
-//  Апгрейды корабля
-// ────────────────────────────────────────────
-
-public class UpgradeDto
-{
-    public string   Id          { get; init; } = string.Empty;
-    public string   Category    { get; init; } = string.Empty; // engine | shield | scanner | capacity
-    public string   Name        { get; init; } = string.Empty;
-    public string   Description { get; init; } = string.Empty;
-    public int      Level       { get; init; }
-    public int      Cost        { get; init; }  // кристаллы (суммарно)
-    public string   CrystalType { get; init; } = "any"; // тип кристаллов
-    public object   Effect      { get; init; } = new { speedBonus = 0, shieldBonus = 0, scanRange = 0, capacity = 0 };
 }
 
 // ────────────────────────────────────────────
@@ -115,12 +98,4 @@ public class MiniGameRewardDto
     public string[]                Badges   { get; init; } = [];
 }
 
-// ────────────────────────────────────────────
-//  Запрос на сохранение прогресса
-// ────────────────────────────────────────────
 
-public class SaveProgressDto
-{
-    public string SaveKey    { get; init; } = string.Empty;
-    public string PlayerJson { get; init; } = string.Empty;
-}

@@ -1,0 +1,123 @@
+[
+  {
+    "id": "engine-1",
+    "category": "engine",
+    "name": "Форсаж I",
+    "description": "Скорость корабля +20%.",
+    "cost": 5,
+    "effectSpeedBonus": 20,
+    "effectShieldBonus": 0,
+    "effectScanRange": 0,
+    "effectCapacity": 0
+  },
+  {
+    "id": "engine-2",
+    "category": "engine",
+    "name": "Форсаж II",
+    "description": "Скорость +40%. Открывает дальние области пояса.",
+    "cost": 15,
+    "effectSpeedBonus": 40,
+    "effectShieldBonus": 0,
+    "effectScanRange": 0,
+    "effectCapacity": 0
+  },
+  {
+    "id": "engine-3",
+    "category": "engine",
+    "name": "Квантовый двигатель",
+    "description": "Скорость +70%. Быстрое переключение между поясами.",
+    "cost": 35,
+    "effectSpeedBonus": 70,
+    "effectShieldBonus": 0,
+    "effectScanRange": 0,
+    "effectCapacity": 0
+  },
+  {
+    "id": "shield-1",
+    "category": "shield",
+    "name": "Щит I",
+    "description": "Защита +15%. Меньше урона от космического мусора.",
+    "cost": 5,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 15,
+    "effectScanRange": 0,
+    "effectCapacity": 0
+  },
+  {
+    "id": "shield-2",
+    "category": "shield",
+    "name": "Щит II",
+    "description": "Защита +35%. Выживание при двух столкновениях.",
+    "cost": 15,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 35,
+    "effectScanRange": 0,
+    "effectCapacity": 0
+  },
+  {
+    "id": "shield-3",
+    "category": "shield",
+    "name": "Голографический барьер",
+    "description": "Защита +60%. Первое смертельное столкновение — автоотражение.",
+    "cost": 35,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 60,
+    "effectScanRange": 0,
+    "effectCapacity": 0
+  },
+  {
+    "id": "scanner-1",
+    "category": "scanner",
+    "name": "Сканер I",
+    "description": "Дальность сканирования +1 туманность.",
+    "cost": 8,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 0,
+    "effectScanRange": 1,
+    "effectCapacity": 0
+  },
+  {
+    "id": "scanner-2",
+    "category": "scanner",
+    "name": "Сканер II",
+    "description": "Дальность сканирования +2.",
+    "cost": 20,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 0,
+    "effectScanRange": 2,
+    "effectCapacity": 0
+  },
+  {
+    "id": "scanner-3",
+    "category": "scanner",
+    "name": "Нейросканер",
+    "description": "Дальность +4. Открывает все скрытые туманности.",
+    "cost": 45,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 0,
+    "effectScanRange": 4,
+    "effectCapacity": 0
+  },
+  {
+    "id": "capacity-1",
+    "category": "capacity",
+    "name": "Расширитель трюма I",
+    "description": "Максимальный запас кристаллов +20.",
+    "cost": 6,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 0,
+    "effectScanRange": 0,
+    "effectCapacity": 20
+  },
+  {
+    "id": "capacity-2",
+    "category": "capacity",
+    "name": "Расширитель трюма II",
+    "description": "Максимальный запас кристаллов +50.",
+    "cost": 18,
+    "effectSpeedBonus": 0,
+    "effectShieldBonus": 0,
+    "effectScanRange": 0,
+    "effectCapacity": 50
+  }
+]

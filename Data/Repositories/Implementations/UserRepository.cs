@@ -7,35 +7,26 @@ using KosmosCore.Data.Repositories.Interfaces;
 
 namespace KosmosCore.Data.Repositories.Implementations;
 
-public class UserRepository : IUserRepository
+public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : IUserRepository
 {
-    private readonly IDbConnection _db;
-    private readonly ILogger<UserRepository> _logger;
-
-    public UserRepository(IDbConnection db, ILogger<UserRepository> logger)
-    {
-        _db     = db;
-        _logger = logger;
-    }
 
     public async Task<User?> AuthenticateAsync(string username, string passwordHash, CancellationToken ct = default)
     {
         try
         {
             const string sql = @"
-                SELECT id        AS Id,
-                       login     AS Login,
-                       pass_hash AS PassHash,
-                       role      AS Role
-                FROM dbo.users
-                WHERE login = @Username AND pass_hash = @PasswordHash";
+                SELECT Id        AS Id,
+                       Login     AS Login,
+                       PasswordHash AS PassHash
+                FROM dbo.Admins
+                WHERE Login = @Username AND PasswordHash = @PasswordHash";
 
-            return await _db.QuerySingleOrDefaultAsync<User>(
+            return await db.QuerySingleOrDefaultAsync<User>(
                 new CommandDefinition(sql, new { Username = username, PasswordHash = passwordHash }, cancellationToken: ct));
         }
         catch (DbException ex)
         {
-            _logger.LogError(ex, "SQL error while authenticating user {Username}", username);
+            logger.LogError(ex, "SQL error while authenticating user {Username}", username);
             throw;
         }
     }
@@ -44,14 +35,14 @@ public class UserRepository : IUserRepository
     {
         try
         {
-            const string sql = "SELECT COUNT(1) FROM dbo.users WHERE login = @Username";
-            var count = await _db.ExecuteScalarAsync<int>(
+            const string sql = "SELECT COUNT(1) FROM dbo.Admins WHERE Login = @Username";
+            var count = await db.ExecuteScalarAsync<int>(
                 new CommandDefinition(sql, new { Username = username }, cancellationToken: ct));
             return count > 0;
         }
         catch (DbException ex)
         {
-            _logger.LogError(ex, "SQL error while checking user existence {Username}", username);
+            logger.LogError(ex, "SQL error while checking user existence {Username}", username);
             throw;
         }
     }

@@ -2,7 +2,77 @@
 @model KosmosCore.Pages.ProjModel
 @{
     ViewData["Title"] = "Stellar Vocation";
-    Layout = "_GameLayout";
-    // Сериализованные данные Bootstrap передаются через ViewData в _GameLayout
+    // Сериализованные данные Bootstrap передаются через ViewData
     ViewData["GameInitData"] = Model.InitialDataJson;
+}
+
+@section Head {
+    <!-- Three.js WebGPU + Nodes (защищено через Html.Raw от вырезания type="importmap" в Razor) -->
+    @Html.Raw(@"<script type=""importmap"">
+    {
+        ""imports"": {
+            ""three"": ""/js/three.webgpu.nodes.min.js"",
+            ""three/webgpu"": ""/js/three.webgpu.nodes.min.js"",
+            ""three/tsl"": ""/js/three.tsl.min.js""
+        }
+    }
+    </script>")
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" />
+    <link rel="stylesheet" href="~/css/game.css" asp-append-version="true" />
+}
+
+<div class="game-page-container">
+    <div class="game-header d-flex justify-content-between align-items-center mb-3">
+        <h2>@ViewData["Title"]</h2>
+        <button id="btn-fullscreen-toggle" class="btn btn-outline-primary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707m4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707m0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707m-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707"/>
+            </svg>
+            На весь экран
+        </button>
+    </div>
+
+    <!-- Корневой контейнер игры -->
+    <div id="game-root">
+        <!-- Оверлей перехода между экранами -->
+        <div id="screen-transition-overlay" aria-live="polite" aria-atomic="true"></div>
+
+        <!-- Three.js Canvas -->
+        <canvas id="game-canvas" aria-hidden="true"></canvas>
+
+        <!-- Контейнер активного экрана -->
+        <section id="screen-container"
+                 role="main"
+                 tabindex="-1"
+                 aria-label="Активный экран игры">
+        </section>
+
+        <!-- HUD -->
+        <aside id="hud-overlay" class="hud-overlay hidden" aria-label="Игровой HUD"></aside>
+
+        <!-- ИИ «Гайд» -->
+        <aside id="guide-panel" class="guide-panel hidden" aria-label="ИИ Гайд — советник навигатора"></aside>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Данные для bootstrap -->
+    <script id="game-init-data" type="application/json">
+        @Html.Raw(ViewData["GameInitData"] ?? "null")
+    </script>
+
+    <!-- Загружаем библиотеки Three.js и пробрасываем в window -->
+    <script type="module">
+        import * as THREE from 'three/webgpu';
+        import * as TSL from 'three/tsl';
+        
+        window.THREE = THREE;
+        window.THREE_Nodes = THREE;
+        window.TSL = TSL;
+    </script>
+    
+    <!-- Точка входа SPA -->
+    <script type="module" src="~/js/game/main.js" asp-append-version="true"></script>
 }

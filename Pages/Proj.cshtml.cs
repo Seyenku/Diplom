@@ -17,21 +17,9 @@ namespace KosmosCore.Pages;
 ///  - OnPostMiniGameResult() → расчёт наград
 ///  - OnPostSaveProgress()   → запись прогресса в game_saves
 /// </summary>
-public class ProjModel : PageModel
+public class ProjModel(IPlanetRepository planets) : PageModel
 {
-    private readonly IPlanetRepository      _planets;
-    private readonly IShipUpgradeRepository _upgrades;
-    private readonly IGameSaveRepository    _saves;
-
-    public ProjModel(
-        IPlanetRepository      planets,
-        IShipUpgradeRepository upgrades,
-        IGameSaveRepository    saves)
-    {
-        _planets  = planets;
-        _upgrades = upgrades;
-        _saves    = saves;
-    }
+    private readonly IPlanetRepository _planets = planets;
 
     /// <summary>JSON-строка начальных данных для клиентского bootstrapping.</summary>
     public string InitialDataJson { get; private set; } = "null";
@@ -42,12 +30,10 @@ public class ProjModel : PageModel
     public async Task OnGetAsync()
     {
         var planetList  = await _planets.GetAllAsync();
-        var upgradeList = await _upgrades.GetAllAsync();
 
         var initData = new GameInitDto
         {
             Catalog         = planetList.Select(MapPlanet).ToList().AsReadOnly(),
-            Upgrades        = upgradeList.Select(MapUpgrade).ToList().AsReadOnly(),
             DefaultSettings = GameSettingsDto.Default
         };
 
@@ -113,45 +99,20 @@ public class ProjModel : PageModel
     public async Task<IActionResult> OnPostMiniGameResultAsync([FromBody] MiniGameResultDto result)
     {
         if (result is null) return BadRequest("Payload required.");
-        var planetModel = await _planets.GetBySystemIdAsync(result.PlanetId);
+        _ = int.TryParse(result.PlanetId, out int planetId);
+        var planetModel = await _planets.GetByIdAsync(planetId);
         var planetDto = planetModel is not null ? MapPlanet(planetModel) : null;
         var reward = MiniGameService.CalculateReward(result, planetDto);
         return new JsonResult(reward, JsonOptions);
     }
 
-    // ──────────────────────────────────────────────
-    //  POST /game?handler=SaveProgress
-    //  Body: { saveKey: string, playerJson: string }
-    // ──────────────────────────────────────────────
-    public async Task<IActionResult> OnPostSaveProgressAsync([FromBody] SaveProgressDto dto)
-    {
-        if (dto is null || string.IsNullOrWhiteSpace(dto.SaveKey))
-            return BadRequest("saveKey required.");
-
-        await _saves.UpsertAsync(dto.SaveKey, dto.PlayerJson ?? "{}");
-        return new JsonResult(new { ok = true }, JsonOptions);
-    }
-
-    // ──────────────────────────────────────────────
-    //  GET /game?handler=LoadProgress&saveKey={key}
-    // ──────────────────────────────────────────────
-    public async Task<IActionResult> OnGetLoadProgressAsync(string saveKey)
-    {
-        if (string.IsNullOrWhiteSpace(saveKey))
-            return BadRequest("saveKey required.");
-
-        var save = await _saves.GetAsync(saveKey);
-        if (save is null) return new JsonResult(null);
-
-        return new JsonResult(new { playerJson = save.PlayerJson, updatedAt = save.UpdatedAt }, JsonOptions);
-    }
 
     // ──────────────────────────────────────────────
     //  Маппинг DB → DTO
     // ──────────────────────────────────────────────
     private static PlanetDto MapPlanet(Planet p)
     {
-        string[] SafeJsonArray(string json)
+        static string[] SafeJsonArray(string json)
         {
             try { return JsonSerializer.Deserialize<string[]>(json) ?? []; }
             catch { return []; }
@@ -159,47 +120,24 @@ public class ProjModel : PageModel
 
         return new PlanetDto
         {
-            Id          = p.SystemId,
-            Name        = p.Name,
-            Category    = p.Category,
-            Description = p.Description,
+            Id          = p.Id.ToString(),
+            Name        = p.Title ?? "Unknown",
+            Category    = p.ClusterName ?? "none",
+            Description = p.Description ?? string.Empty,
             HardSkills  = SafeJsonArray(p.HardSkills),
             SoftSkills  = SafeJsonArray(p.SoftSkills),
             Risks       = SafeJsonArray(p.Risks),
             CrystalRequirements = BuildCrystalDict(p),
-            IsStarterVisible    = p.IsStarterVisible
+            IsStarterVisible    = p.ScanCost == 0 // если сканировать бесплатно, значит видна сразу
         };
     }
 
     private static Dictionary<string, int> BuildCrystalDict(Planet p)
     {
         var dict = new Dictionary<string, int>();
-        if (p.CrystalReqIt      > 0) dict["it"]      = p.CrystalReqIt;
-        if (p.CrystalReqBio     > 0) dict["bio"]     = p.CrystalReqBio;
-        if (p.CrystalReqMath    > 0) dict["math"]    = p.CrystalReqMath;
-        if (p.CrystalReqEco     > 0) dict["eco"]     = p.CrystalReqEco;
-        if (p.CrystalReqDesign  > 0) dict["design"]  = p.CrystalReqDesign;
-        if (p.CrystalReqMed     > 0) dict["med"]     = p.CrystalReqMed;
-        if (p.CrystalReqNeuro   > 0) dict["neuro"]   = p.CrystalReqNeuro;
-        if (p.CrystalReqPhysics > 0) dict["physics"] = p.CrystalReqPhysics;
+        if (p.ScanCost > 0) dict["any"] = p.ScanCost;
         return dict;
     }
-
-    private static UpgradeDto MapUpgrade(ShipUpgrade u) => new()
-    {
-        Id          = u.SystemId,
-        Category    = u.Category,
-        Name        = u.Name,
-        Description = u.Description,
-        Cost        = u.Cost,
-        Effect      = new
-        {
-            speedBonus  = u.EffectSpeedBonus,
-            shieldBonus = u.EffectShieldBonus,
-            scanRange   = u.EffectScanRange,
-            capacity    = u.EffectCapacity
-        }
-    };
 
     // ──────────────────────────────────────────────
     private static readonly JsonSerializerOptions JsonOptions = new()
