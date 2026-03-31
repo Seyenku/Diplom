@@ -1,12 +1,14 @@
-using KosmosCore.Models.ViewModels;
+using KosmosCore.Business.DTOs.Requests;
+using KosmosCore.Business.DTOs.Responses;
+using KosmosCore.Business.Services.Interfaces;
 
-namespace KosmosCore.Business;
+namespace KosmosCore.Business.Services.Implementations;
 
 /// <summary>
 /// Сервис проверки и расчёта наград за мини-игры.
 /// Сервер валидирует результат pervasive cheat-detection.
 /// </summary>
-public static class MiniGameService
+public class MiniGameService : IMiniGameService
 {
     // Максимально возможный счёт за мини-игру (защита от читов)
     private const int MaxScore   = 1000;
@@ -17,7 +19,7 @@ public static class MiniGameService
     /// Рассчитывает награду в кристаллах за пройденную мини-игру.
     /// Невалидные результаты возвращают Valid=false без наград.
     /// </summary>
-    public static MiniGameRewardDto CalculateReward(MiniGameResultDto result, PlanetDto? planet)
+    public MiniGameRewardDto CalculateReward(MiniGameResultDto result, PlanetDto? planet)
     {
         // Базовая валидация
         if (!result.Passed)

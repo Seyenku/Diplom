@@ -1,20 +1,22 @@
-using KosmosCore.Models.ViewModels;
+using KosmosCore.Business.DTOs.Requests;
+using KosmosCore.Business.DTOs.Responses;
+using KosmosCore.Business.Services.Interfaces;
 
-namespace KosmosCore.Business;
+namespace KosmosCore.Business.Services.Implementations;
 
 /// <summary>
 /// Сервис логики сканирования туманностей.
 /// Вычисляет шанс открытия планеты на основе потраченных кристаллов
 /// и требований планеты.
 /// </summary>
-public static class ScanService
+public class ScanService : IScanService
 {
     /// <summary>
     /// Разрешает результат сканирования.
     /// Алгоритм: сравниваем потраченные кристаллы с CrystalRequirements кандидатов.
     /// Шанс = min(1.0, Σ(spent[dir] / required[dir]) / count(dirs)).
     /// </summary>
-    public static ScanResultDto Resolve(ScanRequestDto request, IEnumerable<PlanetDto> catalog)
+    public ScanResultDto Resolve(ScanRequestDto request, IEnumerable<PlanetDto> catalog)
     {
         // Находим кандидат-планеты для данной туманности
         var candidates = catalog

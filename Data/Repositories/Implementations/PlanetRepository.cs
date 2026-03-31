@@ -24,14 +24,28 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
                 SELECT p.Id                AS Id,
                        p.Title             AS Title,
                        c.Name              AS ClusterName,
-                       pd.Description      AS Description,
-                       pd.HardSkills       AS HardSkills,
-                       pd.SoftSkills       AS SoftSkills,
-                       pd.Risks            AS Risks,
-                       p.ScanCost          AS ScanCost
+                       p.Description       AS Description,
+                       p.ScanCost          AS ScanCost,
+                       ISNULL((
+                           SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(s.Name, 'json') + '""', ',') + ']'
+                           FROM dbo.Planet_Skills_Map psm 
+                           JOIN dbo.Skills s ON psm.SkillId = s.Id 
+                           WHERE psm.PlanetId = p.Id AND s.SkillType = 'Hard'
+                       ), '[]') AS HardSkills,
+                       ISNULL((
+                           SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(s.Name, 'json') + '""', ',') + ']'
+                           FROM dbo.Planet_Skills_Map psm 
+                           JOIN dbo.Skills s ON psm.SkillId = s.Id 
+                           WHERE psm.PlanetId = p.Id AND s.SkillType = 'Soft'
+                       ), '[]') AS SoftSkills,
+                       ISNULL((
+                           SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(r.Name, 'json') + '""', ',') + ']'
+                           FROM dbo.Planet_Risks_Map prm 
+                           JOIN dbo.Risks r ON prm.RiskId = r.Id 
+                           WHERE prm.PlanetId = p.Id
+                       ), '[]') AS Risks
                 FROM dbo.Planets p
                 LEFT JOIN dbo.Clusters c ON p.ClusterId = c.Id
-                LEFT JOIN dbo.PlanetDetails pd ON p.Id = pd.PlanetId
                 ORDER BY p.Id";
 
             var result = (await db.QueryAsync<Planet>(

@@ -1,13 +1,14 @@
-using KosmosCore.Models.ViewModels;
+using KosmosCore.Business.DTOs.Responses;
+using KosmosCore.Business.Services.Interfaces;
 
-namespace KosmosCore.Business;
+namespace KosmosCore.Business.Services.Implementations;
 
 /// <summary>
 /// Статический каталог планет-профессий будущего.
 /// В будущем может быть вынесен в БД через IPlanetRepository.
 /// Данные берутся из project.txt (список профессий будущего).
 /// </summary>
-public static class PlanetCatalog
+public class PlanetCatalogService : IPlanetCatalogService
 {
     private static readonly List<PlanetDto> _planets =
     [
@@ -127,8 +128,8 @@ public static class PlanetCatalog
         },
     ];
 
-    public static IReadOnlyList<PlanetDto> GetAll() => _planets.AsReadOnly();
+    public IReadOnlyList<PlanetDto> GetAll() => _planets.AsReadOnly();
 
-    public static PlanetDto? GetById(string id)
+    public PlanetDto? GetById(string id)
         => _planets.FirstOrDefault(p => p.Id == id);
 }

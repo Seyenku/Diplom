@@ -8,6 +8,8 @@
  *  ScreenModules — реестр модулей экранов (init/destroy)
  */
 
+import { showSkeleton } from './skeletonLoader.js';
+
 // ─── Константы состояний ────────────────────────────────────────────────────
 
 export const Screen = Object.freeze({
@@ -16,6 +18,7 @@ export const Screen = Object.freeze({
     ONBOARDING:       'onboarding',
     HUD:              'hud',
     PAUSE:            'pause',
+    FLIGHT:           'flight',
     GALAXY_MAP:       'galaxy-map',
     NEBULA_SCAN:      'nebula-scan',
     PLANET_DETAIL:    'planet-detail',
@@ -91,9 +94,39 @@ on('APPLY_UPGRADE', (s, { upgradeId }) => {
     if (!s.player.appliedUpgrades.includes(upgradeId))
         s.player.appliedUpgrades.push(upgradeId);
 });
+on('EARN_CRYSTALS', (s, { earned }) => {
+    if (!s.player) return;
+    s.player.crystals ??= {};
+    for (const [dir, amt] of Object.entries(earned)) {
+        s.player.crystals[dir] = (s.player.crystals[dir] ?? 0) + amt;
+    }
+    // Трекинг общего количества
+    s.player.stats ??= {};
+    s.player.stats.totalCrystalsEarned = (s.player.stats.totalCrystalsEarned ?? 0)
+        + Object.values(earned).reduce((a, b) => a + b, 0);
+});
 on('SET_SESSION',    (s, p) => { Object.assign(s.sessionData, p); });
 on('CLEAR_SESSION',  (s)    => { s.sessionData = {}; });
 on('SET_SETTINGS',   (s, p) => { s.settings = { ...s.settings, ...p }; });
+on('INCREMENT_STAT', (s, { key }) => {
+    if (!s.player) return;
+    s.player.stats ??= {};
+    s.player.stats[key] = (s.player.stats[key] ?? 0) + 1;
+});
+on('ADD_BADGE', (s, { badge }) => {
+    if (!s.player) return;
+    s.player.badges ??= [];
+    if (!s.player.badges.includes(badge)) s.player.badges.push(badge);
+});
+
+// Navbar: подсветка активного экрана
+on('SCREEN_CHANGED', () => {
+    const btns = document.querySelectorAll('.nav-btn[data-screen]');
+    btns.forEach(btn => {
+        const isActive = btn.dataset.screen === _store.currentScreen;
+        btn.classList.toggle('nav-btn--active', isActive);
+    });
+});
 
 // ─── Реестр модулей экранов ──────────────────────────────────────────────────
 
@@ -134,10 +167,12 @@ export async function transition(screenId, payload = {}) {
     history.pushState({ screen: screenId }, '', `#${screenId}`);
 
     try {
+        // Показываем skeleton-плейсхолдер пока загружается Partial
+        const container = document.getElementById('screen-container');
+        if (container) showSkeleton(container);
+
         // Получаем HTML экрана с сервера
         const html = await _fetchPartial(screenId);
-
-        const container = document.getElementById('screen-container');
         if (container) {
             container.innerHTML = html;
             container.classList.remove('screen-enter');

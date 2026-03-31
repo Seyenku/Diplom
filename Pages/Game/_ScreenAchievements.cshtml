@@ -1,53 +1,69 @@
-<!-- _ScreenAchievements.cshtml — Достижения и аналитика прогресса -->
+<!-- _ScreenAchievements.cshtml — Достижения, Radar Chart и аналитика -->
 <div class="screen" id="screen-achievements"
-     style="width:100%;min-height:100vh;display:flex;flex-direction:column;padding:2rem;gap:1.5rem;">
+     style="width:100%;min-height:100vh;display:flex;flex-direction:column;padding:1.5rem;gap:1.25rem;">
 
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
-        <h1 class="game-title" style="font-size:1.5rem;">📊 Достижения и прогресс</h1>
-        <button class="btn-game btn-secondary" onclick="window._spa?.goBack()" style="padding:8px 16px;font-size:0.8rem;">← Назад</button>
+        <h1 class="game-title" style="font-size:1.4rem;">📊 Прогресс навигатора</h1>
+        <button class="btn-game btn-secondary" onclick="window._spa?.goBack()" style="padding:6px 14px;font-size:0.78rem;">← Назад</button>
     </div>
 
-    <!-- Сводная статистика -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;">
-        <div class="game-card" style="text-align:center;">
-            <p style="font-size:2rem;">🌍</p>
-            <p id="stat-planets" style="font-family:var(--font-display);font-size:1.5rem;color:var(--color-primary);">0</p>
-            <p style="font-size:0.75rem;color:var(--color-text-muted);">Открыто планет</p>
+    <!-- Сводные карточки статистики -->
+    <div class="achievements-stats-grid">
+        <div class="stats-card">
+            <div class="stats-card-icon">🌍</div>
+            <div id="stat-planets" class="stats-card-value">0</div>
+            <div class="stats-card-label">Открыто планет</div>
         </div>
-        <div class="game-card" style="text-align:center;">
-            <p style="font-size:2rem;">🔭</p>
-            <p id="stat-scans" style="font-family:var(--font-display);font-size:1.5rem;color:var(--color-accent);">0</p>
-            <p style="font-size:0.75rem;color:var(--color-text-muted);">Сканирований</p>
+        <div class="stats-card">
+            <div class="stats-card-icon">🔭</div>
+            <div id="stat-scans" class="stats-card-value stats-card-value--accent">0</div>
+            <div class="stats-card-label">Сканирований</div>
         </div>
-        <div class="game-card" style="text-align:center;">
-            <p style="font-size:2rem;">🎮</p>
-            <p id="stat-minigames" style="font-family:var(--font-display);font-size:1.5rem;color:var(--color-crystal1);">0</p>
-            <p style="font-size:0.75rem;color:var(--color-text-muted);">Мини-игр пройдено</p>
+        <div class="stats-card">
+            <div class="stats-card-icon">🎮</div>
+            <div id="stat-minigames" class="stats-card-value stats-card-value--crystal">0</div>
+            <div class="stats-card-label">Мини-игр</div>
         </div>
-        <div class="game-card" style="text-align:center;">
-            <p style="font-size:2rem;">💎</p>
-            <p id="stat-total-crystals" style="font-family:var(--font-display);font-size:1.5rem;color:#fb923c;">0</p>
-            <p style="font-size:0.75rem;color:var(--color-text-muted);">Кристаллов собрано</p>
+        <div class="stats-card">
+            <div class="stats-card-icon">💎</div>
+            <div id="stat-total-crystals" class="stats-card-value stats-card-value--orange">0</div>
+            <div class="stats-card-label">Кристаллов</div>
+        </div>
+        <div class="stats-card">
+            <div class="stats-card-icon">🚀</div>
+            <div id="stat-flights" class="stats-card-value stats-card-value--green">0</div>
+            <div class="stats-card-label">Полётов</div>
         </div>
     </div>
 
-    <!-- График активности по направлениям (bar-chart svg) -->
+    <!-- Radar Chart — профиль навигатора -->
+    <div class="game-card" style="display:flex;flex-direction:column;align-items:center;gap:1rem;">
+        <h3 class="achievements-section-title">ПРОФИЛЬ НАВИГАТОРА</h3>
+        <p class="achievements-section-desc">Распределение кристаллов по направлениям</p>
+        <svg id="radar-chart" viewBox="0 0 400 400" style="width:min(360px,90vw);height:auto;"></svg>
+    </div>
+
+    <!-- Bar chart — активность по направлениям -->
     <div class="game-card">
-        <h3 style="font-family:var(--font-display);font-size:0.85rem;letter-spacing:0.05em;color:var(--color-text-muted);margin-bottom:1rem;">АКТИВНОСТЬ ПО НАПРАВЛЕНИЯМ</h3>
-        <svg id="activity-chart" viewBox="0 0 600 120" style="width:100%;height:auto;">
-            <!-- JS рендерит столбики -->
-        </svg>
+        <h3 class="achievements-section-title">АКТИВНОСТЬ ПО НАПРАВЛЕНИЯМ</h3>
+        <svg id="activity-chart" viewBox="0 0 600 140" style="width:100%;height:auto;"></svg>
     </div>
 
-    <!-- Список достижений -->
+    <!-- Достижения -->
     <div>
-        <h2 style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.05em;color:var(--color-text-muted);margin-bottom:0.75rem;">ДОСТИЖЕНИЯ</h2>
-        <div id="achievements-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;">
+        <h2 class="achievements-section-title" style="margin-bottom:0.75rem;">ДОСТИЖЕНИЯ</h2>
+        <div id="achievements-grid" class="achievements-badge-grid">
             <!-- JS рендерит значки -->
         </div>
     </div>
 
-    <button id="btn-export-stats" class="btn-game btn-secondary" onclick="window._achievements?.exportStats()" style="align-self:flex-start;">
-        📥 Экспорт статистики
-    </button>
+    <!-- Экспорт -->
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button id="btn-export-stats" class="btn-game btn-secondary" onclick="window._achievements?.exportStats()" style="font-size:0.78rem;">
+            📥 Экспорт статистики
+        </button>
+        <button class="btn-game btn-secondary" onclick="window._spa?.goto('vocation-constellation')" style="font-size:0.78rem;">
+            🌠 Созвездие Призвания
+        </button>
+    </div>
 </div>

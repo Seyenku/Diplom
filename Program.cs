@@ -23,6 +23,9 @@ builder.Services.AddScoped<IPlanetRepository,      PlanetRepository>();
 
 // --- Services ---
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();
+builder.Services.AddScoped<IMiniGameService, MiniGameService>();
+builder.Services.AddScoped<IScanService, ScanService>();
+builder.Services.AddScoped<IPlanetCatalogService, PlanetCatalogService>();
 
 // --- Authentication (Cookie-based) ---
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

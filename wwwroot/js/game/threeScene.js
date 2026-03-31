@@ -5,16 +5,15 @@
  * Сцена меняется через switchScene() при смене экранов,
  * без destroy/recreate WebGL-контекста.
  *
- * Three.js файл: three.webgpu.nodes.min.js (WebGPU renderer + Nodes)
- * TSL:           three.tsl.min.js
+ * Three.js файл: three.module.min.js (WebGL renderer)
  */
 
 let _renderer     = null;
 let _currentScene = null;
 let _animFrameId  = null;
 
-// Глобальная ссылка на Three.js (WebGPU-бандл может экспортировать как THREE или THREE_Nodes)
-const getT = () => window.THREE ?? window.THREE_Nodes ?? null;
+// Глобальная ссылка на Three.js
+const getT = () => window.THREE ?? null;
 
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -26,22 +25,17 @@ const getT = () => window.THREE ?? window.THREE_Nodes ?? null;
 export async function initThreeScene(canvasId) {
     const T = getT();
     if (!T) {
-        throw new Error('THREE is not defined — убедитесь, что three.webgpu.nodes.min.js загружен перед main.js');
+        throw new Error('THREE is not defined — убедитесь, что three.module.min.js загружен через importmap');
     }
 
     const canvas = document.getElementById(canvasId);
     if (!canvas) throw new Error(`Canvas #${canvasId} not found`);
 
-    // WebGPU-бандл содержит WebGLRenderer (и WebGPURenderer если доступен)
-    const RendererClass = T.WebGPURenderer ?? T.WebGLRenderer;
-    _renderer = new RendererClass({
+    _renderer = new T.WebGLRenderer({
         canvas,
         antialias: true,
         alpha: true,
     });
-
-    // WebGPURenderer требует async init
-    if (_renderer.init) await _renderer.init();
 
     _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     _renderer.setSize(canvas.parentNode.clientWidth, canvas.parentNode.clientHeight);
@@ -57,7 +51,7 @@ export async function initThreeScene(canvasId) {
 
 /**
  * Переключает Three.js сцену без пересоздания WebGL-контекста.
- * @param {'starfield'|'asteroid-belt'|'galaxy-map'|'planet'|'none'} sceneName
+ * @param {'starfield'|'asteroid-belt'|'flight'|'galaxy-map'|'planet'|'none'} sceneName
  */
 export async function switchScene(sceneName) {
     if (_animFrameId) cancelAnimationFrame(_animFrameId);
@@ -86,6 +80,19 @@ function _buildScene(name) {
             _addStarfield(scene);
             _addAsteroidBelt(scene);
             break;
+        case 'flight':
+            _addStarfield(scene, 2500, 0.6);
+            camera.position.set(0, 2, 8);
+            camera.lookAt(0, 0, -50);
+            // Освещение для flight
+            scene.add(new T.AmbientLight(0x334155, 0.6));
+            const dirLight = new T.DirectionalLight(0x4fc3f7, 1.2);
+            dirLight.position.set(5, 10, 10);
+            scene.add(dirLight);
+            const backLight = new T.PointLight(0x818cf8, 0.8, 100);
+            backLight.position.set(0, -5, -20);
+            scene.add(backLight);
+            break;
         case 'galaxy-map':
             _addStarfield(scene, 2000, 0.8);
             _addNebulaFog(scene);
@@ -98,6 +105,9 @@ function _buildScene(name) {
             break;
     }
 
+    // Глобальный доступ к текущей сцене (для screenFlight динамического добавления объектов)
+    window.__threeScene = scene;
+
     return { scene, camera };
 }
 
@@ -109,14 +119,14 @@ function _addStarfield(scene, count = 1500, size = 1.0) {
         positions[i] = (Math.random() - 0.5) * 2000;
     }
     geo.setAttribute('position', new T.BufferAttribute(positions, 3));
-    const mat = new T.PointsNodeMaterial({ color: 0xffffff, size, sizeAttenuation: true, transparent: true, opacity: 0.85 });
+    const mat = new T.PointsMaterial({ color: 0xffffff, size, sizeAttenuation: true, transparent: true, opacity: 0.85 });
     scene.add(new T.Points(geo, mat));
 }
 
 function _addAsteroidBelt(scene) {
     const T = getT();
     const geo   = new T.SphereGeometry(4, 5, 5);
-    const mat   = new T.MeshStandardNodeMaterial({ color: 0x7c8a9e, roughness: 0.9 });
+    const mat   = new T.MeshStandardMaterial({ color: 0x7c8a9e, roughness: 0.9 });
     const light = new T.PointLight(0x4fc3f7, 2, 800);
     light.position.set(0, 0, 200);
     scene.add(light, new T.AmbientLight(0x334155, 0.5));

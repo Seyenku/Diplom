@@ -1,10 +1,11 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using KosmosCore.Business;
+using KosmosCore.Business.Services.Interfaces;
 using KosmosCore.Data.Repositories.Interfaces;
 using KosmosCore.Data.Models;
-using KosmosCore.Models.ViewModels;
+using KosmosCore.Business.DTOs.Requests;
+using KosmosCore.Business.DTOs.Responses;
 
 namespace KosmosCore.Pages;
 
@@ -17,9 +18,13 @@ namespace KosmosCore.Pages;
 ///  - OnPostMiniGameResult() → расчёт наград
 ///  - OnPostSaveProgress()   → запись прогресса в game_saves
 /// </summary>
-public class ProjModel(IPlanetRepository planets) : PageModel
+[IgnoreAntiforgeryToken]
+public class ProjModel(IPlanetRepository planets, IScanService scanService, IMiniGameService miniGameService, ILogger<ProjModel> logger) : PageModel
 {
     private readonly IPlanetRepository _planets = planets;
+    private readonly IScanService _scanService = scanService;
+    private readonly IMiniGameService _miniGameService = miniGameService;
+    private readonly ILogger<ProjModel> _logger = logger;
 
     /// <summary>JSON-строка начальных данных для клиентского bootstrapping.</summary>
     public string InitialDataJson { get; private set; } = "null";
@@ -53,6 +58,7 @@ public class ProjModel(IPlanetRepository planets) : PageModel
             "onboarding"             => "_ScreenOnboarding",
             "hud"                    => "_HudOverlay",
             "pause"                  => "_ScreenPause",
+            "flight"                 => "_ScreenFlight",
             "galaxy-map"             => "_ScreenGalaxyMap",
             "nebula-scan"            => "_ScreenNebulaScanning",
             "planet-detail"          => "_ScreenPlanetDetail",
@@ -89,7 +95,7 @@ public class ProjModel(IPlanetRepository planets) : PageModel
         if (request is null) return BadRequest("Payload required.");
         var planets = await _planets.GetAllAsync();
         var dtos = planets.Select(MapPlanet).ToList();
-        var result = ScanService.Resolve(request, dtos);
+        var result = _scanService.Resolve(request, dtos);
         return new JsonResult(result, JsonOptions);
     }
 
@@ -102,10 +108,27 @@ public class ProjModel(IPlanetRepository planets) : PageModel
         _ = int.TryParse(result.PlanetId, out int planetId);
         var planetModel = await _planets.GetByIdAsync(planetId);
         var planetDto = planetModel is not null ? MapPlanet(planetModel) : null;
-        var reward = MiniGameService.CalculateReward(result, planetDto);
+        var reward = _miniGameService.CalculateReward(result, planetDto);
         return new JsonResult(reward, JsonOptions);
     }
 
+    // ──────────────────────────────────────────────
+    //  POST /game?handler=Telemetry
+    // ──────────────────────────────────────────────
+    public IActionResult OnPostTelemetry([FromBody] TelemetryBatchDto? batch)
+    {
+        if (batch?.Events is null || batch.Events.Count == 0)
+            return new JsonResult(new { ok = true, count = 0 }, JsonOptions);
+
+        // Логируем события (в будущем → TelemetryRepository → ActionLogs / PlayerSessions)
+        foreach (var evt in batch.Events)
+        {
+            _logger.LogInformation("[Telemetry] {Session} | {Action} | target={Target} | {Details}",
+                evt.SessionId, evt.ActionType, evt.TargetId, evt.Details);
+        }
+
+        return new JsonResult(new { ok = true, count = batch.Events.Count }, JsonOptions);
+    }
 
     // ──────────────────────────────────────────────
     //  Маппинг DB → DTO

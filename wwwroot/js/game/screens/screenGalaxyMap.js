@@ -1,45 +1,79 @@
 /**
- * screenGalaxyMap.js — Модуль звёздной карты галактики
+ * screenGalaxyMap.js — Звёздная карта с 3D-визуализацией планет
+ *
+ * Два режима просмотра:
+ *   - 3D:   интерактивная звёздная карта. Планеты — сферы в пространстве.
+ *            Hover → тултип с названием, клик → переход на Planet Detail.
+ *   - List: Grid-карточки (как было, с фильтрами).
+ *
+ * Three.js объекты рендерятся в отдельный canvas внутри #galaxy-3d-canvas-wrap
+ * (не общий game-canvas), чтобы иметь независимый viewport и не мешать фоновому
+ * starfield.
  */
 
-import { getStore, transition, Screen } from '../stateManager.js';
+import { getStore, dispatch, transition, Screen } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
 
-const DIR_LABELS = {
-    it:     '💻 IT',
-    bio:    '🧬 Биотех',
-    math:   '📐 Математика',
-    eco:    '🌿 Экология',
-    design: '🎨 Дизайн',
-    med:    '⚕ Медицина',
-    neuro:  '🧠 Нейронауки',
-    physics:'⚛ Физика',
+// ── Цветовая схема направлений ──────────────────────────────────────────────
+
+const DIR_META = {
+    technology:   { label: '💻 IT / Технологии', color: 0x4fc3f7 },
+    medicine:     { label: '⚕ Медицина',         color: 0xf87171 },
+    biotech:      { label: '🧬 Биотех',           color: 0x4ade80 },
+    ecology:      { label: '🌿 Экология',         color: 0x34d399 },
+    design:       { label: '🎨 Дизайн',           color: 0xf472b6 },
+    neuroscience: { label: '🧠 Нейронауки',       color: 0xc084fc },
+    physics:      { label: '⚛ Физика',            color: 0xa78bfa },
+    mathematics:  { label: '📐 Математика',        color: 0xfbbf24 },
 };
 
-let _allPlanets = [];
+// ── Внутреннее состояние ────────────────────────────────────────────────────
+
+let _allPlanets   = [];
 let _discoveredIds = new Set();
+let _view         = '3d';   // '3d' | 'list'
+
+// Three.js 3D-карта
+let _mapRenderer  = null;
+let _mapScene     = null;
+let _mapCamera    = null;
+let _mapAnimId    = null;
+let _raycaster    = null;
+let _mouse        = null;
+let _planetMeshes = [];
+let _hoveredPlanet = null;
+let _orbitAngle   = 0;
+
+// ── Глобальный API для HTML-onclick ─────────────────────────────────────────
 
 window._galaxyMap = {
     applyFilter() {
         const cat    = document.getElementById('filter-category')?.value ?? '';
         const status = document.getElementById('filter-status')?.value ?? '';
-        _renderPlanets(_allPlanets, cat, status);
+        _renderListView(_allPlanets, cat, status);
     },
     openScan() {
         transition(Screen.NEBULA_SCAN);
     },
     selectPlanet(planetId) {
         transition(Screen.PLANET_DETAIL, { planetId });
+    },
+    setView(v) {
+        _view = v;
+        _updateViewTabs();
     }
 };
 
+// ── Lifecycle ───────────────────────────────────────────────────────────────
+
 export async function init(store) {
-    await switchScene('asteroid-belt');
+    // Фоновая 3D-сцена
+    await switchScene('galaxy-map');
 
-    _allPlanets     = store.sessionData?.catalog ?? [];
-    _discoveredIds  = new Set(store.player?.discoveredPlanets ?? []);
+    _allPlanets    = store.sessionData?.catalog ?? [];
+    _discoveredIds = new Set(store.player?.discoveredPlanets ?? []);
 
-    // Если каталог пустой — загружаем с сервера
+    // Если каталог пуст — загружаем с сервера
     if (_allPlanets.length === 0) {
         try {
             const resp = await fetch('/game?handler=Catalog');
@@ -47,24 +81,349 @@ export async function init(store) {
         } catch { /* офлайн */ }
     }
 
-    _renderPlanets(_allPlanets, '', '');
+    // Список-вид
+    _renderListView(_allPlanets, '', '');
     _updateStats();
+
+    // Инициализация 3D-карты
+    _init3DMap();
+
+    // По умолчанию — 3D вид
+    _view = '3d';
+    _updateViewTabs();
 }
 
 export function destroy() {
+    _cleanup3D();
     delete window._galaxyMap;
 }
 
-// ── Рендеринг ────────────────────────────────────────────────────────────────
+// ── Переключение табов ──────────────────────────────────────────────────────
 
-function _renderPlanets(planets, catFilter, statusFilter) {
+function _updateViewTabs() {
+    const tab3d   = document.getElementById('tab-3d');
+    const tabList = document.getElementById('tab-list');
+    const cont3d  = document.getElementById('galaxy-3d-container');
+    const contList = document.getElementById('galaxy-list-container');
+
+    if (tab3d)   tab3d.classList.toggle('galaxy-tab--active', _view === '3d');
+    if (tabList) tabList.classList.toggle('galaxy-tab--active', _view === 'list');
+    if (cont3d)  cont3d.classList.toggle('hidden', _view !== '3d');
+    if (contList) contList.classList.toggle('hidden', _view !== 'list');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  3D MAP
+// ═══════════════════════════════════════════════════════════════════════════
+
+function _init3DMap() {
+    const THREE = window.THREE;
+    if (!THREE) return;
+
+    const wrap = document.getElementById('galaxy-3d-canvas-wrap');
+    if (!wrap) return;
+
+    const w = wrap.clientWidth || 600;
+    const h = wrap.clientHeight || 400;
+
+    // Рендерер (отдельный от game-canvas)
+    _mapRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    _mapRenderer.setSize(w, h);
+    _mapRenderer.setClearColor(0x050a1a, 1);
+    _mapRenderer.domElement.style.cssText = 'width:100%;height:100%;display:block;border-radius:var(--radius-sm);';
+    wrap.insertBefore(_mapRenderer.domElement, wrap.firstChild);
+
+    // Сцена
+    _mapScene = new THREE.Scene();
+
+    // Камера
+    _mapCamera = new THREE.PerspectiveCamera(55, w / h, 0.1, 2000);
+    _mapCamera.position.set(0, 30, 60);
+    _mapCamera.lookAt(0, 0, 0);
+
+    // Освещение
+    _mapScene.add(new THREE.AmbientLight(0x334155, 0.7));
+    const dirL = new THREE.DirectionalLight(0x4fc3f7, 0.8);
+    dirL.position.set(20, 40, 30);
+    _mapScene.add(dirL);
+
+    // Звёздный фон
+    _addMapStars(THREE);
+
+    // Планеты — сферы
+    _buildPlanetSpheres(THREE);
+
+    // Raycaster для hover/клик
+    _raycaster = new THREE.Raycaster();
+    _mouse = new THREE.Vector2(-999, -999);
+
+    const canvas = _mapRenderer.domElement;
+    canvas.addEventListener('mousemove', _onMapMouseMove);
+    canvas.addEventListener('click', _onMapClick);
+    canvas.addEventListener('touchstart', _onMapTouch, { passive: true });
+
+    // ResizeObserver
+    _mapResizeObs = new ResizeObserver(() => _onMapResize());
+    _mapResizeObs.observe(wrap);
+
+    // Запуск render loop
+    _mapAnimId = requestAnimationFrame(_mapRenderLoop);
+}
+
+let _mapResizeObs = null;
+
+function _addMapStars(THREE) {
+    const geo = new THREE.BufferGeometry();
+    const n = 1200;
+    const pos = new Float32Array(n * 3);
+    for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - 0.5) * 400;
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.7 });
+    _mapScene.add(new THREE.Points(geo, mat));
+}
+
+function _buildPlanetSpheres(THREE) {
+    _planetMeshes = [];
+
+    _allPlanets.forEach((planet, i) => {
+        const discovered   = _discoveredIds.has(planet.id) || planet.isStarterVisible;
+        const dirMeta      = DIR_META[planet.category] ?? { color: 0x888888 };
+        const baseColor    = new THREE.Color(dirMeta.color);
+
+        // Размер: 1.0..2.0 в зависимости от количества требований
+        const reqCount = Object.values(planet.crystalRequirements ?? {}).reduce((a, b) => a + b, 0);
+        const radius   = 0.8 + Math.min(reqCount, 10) * 0.12;
+
+        const geo = new THREE.SphereGeometry(radius, 24, 18);
+        const mat = new THREE.MeshStandardMaterial({
+            color: discovered ? baseColor : 0x333344,
+            emissive: discovered ? baseColor : new THREE.Color(0x111122),
+            emissiveIntensity: discovered ? 0.35 : 0.05,
+            roughness: 0.55,
+            metalness: 0.3,
+            transparent: !discovered,
+            opacity: discovered ? 1.0 : 0.4,
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+
+        // Расположение на орбитальных кольцах
+        const ringIndex = Math.floor(i / 6);      // кольцо
+        const posOnRing = i % 6;                    // позиция на кольце
+        const ringR     = 12 + ringIndex * 10;      // радиус кольца
+        const angle     = (posOnRing / 6) * Math.PI * 2 + ringIndex * 0.5;
+        const ySpread   = (Math.random() - 0.5) * 6;
+
+        mesh.position.set(
+            Math.cos(angle) * ringR,
+            ySpread,
+            Math.sin(angle) * ringR
+        );
+
+        mesh.userData = { planetId: planet.id, planetName: planet.name, category: planet.category, discovered };
+
+        // Кольцо вокруг планеты (если открыта)
+        if (discovered) {
+            const ringGeo = new THREE.RingGeometry(radius + 0.3, radius + 0.45, 32);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: dirMeta.color,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.2,
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            mesh.add(ring);
+        }
+
+        _mapScene.add(mesh);
+        _planetMeshes.push(mesh);
+    });
+
+    // Орбитальные линии (для визуальной ориентации)
+    const maxRings = Math.ceil(_allPlanets.length / 6);
+    for (let r = 0; r < maxRings; r++) {
+        const ringR = 12 + r * 10;
+        const ringGeo = new THREE.RingGeometry(ringR - 0.05, ringR + 0.05, 64);
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: 0x4fc3f7,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.06,
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        _mapScene.add(ring);
+    }
+
+    // Центральная «звезда» — логический центр галактики
+    const starGeo = new THREE.SphereGeometry(2, 32, 24);
+    const starMat = new THREE.MeshStandardMaterial({
+        color: 0xfbbf24,
+        emissive: 0xfbbf24,
+        emissiveIntensity: 1.0,
+        roughness: 0.1,
+    });
+    const star = new THREE.Mesh(starGeo, starMat);
+    _mapScene.add(star);
+
+    // Точечный свет от центральной звезды
+    const starLight = new THREE.PointLight(0xfbbf24, 1.5, 150);
+    _mapScene.add(starLight);
+}
+
+// ── Render loop ─────────────────────────────────────────────────────────────
+
+function _mapRenderLoop() {
+    if (!_mapRenderer || !_mapScene || !_mapCamera) return;
+
+    _orbitAngle += 0.001;
+    _mapCamera.position.x = Math.sin(_orbitAngle) * 65;
+    _mapCamera.position.z = Math.cos(_orbitAngle) * 65;
+    _mapCamera.lookAt(0, 0, 0);
+
+    // Вращение планет вокруг своей оси
+    _planetMeshes.forEach(mesh => {
+        mesh.rotation.y += 0.005;
+    });
+
+    // Raycasting для hover
+    _raycaster.setFromCamera(_mouse, _mapCamera);
+    const intersects = _raycaster.intersectObjects(_planetMeshes, false);
+
+    if (intersects.length > 0) {
+        const hit = intersects[0].object;
+        if (_hoveredPlanet !== hit) {
+            // Снимаем выделение с предыдущей
+            _unhoverPlanet();
+            _hoveredPlanet = hit;
+            _hoverPlanet(hit);
+        }
+    } else {
+        _unhoverPlanet();
+    }
+
+    _mapRenderer.render(_mapScene, _mapCamera);
+    _mapAnimId = requestAnimationFrame(_mapRenderLoop);
+}
+
+function _hoverPlanet(mesh) {
+    const THREE = window.THREE;
+    if (!THREE) return;
+
+    // Увеличиваем планету
+    mesh.scale.setScalar(1.3);
+
+    // Усиливаем свечение
+    if (mesh.material) {
+        mesh.material.emissiveIntensity = 0.8;
+    }
+
+    // Тултип
+    const tooltip = document.getElementById('galaxy-tooltip');
+    const nameEl  = document.getElementById('galaxy-tooltip-name');
+    const catEl   = document.getElementById('galaxy-tooltip-cat');
+    if (tooltip && nameEl && catEl) {
+        nameEl.textContent = mesh.userData.planetName;
+        const meta = DIR_META[mesh.userData.category];
+        catEl.textContent = meta?.label ?? mesh.userData.category;
+        tooltip.classList.remove('hidden');
+    }
+
+    // Стиль курсора
+    if (_mapRenderer) _mapRenderer.domElement.style.cursor = 'pointer';
+}
+
+function _unhoverPlanet() {
+    if (!_hoveredPlanet) return;
+    _hoveredPlanet.scale.setScalar(1.0);
+    if (_hoveredPlanet.material) {
+        const discovered = _hoveredPlanet.userData.discovered;
+        _hoveredPlanet.material.emissiveIntensity = discovered ? 0.35 : 0.05;
+    }
+    _hoveredPlanet = null;
+
+    const tooltip = document.getElementById('galaxy-tooltip');
+    if (tooltip) tooltip.classList.add('hidden');
+
+    if (_mapRenderer) _mapRenderer.domElement.style.cursor = 'default';
+}
+
+// ── Обработка ввода ─────────────────────────────────────────────────────────
+
+function _onMapMouseMove(e) {
+    const rect = _mapRenderer.domElement.getBoundingClientRect();
+    _mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+    _mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+
+    // Расположение тултипа
+    const tooltip = document.getElementById('galaxy-tooltip');
+    if (tooltip && !tooltip.classList.contains('hidden')) {
+        tooltip.style.left = `${e.clientX - rect.left + 12}px`;
+        tooltip.style.top  = `${e.clientY - rect.top  - 10}px`;
+    }
+}
+
+function _onMapClick() {
+    if (_hoveredPlanet && _hoveredPlanet.userData.discovered) {
+        window._galaxyMap?.selectPlanet(_hoveredPlanet.userData.planetId);
+    }
+}
+
+function _onMapTouch(e) {
+    if (!e.touches.length) return;
+    const rect = _mapRenderer.domElement.getBoundingClientRect();
+    const t = e.touches[0];
+    _mouse.x =  ((t.clientX - rect.left) / rect.width)  * 2 - 1;
+    _mouse.y = -((t.clientY - rect.top)  / rect.height) * 2 + 1;
+}
+
+function _onMapResize() {
+    const wrap = document.getElementById('galaxy-3d-canvas-wrap');
+    if (!wrap || !_mapRenderer || !_mapCamera) return;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    if (w === 0 || h === 0) return;
+    _mapCamera.aspect = w / h;
+    _mapCamera.updateProjectionMatrix();
+    _mapRenderer.setSize(w, h);
+}
+
+function _cleanup3D() {
+    if (_mapAnimId) cancelAnimationFrame(_mapAnimId);
+    _mapAnimId = null;
+
+    if (_mapResizeObs) { _mapResizeObs.disconnect(); _mapResizeObs = null; }
+
+    if (_mapRenderer) {
+        const canvas = _mapRenderer.domElement;
+        canvas.removeEventListener('mousemove', _onMapMouseMove);
+        canvas.removeEventListener('click', _onMapClick);
+        canvas.removeEventListener('touchstart', _onMapTouch);
+        canvas.parentNode?.removeChild(canvas);
+        _mapRenderer.dispose();
+        _mapRenderer = null;
+    }
+
+    _mapScene     = null;
+    _mapCamera    = null;
+    _planetMeshes = [];
+    _hoveredPlanet = null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LIST VIEW (существующая логика, улучшенная)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function _renderListView(planets, catFilter, statusFilter) {
     const grid = document.getElementById('planet-grid');
     if (!grid) return;
 
     const filtered = planets.filter(p => {
-        if (catFilter    && p.category !== catFilter)                           return false;
-        if (statusFilter === 'discovered' && !_discoveredIds.has(p.id))        return false;
-        if (statusFilter === 'hidden'     &&  _discoveredIds.has(p.id))        return false;
+        if (catFilter    && p.category !== catFilter)                    return false;
+        if (statusFilter === 'discovered' && !_discoveredIds.has(p.id)) return false;
+        if (statusFilter === 'hidden'     &&  _discoveredIds.has(p.id)) return false;
         return true;
     });
 
@@ -80,27 +439,24 @@ function _renderPlanets(planets, catFilter, statusFilter) {
 
 function _planetCard(planet) {
     const discovered = _discoveredIds.has(planet.id) || planet.isStarterVisible;
-    const opacity    = discovered ? '1' : '0.45';
-    const cursor     = discovered ? 'pointer' : 'default';
-    const overlay    = discovered ? '' : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🌫</div>`;
+    const dirMeta    = DIR_META[planet.category] ?? { label: planet.category, color: 0x888888 };
+    const borderColor = discovered ? `#${dirMeta.color.toString(16).padStart(6, '0')}` : 'var(--color-border)';
 
     const crystalBadges = discovered
         ? Object.entries(planet.crystalRequirements ?? {})
-            .map(([dir, n]) => `<span class="crystal-badge" style="font-size:0.7rem;">${DIR_LABELS[dir] ?? dir} ×${n}</span>`)
+            .map(([dir, n]) => `<span class="crystal-badge">${(DIR_META[dir]?.label ?? dir).split(' ')[0]} ×${n}</span>`)
             .join('')
         : '';
 
     return `
-        <div onclick="${discovered ? `window._galaxyMap?.selectPlanet('${planet.id}')` : ''}"
-             style="position:relative;background:rgba(15,23,42,0.7);border:1px solid var(--color-border);border-radius:var(--radius);padding:1rem;
-                    opacity:${opacity};cursor:${cursor};transition:border-color var(--transition-ui),box-shadow var(--transition-ui);"
-             onmouseenter="this.style.borderColor='rgba(99,102,241,0.6)';this.style.boxShadow='0 0 20px rgba(99,102,241,0.12)'"
-             onmouseleave="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
-            ${overlay}
-            <p style="font-size:0.7rem;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">${planet.category}</p>
-            <h3 style="font-family:var(--font-display);font-size:0.9rem;margin:0.25rem 0 0.5rem;color:var(--color-text);">${planet.name}</h3>
-            <p style="font-size:0.8rem;color:var(--color-text-muted);line-height:1.5;margin-bottom:0.75rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${planet.description}</p>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;">${crystalBadges}</div>
+        <div class="planet-list-card ${discovered ? 'planet-list-card--discovered' : 'planet-list-card--hidden'}"
+             style="--card-accent:${borderColor};"
+             onclick="${discovered ? `window._galaxyMap?.selectPlanet('${planet.id}')` : ''}">
+            ${discovered ? '' : '<div class="planet-card-fog">🌫</div>'}
+            <p class="planet-card-category">${dirMeta.label}</p>
+            <h3 class="planet-card-name">${discovered ? planet.name : '???'}</h3>
+            <p class="planet-card-desc">${discovered ? planet.description : 'Планета ещё не обнаружена. Сканируйте туманность!'}</p>
+            <div class="planet-card-badges">${crystalBadges}</div>
         </div>`;
 }
 

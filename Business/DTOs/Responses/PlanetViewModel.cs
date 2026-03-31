@@ -1,4 +1,4 @@
-namespace KosmosCore.Models.ViewModels;
+namespace KosmosCore.Business.DTOs.Responses;
 
 public class PlanetViewModel
 {

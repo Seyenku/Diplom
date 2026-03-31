@@ -1,5 +1,5 @@
 <!-- _ScreenMainMenu.cshtml — Главное меню Stellar Vocation -->
-<div class="screen starfield" id="screen-main-menu" style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;">
+<div class="screen starfield" id="screen-main-menu" style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;padding:2rem;">
 
     <!-- Лого / Заголовок -->
     <div style="text-align:center;">
@@ -25,8 +25,32 @@
         </button>
     </div>
 
+    <!-- Лор-карточки -->
+    <div class="lore-cards">
+        <div class="lore-card">
+            <div class="lore-card-icon">🚀</div>
+            <div class="lore-card-title">Звёздный Навигатор</div>
+            <div class="lore-card-text">Ты — последний Навигатор Академии. Исследуй Галактику и собирай Кристаллы Знаний.</div>
+        </div>
+        <div class="lore-card">
+            <div class="lore-card-icon">💎</div>
+            <div class="lore-card-title">Кристаллы Знаний</div>
+            <div class="lore-card-text">Каждый кристалл отвечает за направление: IT, медицина, экология, дизайн и другие.</div>
+        </div>
+        <div class="lore-card">
+            <div class="lore-card-icon">🌍</div>
+            <div class="lore-card-title">Планеты-Профессии</div>
+            <div class="lore-card-text">Открывай планеты-профессии, проходи испытания и узнай, какая специальность — твоя.</div>
+        </div>
+    </div>
+
+    <!-- CTA Университет -->
+    <a href="https://www.syktsu.ru/" target="_blank" rel="noopener noreferrer" class="btn-cta-university">
+        🎓 Поступление в СГУ им. Питирима Сорокина
+    </a>
+
     <!-- Версия -->
     <p style="position:absolute;bottom:1.5rem;color:var(--color-text-muted);font-size:0.75rem;opacity:0.5;">
-        v0.1.0 Alpha &nbsp;|&nbsp; Stellar Vocation
+        v0.2.0 Alpha &nbsp;|&nbsp; Stellar Vocation
     </p>
 </div>

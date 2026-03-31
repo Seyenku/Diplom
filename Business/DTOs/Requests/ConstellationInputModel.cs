@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KosmosCore.Models.InputModels;
+namespace KosmosCore.Business.DTOs.Requests;
 
 public class ConstellationInputModel
 {

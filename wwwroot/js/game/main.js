@@ -21,11 +21,13 @@ import {
 import { initThreeScene } from './threeScene.js';
 import { initGuide }      from './guideManager.js';
 import { initHud }        from './hudManager.js';
+import { telemetry }      from './telemetryCollector.js';
 
 // ── Модули экранов ───────────────────────────────────────────────────────────
 import * as MainMenu      from './screens/screenMainMenu.js';
 import * as CharCreation  from './screens/screenCharCreation.js';
 import * as Onboarding    from './screens/screenOnboarding.js';
+import * as Flight        from './screens/screenFlight.js';
 import * as GalaxyMap     from './screens/screenGalaxyMap.js';
 import * as NebulaScan    from './screens/screenNebulaScanning.js';
 import * as PlanetDetail  from './screens/screenPlanetDetail.js';
@@ -104,10 +106,23 @@ import * as OfflineError  from './screens/screenOfflineError.js';
         initGuide(),
     ]);
 
+    // 3.5 Телеметрия
+    telemetry.startSession();
+    // Трекинг переходов между экранами
+    import('./stateManager.js').then(sm => {
+        sm.on('SCREEN_CHANGED', (_s, { screenId, previousScreen }) => {
+            telemetry.track('SCREEN_CHANGED', { from: previousScreen, to: screenId });
+        });
+        sm.on('EARN_CRYSTALS', (_s, { earned }) => {
+            telemetry.track('CRYSTALS_EARNED', earned);
+        });
+    });
+
     // 3. Регистрируем модули экранов
     registerScreen(Screen.MAIN_MENU,      MainMenu);
     registerScreen(Screen.CHAR_CREATION,  CharCreation);
     registerScreen(Screen.ONBOARDING,     Onboarding);
+    registerScreen(Screen.FLIGHT,         Flight);
     registerScreen(Screen.GALAXY_MAP,     GalaxyMap);
     registerScreen(Screen.NEBULA_SCAN,    NebulaScan);
     registerScreen(Screen.PLANET_DETAIL,  PlanetDetail);

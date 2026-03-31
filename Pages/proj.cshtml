@@ -7,13 +7,12 @@
 }
 
 @section Head {
-    <!-- Three.js WebGPU + Nodes (защищено через Html.Raw от вырезания type="importmap" в Razor) -->
+    <!-- Three.js + addons (GLTFLoader и др.) -->
     @Html.Raw(@"<script type=""importmap"">
     {
         ""imports"": {
-            ""three"": ""/js/three.webgpu.nodes.min.js"",
-            ""three/webgpu"": ""/js/three.webgpu.nodes.min.js"",
-            ""three/tsl"": ""/js/three.tsl.min.js""
+            ""three"": ""/js/three.module.min.js"",
+            ""three/addons/"": ""https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/""
         }
     }
     </script>")
@@ -33,6 +32,9 @@
             На весь экран
         </button>
     </div>
+
+    <!-- Сквозная навигация -->
+    @await Html.PartialAsync("~/Pages/Game/_GameNavbar.cshtml")
 
     <!-- Корневой контейнер игры -->
     <div id="game-root">
@@ -65,12 +67,9 @@
 
     <!-- Загружаем библиотеки Three.js и пробрасываем в window -->
     <script type="module">
-        import * as THREE from 'three/webgpu';
-        import * as TSL from 'three/tsl';
+        import * as THREE from 'three';
         
         window.THREE = THREE;
-        window.THREE_Nodes = THREE;
-        window.TSL = TSL;
     </script>
     
     <!-- Точка входа SPA -->

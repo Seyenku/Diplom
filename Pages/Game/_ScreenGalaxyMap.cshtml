@@ -1,25 +1,37 @@
-<!-- _ScreenGalaxyMap.cshtml — Звёздная карта галактики -->
+<!-- _ScreenGalaxyMap.cshtml — Звёздная карта с 3D-визуализацией -->
 <div class="screen" id="screen-galaxy-map"
-     style="width:100%;min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;padding:1rem;gap:1rem;">
+     style="width:100%;height:100%;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden;">
 
-    <!-- Шапка -->
-    <header style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
-        <h1 class="game-title" style="font-size:1.2rem;">🌌 Карта Галактики</h1>
+    <!-- ═══ Шапка ═══ -->
+    <header class="galaxy-header">
+        <h1 class="game-title" style="font-size:1.15rem;">🌌 Карта Галактики</h1>
+
+        <!-- Tabs: 3D ↔ Список -->
+        <div class="galaxy-tabs">
+            <button id="tab-3d" class="galaxy-tab galaxy-tab--active" onclick="window._galaxyMap?.setView('3d')">
+                <span class="nav-icon">🪐</span> 3D-вид
+            </button>
+            <button id="tab-list" class="galaxy-tab" onclick="window._galaxyMap?.setView('list')">
+                <span class="nav-icon">📋</span> Список
+            </button>
+        </div>
 
         <!-- Фильтры -->
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <div class="galaxy-filters">
             <select id="filter-category" onchange="window._galaxyMap?.applyFilter()"
-                    style="background:rgba(15,23,42,0.8);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:6px 10px;font-size:0.8rem;">
+                    class="galaxy-select">
                 <option value="">Все направления</option>
-                <option value="technology">Технологии</option>
-                <option value="medicine">Медицина</option>
-                <option value="biotech">Биотех</option>
-                <option value="ecology">Экология</option>
-                <option value="design">Дизайн</option>
-                <option value="neuroscience">Нейронауки</option>
+                <option value="technology">💻 Технологии</option>
+                <option value="medicine">⚕ Медицина</option>
+                <option value="biotech">🧬 Биотех</option>
+                <option value="ecology">🌿 Экология</option>
+                <option value="design">🎨 Дизайн</option>
+                <option value="neuroscience">🧠 Нейронауки</option>
+                <option value="physics">⚛ Физика</option>
+                <option value="mathematics">📐 Математика</option>
             </select>
             <select id="filter-status" onchange="window._galaxyMap?.applyFilter()"
-                    style="background:rgba(15,23,42,0.8);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:6px 10px;font-size:0.8rem;">
+                    class="galaxy-select">
                 <option value="">Все планеты</option>
                 <option value="discovered">Открытые</option>
                 <option value="hidden">Не открытые</option>
@@ -27,33 +39,51 @@
         </div>
 
         <!-- Кнопки -->
-        <div style="display:flex;gap:0.5rem;">
-            <button class="btn-game btn-primary" onclick="window._galaxyMap?.openScan()" style="padding:6px 16px;font-size:0.8rem;">
-                🔭 Сканировать туманность
+        <div class="galaxy-actions">
+            <button class="btn-game btn-primary" onclick="window._galaxyMap?.openScan()" style="padding:6px 14px;font-size:0.78rem;">
+                🔭 Сканировать
             </button>
-            <button class="btn-game btn-secondary" onclick="window._spa?.pause()" style="padding:6px 12px;font-size:0.8rem;">⏸</button>
+            <button class="btn-game btn-secondary" onclick="window._spa?.goto('flight')" style="padding:6px 14px;font-size:0.78rem;">
+                🚀 Полёт
+            </button>
         </div>
     </header>
 
-    <!-- Сетка планет -->
-    <div id="planet-grid"
-         style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;overflow-y:auto;padding:0.5rem;">
-        <!-- Карточки планет рендерятся через JS -->
-        <div style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:3rem;">
-            <div style="font-size:2rem;margin-bottom:0.5rem;">🌌</div>
-            <p>Загрузка карты галактики…</p>
+    <!-- ═══ Контент: 3D Вид ═══ -->
+    <div id="galaxy-3d-container" class="galaxy-content-panel" style="position:relative;">
+        <!-- 3D-звёздная карта рендерится сюда через JS -->
+        <div id="galaxy-3d-canvas-wrap" style="width:100%;height:100%;position:relative;">
+            <!-- Тултип при наведении на планету -->
+            <div id="galaxy-tooltip" class="galaxy-tooltip hidden">
+                <div id="galaxy-tooltip-name" class="galaxy-tooltip-name"></div>
+                <div id="galaxy-tooltip-cat" class="galaxy-tooltip-cat"></div>
+                <div id="galaxy-tooltip-hint" class="galaxy-tooltip-hint">Клик — открыть</div>
+            </div>
         </div>
     </div>
 
-    <!-- Подвал с прогрессом -->
-    <footer style="display:flex;flex-wrap:wrap;gap:1rem;padding:0.5rem;background:rgba(5,10,26,0.6);border-radius:var(--radius-sm);">
-        <span id="stat-discovered" style="color:var(--color-text-muted);font-size:0.8rem;">📍 Открыто: 0</span>
-        <span id="stat-total"      style="color:var(--color-text-muted);font-size:0.8rem;">🌐 Всего: 0</span>
-        <button class="btn-game btn-secondary" onclick="window._spa?.goto('achievements')" style="padding:4px 12px;font-size:0.75rem;margin-left:auto;">
-            📊 Прогресс
-        </button>
-        <button class="btn-game btn-secondary" onclick="window._spa?.goto('vocation-constellation')" style="padding:4px 12px;font-size:0.75rem;">
-            🌠 Созвездие
-        </button>
+    <!-- ═══ Контент: Список ═══ -->
+    <div id="galaxy-list-container" class="galaxy-content-panel hidden">
+        <div id="planet-grid"
+             style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;padding:0.75rem;overflow-y:auto;max-height:100%;">
+            <div style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:3rem;">
+                <div style="font-size:2rem;margin-bottom:0.5rem;">🌌</div>
+                <p>Загрузка карты галактики…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Подвал ═══ -->
+    <footer class="galaxy-footer">
+        <span id="stat-discovered" class="galaxy-stat">📍 Открыто: 0</span>
+        <span id="stat-total" class="galaxy-stat">🌐 Всего: 0</span>
+        <div class="galaxy-footer-actions">
+            <button class="btn-game btn-secondary" onclick="window._spa?.goto('achievements')" style="padding:4px 12px;font-size:0.72rem;">
+                📊 Прогресс
+            </button>
+            <button class="btn-game btn-secondary" onclick="window._spa?.goto('vocation-constellation')" style="padding:4px 12px;font-size:0.72rem;">
+                🌠 Созвездие
+            </button>
+        </div>
     </footer>
 </div>

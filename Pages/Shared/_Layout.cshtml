@@ -9,7 +9,7 @@
     <title>@ViewData["Title"] - KosmosCore</title>
     
     <meta http-equiv="X-Frame-Options" content="DENY" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net http://localhost:* https://localhost:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://cdn.jsdelivr.net http://localhost:* https://localhost:* ws://localhost:* wss://localhost:*;" />
     
     <link rel="stylesheet" href="~/css/StyleSheet.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/bootstrap.min.css" asp-append-version="true" />
@@ -45,28 +45,7 @@
     </footer>
 
     <script src="~/js/app.js" asp-append-version="true"></script>
-    <script src="~/js/stats.js" asp-append-version="true"></script>
-    <script>
-        var count_particles, stats, update;
-        if (typeof Stats !== 'undefined') {
-            stats = new Stats;
-            stats.setMode(0);
-            stats.domElement.style.position = 'absolute';
-            stats.domElement.style.left = '0px';
-            stats.domElement.style.top = '0px';
-            document.body.appendChild(stats.domElement);
-            count_particles = document.querySelector('.js-count-particles');
-            update = function () {
-                stats.begin();
-                stats.end();
-                if (window.pJSDom && window.pJSDom[0] && window.pJSDom[0].pJS && window.pJSDom[0].pJS.particles && window.pJSDom[0].pJS.particles.array) {
-                    if(count_particles) count_particles.innerText = window.pJSDom[0].pJS.particles.array.length;
-                }
-                requestAnimationFrame(update);
-            };
-            requestAnimationFrame(update);
-        }
-    </script>
+    <!-- stats.js removed to prevent 404 error -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
