@@ -86,4 +86,4 @@ function _showResult(result, spent) {
 }
 
 export async function init(_store) {}
-export function destroy() { delete window._nebulaScan; }
+export function destroy() {}

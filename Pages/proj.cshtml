@@ -33,9 +33,6 @@
         </button>
     </div>
 
-    <!-- Сквозная навигация -->
-    @await Html.PartialAsync("~/Pages/Game/_GameNavbar.cshtml")
-
     <!-- Корневой контейнер игры -->
     <div id="game-root">
         <!-- Оверлей перехода между экранами -->
@@ -49,6 +46,11 @@
                  role="main"
                  tabindex="-1"
                  aria-label="Активный экран игры">
+            <!-- Внутриигровая навигация -->
+            @await Html.PartialAsync("~/Pages/Game/_GameNavbar.cshtml")
+            
+            <!-- Динамический контент экрана -->
+            <div id="screen-dynamic-content" tabindex="-1"></div>
         </section>
 
         <!-- HUD -->

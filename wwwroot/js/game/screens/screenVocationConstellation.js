@@ -29,7 +29,7 @@ export async function init(store) {
     if (placeholder) placeholder.style.display = 'none';
 }
 
-export function destroy() { delete window._vocationConst; }
+export function destroy() {}
 
 function _matchScore(crystals, req) {
     if (!req || Object.keys(req).length === 0) return 0;

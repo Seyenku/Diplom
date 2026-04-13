@@ -74,7 +74,6 @@ export async function init(store) {
 
 export function destroy() {
     _cleanup3D();
-    delete window._planetDetail;
 }
 
 // ── 3D-модель ───────────────────────────────────────────────────────────────
@@ -94,7 +93,7 @@ function _init3DPlanet(planet, dirMeta) {
 
     _planetRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     _planetRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    _planetRenderer.setSize(w, h);
+    _planetRenderer.setSize(w, h, false);
     _planetRenderer.setClearColor(0x000000, 0); // прозрачный фон
     _planetRenderer.domElement.style.cssText = 'width:100%;height:100%;display:block;';
     viewport.appendChild(_planetRenderer.domElement);
@@ -171,7 +170,7 @@ function _init3DPlanet(planet, dirMeta) {
         if (vw === 0 || vh === 0) return;
         _planetCamera.aspect = vw / vh;
         _planetCamera.updateProjectionMatrix();
-        _planetRenderer.setSize(vw, vh);
+        _planetRenderer.setSize(vw, vh, false);
     });
     _resizeObs.observe(viewport);
 

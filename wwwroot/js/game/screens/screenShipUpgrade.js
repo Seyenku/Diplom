@@ -53,7 +53,7 @@ export async function init(store) {
     _updateStats();
 }
 
-export function destroy() { delete window._shipUpgrade; }
+export function destroy() {}
 
 function _renderUpgrades(upgrades, installed) {
     const tree = document.getElementById('upgrade-tree');

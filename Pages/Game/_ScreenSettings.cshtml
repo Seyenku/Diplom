@@ -5,7 +5,6 @@
     <div style="width:100%;max-width:560px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
             <h1 class="game-title" style="font-size:1.5rem;">⚙ Настройки</h1>
-            <button class="btn-game btn-secondary" onclick="window._spa?.goBack()" style="padding:8px 16px;font-size:0.8rem;">← Назад</button>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1rem;">
@@ -18,13 +17,13 @@
                         <span style="font-size:0.9rem;">Громкость звука</span>
                         <input type="range" id="setting-sound" min="0" max="100" value="70"
                                oninput="window._settings?.update('soundVolume',this.value)"
-                               style="width:140px;accent-color:var(--color-primary);" />
+                               style="width:8.75rem;accent-color:var(--color-primary);" />
                     </label>
                     <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
                         <span style="font-size:0.9rem;">Громкость музыки</span>
                         <input type="range" id="setting-music" min="0" max="100" value="50"
                                oninput="window._settings?.update('musicVolume',this.value)"
-                               style="width:140px;accent-color:var(--color-primary);" />
+                               style="width:8.75rem;accent-color:var(--color-primary);" />
                     </label>
                 </div>
             </div>
@@ -35,7 +34,7 @@
                 <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
                     <span style="font-size:0.9rem;">Качество графики</span>
                     <select id="setting-graphics" onchange="window._settings?.update('graphicsQuality',this.value)"
-                            style="background:rgba(15,23,42,0.8);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:6px 10px;">
+                            style="background:rgba(15,23,42,0.8);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:0.375rem 0.625rem;">
                         <option value="low">Низкое</option>
                         <option value="medium" selected>Среднее</option>
                         <option value="high">Высокое</option>
@@ -49,7 +48,7 @@
                 <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
                     <span style="font-size:0.9rem;">Схема управления</span>
                     <select id="setting-controls" onchange="window._settings?.update('controlScheme',this.value)"
-                            style="background:rgba(15,23,42,0.8);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:6px 10px;">
+                            style="background:rgba(15,23,42,0.8);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:0.375rem 0.625rem;">
                         <option value="keyboard" selected>Клавиатура</option>
                         <option value="mouse">Мышь</option>
                         <option value="gamepad">Геймпад</option>
@@ -65,25 +64,25 @@
                         <span style="font-size:0.9rem;">Субтитры</span>
                         <input type="checkbox" id="setting-subtitles"
                                onchange="window._settings?.update('subtitles',this.checked)"
-                               style="width:18px;height:18px;accent-color:var(--color-primary);" />
+                               style="width:1.125rem;height:1.125rem;accent-color:var(--color-primary);" />
                     </label>
                     <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;">
                         <span style="font-size:0.9rem;">Режим для дальтоников</span>
                         <input type="checkbox" id="setting-colorblind"
                                onchange="window._settings?.update('colorblindMode',this.checked)"
-                               style="width:18px;height:18px;accent-color:var(--color-primary);" />
+                               style="width:1.125rem;height:1.125rem;accent-color:var(--color-primary);" />
                     </label>
                     <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;">
                         <span style="font-size:0.9rem;">Подсказки Гайда</span>
                         <input type="checkbox" id="setting-guide" checked
                                onchange="window._settings?.update('guideEnabled',this.checked)"
-                               style="width:18px;height:18px;accent-color:var(--color-primary);" />
+                               style="width:1.125rem;height:1.125rem;accent-color:var(--color-primary);" />
                     </label>
                     <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
                         <span style="font-size:0.9rem;">Масштаб UI</span>
                         <input type="range" id="setting-uiscale" min="80" max="130" value="100"
                                oninput="window._settings?.update('uiScale',this.value/100)"
-                               style="width:140px;accent-color:var(--color-primary);" />
+                               style="width:8.75rem;accent-color:var(--color-primary);" />
                     </label>
                 </div>
             </div>

@@ -35,7 +35,7 @@ export const Screen = Object.freeze({
 
 /** @type {GameStore} */
 const _store = {
-    currentScreen:  Screen.MAIN_MENU,
+    currentScreen:  null,
     previousScreen: null,
     player: null,     // { name, avatarId, crystals: {it:0, bio:0,...}, shipStats: {...} }
     catalog: [],      // PlanetDto[] — загружен один раз при старте
@@ -168,7 +168,7 @@ export async function transition(screenId, payload = {}) {
 
     try {
         // Показываем skeleton-плейсхолдер пока загружается Partial
-        const container = document.getElementById('screen-container');
+        const container = document.getElementById('screen-dynamic-content');
         if (container) showSkeleton(container);
 
         // Получаем HTML экрана с сервера
@@ -226,7 +226,7 @@ function _updateHudVisibility(screenId) {
 }
 
 async function _renderOfflineError(err) {
-    const container = document.getElementById('screen-container');
+    const container = document.getElementById('screen-dynamic-content');
     if (container) {
         container.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1rem;padding:2rem;">
@@ -273,7 +273,7 @@ window.addEventListener('popstate', (e) => {
     _store.previousScreen = _store.currentScreen;
     _store.currentScreen  = screenId;
     _fetchPartial(screenId).then(html => {
-        const c = document.getElementById('screen-container');
+        const c = document.getElementById('screen-dynamic-content');
         if (c) { c.innerHTML = html; c.focus(); }
         ScreenModules[screenId]?.init?.(getStore()).then(() => {
             dispatch('SCREEN_CHANGED', { screenId, previousScreen: _store.previousScreen });

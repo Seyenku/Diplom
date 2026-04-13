@@ -90,7 +90,6 @@ export function destroy() {
     _cleanup();
     document.removeEventListener('keydown', _onKeyDown);
     document.removeEventListener('keyup', _onKeyUp);
-    delete window._flightScreen;
 }
 
 // ── Countdown ───────────────────────────────────

@@ -42,7 +42,15 @@ let _raycaster    = null;
 let _mouse        = null;
 let _planetMeshes = [];
 let _hoveredPlanet = null;
-let _orbitAngle   = 0;
+let _selectedPlanet = null;
+let _isRightMouseDown = false;
+let _isTouchDown = false;
+let _lastInteractX = 0;
+let _lastInteractY = 0;
+let _spherical = { radius: 67, theta: 0, phi: 1.1 };
+let _targetCenter = null;
+let _targetDest = null;
+let _lastPinchDist = 0;
 
 // ── Глобальный API для HTML-onclick ─────────────────────────────────────────
 
@@ -61,6 +69,21 @@ window._galaxyMap = {
     setView(v) {
         _view = v;
         _updateViewTabs();
+    },
+    resetCamera() {
+        if (!_targetDest) return;
+        _targetDest.set(0, 0, 0);
+        _spherical.radius = 67;
+        _spherical.theta = 0;
+        _spherical.phi = 1.1;
+        _selectedPlanet = null;
+        _updateZoomUI();
+        _hideSelectedPanel();
+    },
+    openSelectedPlanet() {
+        if (_selectedPlanet && _selectedPlanet.userData.discovered) {
+            transition(Screen.PLANET_DETAIL, { planetId: _selectedPlanet.userData.planetId });
+        }
     }
 };
 
@@ -95,7 +118,6 @@ export async function init(store) {
 
 export function destroy() {
     _cleanup3D();
-    delete window._galaxyMap;
 }
 
 // ── Переключение табов ──────────────────────────────────────────────────────
@@ -129,7 +151,7 @@ function _init3DMap() {
     // Рендерер (отдельный от game-canvas)
     _mapRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    _mapRenderer.setSize(w, h);
+    _mapRenderer.setSize(w, h, false);
     _mapRenderer.setClearColor(0x050a1a, 1);
     _mapRenderer.domElement.style.cssText = 'width:100%;height:100%;display:block;border-radius:var(--radius-sm);';
     wrap.insertBefore(_mapRenderer.domElement, wrap.firstChild);
@@ -139,6 +161,8 @@ function _init3DMap() {
 
     // Камера
     _mapCamera = new THREE.PerspectiveCamera(55, w / h, 0.1, 2000);
+    // Начальная позиция задаётся через сферические координаты в loop, 
+    // но можно оставить set для подстраховки:
     _mapCamera.position.set(0, 30, 60);
     _mapCamera.lookAt(0, 0, 0);
 
@@ -154,14 +178,26 @@ function _init3DMap() {
     // Планеты — сферы
     _buildPlanetSpheres(THREE);
 
+    _targetCenter = new THREE.Vector3(0, 0, 0);
+    _targetDest = new THREE.Vector3(0, 0, 0);
+
     // Raycaster для hover/клик
     _raycaster = new THREE.Raycaster();
     _mouse = new THREE.Vector2(-999, -999);
 
     const canvas = _mapRenderer.domElement;
     canvas.addEventListener('mousemove', _onMapMouseMove);
+    canvas.addEventListener('mousedown', _onMapMouseDown);
+    canvas.addEventListener('mouseup', _onMapMouseUp);
+    canvas.addEventListener('mouseleave', _onMapMouseUp);
+    canvas.addEventListener('contextmenu', _onContextMenu);
     canvas.addEventListener('click', _onMapClick);
-    canvas.addEventListener('touchstart', _onMapTouch, { passive: true });
+    canvas.addEventListener('wheel', _onMapWheel, { passive: false });
+
+    canvas.addEventListener('touchstart', _onMapTouchStart, { passive: true });
+    canvas.addEventListener('touchmove', _onMapTouchMove, { passive: false });
+    canvas.addEventListener('touchend', _onMapTouchEnd);
+    canvas.addEventListener('touchcancel', _onMapTouchEnd);
 
     // ResizeObserver
     _mapResizeObs = new ResizeObserver(() => _onMapResize());
@@ -278,10 +314,15 @@ function _buildPlanetSpheres(THREE) {
 function _mapRenderLoop() {
     if (!_mapRenderer || !_mapScene || !_mapCamera) return;
 
-    _orbitAngle += 0.001;
-    _mapCamera.position.x = Math.sin(_orbitAngle) * 65;
-    _mapCamera.position.z = Math.cos(_orbitAngle) * 65;
-    _mapCamera.lookAt(0, 0, 0);
+    if (_targetDest && _targetCenter) {
+        _targetCenter.lerp(_targetDest, 0.05);
+
+        _mapCamera.position.x = _targetCenter.x + _spherical.radius * Math.sin(_spherical.phi) * Math.sin(_spherical.theta);
+        _mapCamera.position.y = _targetCenter.y + _spherical.radius * Math.cos(_spherical.phi);
+        _mapCamera.position.z = _targetCenter.z + _spherical.radius * Math.sin(_spherical.phi) * Math.cos(_spherical.theta);
+        
+        _mapCamera.lookAt(_targetCenter);
+    }
 
     // Вращение планет вокруг своей оси
     _planetMeshes.forEach(mesh => {
@@ -352,7 +393,37 @@ function _unhoverPlanet() {
 
 // ── Обработка ввода ─────────────────────────────────────────────────────────
 
+function _onContextMenu(e) {
+    e.preventDefault();
+}
+
+function _onMapMouseDown(e) {
+    if (e.button === 2) { // Правая кнопка
+        _isRightMouseDown = true;
+        _lastInteractX = e.clientX;
+        _lastInteractY = e.clientY;
+    }
+}
+
+function _onMapMouseUp(e) {
+    if (e.button === 2 || e.type === 'mouseleave') {
+        _isRightMouseDown = false;
+    }
+}
+
 function _onMapMouseMove(e) {
+    if (_isRightMouseDown) {
+        const deltaX = e.clientX - _lastInteractX;
+        const deltaY = e.clientY - _lastInteractY;
+        
+        _spherical.theta -= deltaX * 0.005;
+        _spherical.phi   -= deltaY * 0.005;
+        _spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, _spherical.phi));
+
+        _lastInteractX = e.clientX;
+        _lastInteractY = e.clientY;
+    }
+
     const rect = _mapRenderer.domElement.getBoundingClientRect();
     _mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
     _mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
@@ -367,16 +438,96 @@ function _onMapMouseMove(e) {
 
 function _onMapClick() {
     if (_hoveredPlanet && _hoveredPlanet.userData.discovered) {
-        window._galaxyMap?.selectPlanet(_hoveredPlanet.userData.planetId);
+        _selectedPlanet = _hoveredPlanet;
+        _targetDest.copy(_selectedPlanet.position);
+        _showSelectedPanel(_selectedPlanet);
+    } else {
+        window._galaxyMap?.resetCamera();
     }
 }
 
-function _onMapTouch(e) {
-    if (!e.touches.length) return;
+function _onMapWheel(e) {
+    e.preventDefault();
+    const zoomSpeed = 0.05;
+    _spherical.radius += Math.sign(e.deltaY) * zoomSpeed * _spherical.radius;
+    // zoom: 15 to 150
+    _spherical.radius = Math.max(15, Math.min(150, _spherical.radius));
+    _updateZoomUI();
+}
+
+function _updateZoomUI() {
+    const el = document.getElementById('galaxy-zoom-percent');
+    if (el) {
+        const pct = Math.round(((150 - _spherical.radius) / 135) * 100);
+        el.textContent = `${pct}%`;
+    }
+}
+
+function _showSelectedPanel(mesh) {
+    const panel = document.getElementById('galaxy-selected-panel');
+    const title = document.getElementById('galaxy-selected-title');
+    if (panel && title) {
+        title.textContent = mesh.userData.planetName;
+        panel.classList.remove('hidden');
+    }
+}
+
+function _hideSelectedPanel() {
+    const panel = document.getElementById('galaxy-selected-panel');
+    if (panel) panel.classList.add('hidden');
+}
+
+function _onMapTouchStart(e) {
+    if (e.touches.length === 1) {
+        _isTouchDown = true;
+        _lastInteractX = e.touches[0].clientX;
+        _lastInteractY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+        _isTouchDown = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        _lastPinchDist = Math.sqrt(dx*dx + dy*dy);
+    }
     const rect = _mapRenderer.domElement.getBoundingClientRect();
     const t = e.touches[0];
     _mouse.x =  ((t.clientX - rect.left) / rect.width)  * 2 - 1;
     _mouse.y = -((t.clientY - rect.top)  / rect.height) * 2 + 1;
+}
+
+function _onMapTouchMove(e) {
+    if (e.touches.length === 1 || e.touches.length === 2) e.preventDefault(); // Предотвращаем скролл
+
+    if (_isTouchDown && e.touches.length === 1) {
+        const deltaX = e.touches[0].clientX - _lastInteractX;
+        const deltaY = e.touches[0].clientY - _lastInteractY;
+        
+        _spherical.theta -= deltaX * 0.005;
+        _spherical.phi   -= deltaY * 0.005;
+        _spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, _spherical.phi));
+
+        _lastInteractX = e.touches[0].clientX;
+        _lastInteractY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const delta = _lastPinchDist - dist;
+        _spherical.radius += delta * 0.2;
+        _spherical.radius = Math.max(15, Math.min(150, _spherical.radius));
+        _updateZoomUI();
+        _lastPinchDist = dist;
+    }
+
+    const rect = _mapRenderer.domElement.getBoundingClientRect();
+    const t = e.touches[0];
+    _mouse.x =  ((t.clientX - rect.left) / rect.width)  * 2 - 1;
+    _mouse.y = -((t.clientY - rect.top)  / rect.height) * 2 + 1;
+}
+
+function _onMapTouchEnd(e) {
+    if (e.touches.length === 0) {
+        _isTouchDown = false;
+    }
 }
 
 function _onMapResize() {
@@ -387,7 +538,7 @@ function _onMapResize() {
     if (w === 0 || h === 0) return;
     _mapCamera.aspect = w / h;
     _mapCamera.updateProjectionMatrix();
-    _mapRenderer.setSize(w, h);
+    _mapRenderer.setSize(w, h, false);
 }
 
 function _cleanup3D() {
@@ -399,8 +550,16 @@ function _cleanup3D() {
     if (_mapRenderer) {
         const canvas = _mapRenderer.domElement;
         canvas.removeEventListener('mousemove', _onMapMouseMove);
+        canvas.removeEventListener('mousedown', _onMapMouseDown);
+        canvas.removeEventListener('mouseup', _onMapMouseUp);
+        canvas.removeEventListener('mouseleave', _onMapMouseUp);
+        canvas.removeEventListener('contextmenu', _onContextMenu);
         canvas.removeEventListener('click', _onMapClick);
-        canvas.removeEventListener('touchstart', _onMapTouch);
+        canvas.removeEventListener('wheel', _onMapWheel);
+        canvas.removeEventListener('touchstart', _onMapTouchStart);
+        canvas.removeEventListener('touchmove', _onMapTouchMove);
+        canvas.removeEventListener('touchend', _onMapTouchEnd);
+        canvas.removeEventListener('touchcancel', _onMapTouchEnd);
         canvas.parentNode?.removeChild(canvas);
         _mapRenderer.dispose();
         _mapRenderer = null;
@@ -410,6 +569,9 @@ function _cleanup3D() {
     _mapCamera    = null;
     _planetMeshes = [];
     _hoveredPlanet = null;
+    _selectedPlanet = null;
+    _isRightMouseDown = false;
+    _isTouchDown = false;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

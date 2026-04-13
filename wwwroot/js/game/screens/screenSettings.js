@@ -10,8 +10,8 @@ window._settings = {
     saveAndApply() {
         const s = getStore().settings ?? {};
         dispatch('SET_SETTINGS', s); // гарантируем сохранение в localStorage
-        // Применяем громкость, масштаб и т.д.
-        document.documentElement.style.fontSize = `${(s.uiScale ?? 1.0) * 16}px`;
+        // Применяем масштаб UI через CSS-переменную (работает поверх авто-адаптации clamp)
+        document.documentElement.style.setProperty('--user-ui-scale', s.uiScale ?? 1.0);
         alert('Настройки сохранены.');
     }
 };
@@ -28,7 +28,7 @@ export async function init(store) {
     _setVal('setting-uiscale',    (s.uiScale        ?? 1.0) * 100);
 }
 
-export function destroy() { delete window._settings; }
+export function destroy() {}
 
 function _setVal(id, v) { const e = document.getElementById(id); if (e) e.value = v; }
 function _setChk(id, v) { const e = document.getElementById(id); if (e) e.checked = v; }

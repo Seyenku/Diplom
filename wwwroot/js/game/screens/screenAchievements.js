@@ -73,7 +73,6 @@ export async function init(store) {
 }
 
 export function destroy() {
-    delete window._achievements;
 }
 
 // ── Авто-проверка достижений ────────────────────────────────────────────────

@@ -38,7 +38,7 @@ export async function initThreeScene(canvasId) {
     });
 
     _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    _renderer.setSize(canvas.parentNode.clientWidth, canvas.parentNode.clientHeight);
+    _renderer.setSize(canvas.parentNode.clientWidth, canvas.parentNode.clientHeight, false);
     _renderer.setClearColor(0x050a1a, 1);
 
     window.addEventListener('resize', _onResize);
@@ -177,7 +177,7 @@ function _onResize() {
 
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
-    _renderer.setSize(container.clientWidth, container.clientHeight);
+    _renderer.setSize(container.clientWidth, container.clientHeight, false);
 }
 
 export { _renderer as renderer };

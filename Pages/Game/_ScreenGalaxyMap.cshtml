@@ -40,10 +40,10 @@
 
         <!-- Кнопки -->
         <div class="galaxy-actions">
-            <button class="btn-game btn-primary" onclick="window._galaxyMap?.openScan()" style="padding:6px 14px;font-size:0.78rem;">
+            <button class="btn-game btn-primary" onclick="window._galaxyMap?.openScan()" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
                 🔭 Сканировать
             </button>
-            <button class="btn-game btn-secondary" onclick="window._spa?.goto('flight')" style="padding:6px 14px;font-size:0.78rem;">
+            <button class="btn-game btn-secondary" onclick="window._spa?.goto('flight')" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
                 🚀 Полёт
             </button>
         </div>
@@ -57,7 +57,26 @@
             <div id="galaxy-tooltip" class="galaxy-tooltip hidden">
                 <div id="galaxy-tooltip-name" class="galaxy-tooltip-name"></div>
                 <div id="galaxy-tooltip-cat" class="galaxy-tooltip-cat"></div>
-                <div id="galaxy-tooltip-hint" class="galaxy-tooltip-hint">Клик — открыть</div>
+                <div id="galaxy-tooltip-hint" class="galaxy-tooltip-hint">ЛКМ — выбрать</div>
+            </div>
+            
+            <!-- Индикатор масштабирования камеры -->
+            <div class="galaxy-zoom-control" style="position:absolute;top:0.625rem;right:0.625rem;background:var(--color-surface-trans);backdrop-filter:blur(8px);border:1px solid var(--color-border);border-radius:var(--radius);padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.625rem;z-index:5;">
+                <span style="font-size:0.8rem;color:var(--color-text-muted);">Масштаб: <strong id="galaxy-zoom-percent" style="color:var(--color-text);">61%</strong></span>
+                <button type="button" class="btn-game btn-secondary" onclick="event.stopPropagation(); window._galaxyMap?.resetCamera()" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Сброс</button>
+            </div>
+
+            <!-- Панель выбранной планеты -->
+            <div id="galaxy-selected-panel" class="galaxy-selected-panel hidden" style="position:absolute;bottom:1.25rem;left:50%;transform:translateX(-50%);background:var(--color-surface-trans);backdrop-filter:blur(10px);border:1px solid var(--color-focus);border-radius:var(--radius);padding:0.9375rem 1.5625rem;display:flex;flex-direction:column;align-items:center;gap:0.625rem;z-index:10;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+                <div id="galaxy-selected-title" style="font-weight:700;font-size:1.1rem;color:var(--color-text);">Планета</div>
+                <button class="btn-game btn-primary" onclick="window._galaxyMap?.openSelectedPlanet()">
+                    🚀 Открыть планету
+                </button>
+            </div>
+
+            <!-- Подсказка по навигации -->
+            <div class="galaxy-nav-hint" style="position:absolute;bottom:0.625rem;right:0.625rem;background:rgba(0,0,0,0.5);padding:0.25rem 0.625rem;border-radius:0.25rem;font-size:0.75rem;color:#8892b0;pointer-events:none;white-space:nowrap;user-select:none;">
+                🖱 ЛКМ — выбор | Зажать ПКМ / Свайп — вращение | Скролл / Щипок — зум
             </div>
         </div>
     </div>
@@ -65,7 +84,7 @@
     <!-- ═══ Контент: Список ═══ -->
     <div id="galaxy-list-container" class="galaxy-content-panel hidden">
         <div id="planet-grid"
-             style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;padding:0.75rem;overflow-y:auto;max-height:100%;">
+             style="display:grid;grid-template-columns:repeat(auto-fill,minmax(12.5rem,1fr));gap:1rem;padding:0.75rem;overflow-y:auto;max-height:100%;">
             <div style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:3rem;">
                 <div style="font-size:2rem;margin-bottom:0.5rem;">🌌</div>
                 <p>Загрузка карты галактики…</p>
@@ -78,10 +97,10 @@
         <span id="stat-discovered" class="galaxy-stat">📍 Открыто: 0</span>
         <span id="stat-total" class="galaxy-stat">🌐 Всего: 0</span>
         <div class="galaxy-footer-actions">
-            <button class="btn-game btn-secondary" onclick="window._spa?.goto('achievements')" style="padding:4px 12px;font-size:0.72rem;">
+            <button class="btn-game btn-secondary" onclick="window._spa?.goto('achievements')" style="padding:0.25rem 0.75rem;font-size:0.72rem;">
                 📊 Прогресс
             </button>
-            <button class="btn-game btn-secondary" onclick="window._spa?.goto('vocation-constellation')" style="padding:4px 12px;font-size:0.72rem;">
+            <button class="btn-game btn-secondary" onclick="window._spa?.goto('vocation-constellation')" style="padding:0.25rem 0.75rem;font-size:0.72rem;">
                 🌠 Созвездие
             </button>
         </div>

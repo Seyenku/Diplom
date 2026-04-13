@@ -85,5 +85,4 @@ export async function init(_store) {
 }
 
 export function destroy() {
-    delete window._onboarding;
 }

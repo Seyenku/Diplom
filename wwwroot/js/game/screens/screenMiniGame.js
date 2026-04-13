@@ -106,7 +106,6 @@ export async function init(store) {
 
 export function destroy() {
     _cleanup();
-    delete window._miniGame;
 }
 
 let _resizeObs = null;

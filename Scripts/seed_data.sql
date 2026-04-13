@@ -300,5 +300,5 @@ INSERT INTO Subjects (Id, Name) VALUES
 SET IDENTITY_INSERT Subjects OFF;
 GO
 
-PRINT N'✅ Seed data loaded successfully!';
+PRINT N'Seed data loaded successfully';
 GO
