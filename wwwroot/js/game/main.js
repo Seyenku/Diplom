@@ -29,7 +29,7 @@ import * as CharCreation  from './screens/screenCharCreation.js';
 import * as Onboarding    from './screens/screenOnboarding.js';
 import * as Flight        from './screens/screenFlight.js';
 import * as GalaxyMap     from './screens/screenGalaxyMap.js';
-import * as NebulaScan    from './screens/screenNebulaScanning.js';
+
 import * as PlanetDetail  from './screens/screenPlanetDetail.js';
 import * as MiniGame      from './screens/screenMiniGame.js';
 import * as ShipUpgrade   from './screens/screenShipUpgrade.js';
@@ -87,6 +87,7 @@ import * as OfflineError  from './screens/screenOfflineError.js';
 
     if (initData) {
         dispatch('SET_SESSION', {
+            clusters: initData.clusters ?? [],
             catalog:  initData.catalog  ?? [],
             upgrades: upgradesData,
         });
@@ -124,7 +125,7 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     registerScreen(Screen.ONBOARDING,     Onboarding);
     registerScreen(Screen.FLIGHT,         Flight);
     registerScreen(Screen.GALAXY_MAP,     GalaxyMap);
-    registerScreen(Screen.NEBULA_SCAN,    NebulaScan);
+
     registerScreen(Screen.PLANET_DETAIL,  PlanetDetail);
     registerScreen(Screen.MINIGAME,       MiniGame);
     registerScreen(Screen.SHIP_UPGRADE,   ShipUpgrade);

@@ -11,19 +11,18 @@ namespace KosmosCore.Pages;
 
 /// <summary>
 /// PageModel для SPA-хоста игры Stellar Vocation.
-///  - OnGet()            → начальный bootstrap JSON (каталог планет + апгрейдов)
+///  - OnGet()            → начальный bootstrap JSON (кластеры + каталог планет)
 ///  - OnGetPartial()     → AJAX-подгрузка HTML экрана
 ///  - OnGetCatalog()     → JSON каталога планет
-///  - OnPostScanNebula() → серверная логика сканирования
 ///  - OnPostMiniGameResult() → расчёт наград
 ///  - OnPostSaveProgress()   → запись прогресса в game_saves
 /// </summary>
 [IgnoreAntiforgeryToken]
-public class ProjModel(IPlanetRepository planets, IScanService scanService, IMiniGameService miniGameService, ILogger<ProjModel> logger) : PageModel
+public class ProjModel(IPlanetRepository planets, IMiniGameService miniGameService, IPlanetCatalogService catalogService, ILogger<ProjModel> logger) : PageModel
 {
     private readonly IPlanetRepository _planets = planets;
-    private readonly IScanService _scanService = scanService;
     private readonly IMiniGameService _miniGameService = miniGameService;
+    private readonly IPlanetCatalogService _catalogService = catalogService;
     private readonly ILogger<ProjModel> _logger = logger;
 
     /// <summary>JSON-строка начальных данных для клиентского bootstrapping.</summary>
@@ -38,6 +37,7 @@ public class ProjModel(IPlanetRepository planets, IScanService scanService, IMin
 
         var initData = new GameInitDto
         {
+            Clusters        = _catalogService.GetClusters(),
             Catalog         = planetList.Select(MapPlanet).ToList().AsReadOnly(),
             DefaultSettings = GameSettingsDto.Default
         };
@@ -60,7 +60,6 @@ public class ProjModel(IPlanetRepository planets, IScanService scanService, IMin
             "pause"                  => "_ScreenPause",
             "flight"                 => "_ScreenFlight",
             "galaxy-map"             => "_ScreenGalaxyMap",
-            "nebula-scan"            => "_ScreenNebulaScanning",
             "planet-detail"          => "_ScreenPlanetDetail",
             "minigame"               => "_ScreenMiniGame",
             "ship-upgrade"           => "_ScreenShipUpgrade",
@@ -85,18 +84,6 @@ public class ProjModel(IPlanetRepository planets, IScanService scanService, IMin
     {
         var planets = await _planets.GetAllAsync();
         return new JsonResult(planets.Select(MapPlanet), JsonOptions);
-    }
-
-    // ──────────────────────────────────────────────
-    //  POST /game?handler=ScanNebula
-    // ──────────────────────────────────────────────
-    public async Task<IActionResult> OnPostScanNebulaAsync([FromBody] ScanRequestDto request)
-    {
-        if (request is null) return BadRequest("Payload required.");
-        var planets = await _planets.GetAllAsync();
-        var dtos = planets.Select(MapPlanet).ToList();
-        var result = _scanService.Resolve(request, dtos);
-        return new JsonResult(result, JsonOptions);
     }
 
     // ──────────────────────────────────────────────
@@ -143,23 +130,18 @@ public class ProjModel(IPlanetRepository planets, IScanService scanService, IMin
 
         return new PlanetDto
         {
-            Id          = p.Id.ToString(),
-            Name        = p.Title ?? "Unknown",
-            Category    = p.ClusterName ?? "none",
-            Description = p.Description ?? string.Empty,
-            HardSkills  = SafeJsonArray(p.HardSkills),
-            SoftSkills  = SafeJsonArray(p.SoftSkills),
-            Risks       = SafeJsonArray(p.Risks),
-            CrystalRequirements = BuildCrystalDict(p),
-            IsStarterVisible    = p.ScanCost == 0 // если сканировать бесплатно, значит видна сразу
+            Id               = p.Id.ToString(),
+            Name             = p.Title ?? "Unknown",
+            ClusterId        = p.ClusterName ?? "none",
+            ClusterName      = p.ClusterDisplayName ?? p.ClusterName ?? "none",
+            CrystalType      = p.CrystalType ?? "programming",
+            Description      = p.Description ?? string.Empty,
+            HardSkills       = SafeJsonArray(p.HardSkills),
+            SoftSkills       = SafeJsonArray(p.SoftSkills),
+            Risks            = SafeJsonArray(p.Risks),
+            UnlockCost       = p.UnlockCost,
+            IsStarterVisible = p.UnlockCost == 0  // если стоимость 0, значит видна сразу
         };
-    }
-
-    private static Dictionary<string, int> BuildCrystalDict(Planet p)
-    {
-        var dict = new Dictionary<string, int>();
-        if (p.ScanCost > 0) dict["any"] = p.ScanCost;
-        return dict;
     }
 
     // ──────────────────────────────────────────────

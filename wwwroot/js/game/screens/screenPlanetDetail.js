@@ -3,22 +3,18 @@
  *
  * Рендерит вращающуюся 3D-сферу планеты в viewport,
  * заполняет карточки навыков, кристаллов, рисков.
+ * Кнопка «Открыть планету» тратит кристаллы кластера.
  */
 
 import { getStore, transition, Screen, dispatch } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
 
-// ── Цветовая схема ──────────────────────────────────────────────────────────
+// ── Цветовая схема кластеров ────────────────────────────────────────────────
 
-const DIR_META = {
-    technology:   { label: '💻 IT',           color: 0x4fc3f7, emoji: '💻' },
-    medicine:     { label: '⚕ Медицина',     color: 0xf87171, emoji: '⚕' },
-    biotech:      { label: '🧬 Биотех',       color: 0x4ade80, emoji: '🧬' },
-    ecology:      { label: '🌿 Экология',     color: 0x34d399, emoji: '🌿' },
-    design:       { label: '🎨 Дизайн',       color: 0xf472b6, emoji: '🎨' },
-    neuroscience: { label: '🧠 Нейронауки',   color: 0xc084fc, emoji: '🧠' },
-    physics:      { label: '⚛ Физика',        color: 0xa78bfa, emoji: '⚛' },
-    mathematics:  { label: '📐 Математика',    color: 0xfbbf24, emoji: '📐' },
+const CLUSTER_META = {
+    programming: { label: '💻 Программирование', color: 0x4fc3f7, emoji: '💎' },
+    medicine:    { label: '❤️ Медицина',         color: 0xf87171, emoji: '❤️' },
+    geology:     { label: '🌍 Геология',         color: 0x34d399, emoji: '🌿' },
 };
 
 // ── Внутреннее состояние ────────────────────────────────────────────────────
@@ -33,6 +29,29 @@ let _resizeObs      = null;
 window._planetDetail = {
     startMiniGame() {
         transition(Screen.MINIGAME);
+    },
+    unlockPlanet(planetId) {
+        const store   = getStore();
+        const catalog = store.sessionData?.catalog ?? [];
+        const planet  = catalog.find(p => p.id === planetId);
+        if (!planet) return;
+
+        const crystalType    = planet.crystalType;
+        const cost           = planet.unlockCost ?? 0;
+        const playerCrystals = store.player?.crystals?.[crystalType] ?? 0;
+
+        if (playerCrystals < cost) {
+            alert(`Недостаточно кристаллов. Нужно: ${cost}, есть: ${playerCrystals}.`);
+            return;
+        }
+
+        // Тратим кристаллы
+        dispatch('SPEND_CRYSTALS', { spent: { [crystalType]: cost } });
+        // Открываем планету
+        dispatch('DISCOVER_PLANET', { planetId });
+
+        // Обновляем UI
+        _updateUnlockButton(planet, getStore().player);
     }
 };
 
@@ -52,8 +71,8 @@ export async function init(store) {
     }
 
     // Заголовок
-    const dirMeta = DIR_META[planet.category] ?? { label: planet.category, color: 0x888888 };
-    _set('planet-category', dirMeta.label?.toUpperCase() ?? '');
+    const clusterMeta = CLUSTER_META[planet.crystalType] ?? { label: planet.clusterName, color: 0x888888 };
+    _set('planet-category', planet.clusterName?.toUpperCase() ?? '');
     _set('planet-name', planet.name);
     _set('planet-description', planet.description);
 
@@ -62,14 +81,14 @@ export async function init(store) {
     _renderList('soft-skills-list', planet.softSkills ?? [], '✨');
     _renderList('risks-list', planet.risks ?? [], '⚠️');
 
-    // Кристаллы
-    _renderCrystals(planet.crystalRequirements ?? {});
+    // Кристаллы (стоимость открытия)
+    _renderUnlockCost(planet);
 
-    // Кнопка мини-игры — блокируем если не хватает кристаллов
-    _updateMiniGameButton(planet, store.player);
+    // Кнопка открытия / мини-игры
+    _updateUnlockButton(planet, store.player);
 
     // 3D-модель планеты
-    _init3DPlanet(planet, dirMeta);
+    _init3DPlanet(planet, clusterMeta);
 }
 
 export function destroy() {
@@ -78,14 +97,13 @@ export function destroy() {
 
 // ── 3D-модель ───────────────────────────────────────────────────────────────
 
-function _init3DPlanet(planet, dirMeta) {
+function _init3DPlanet(planet, clusterMeta) {
     const THREE = window.THREE;
     if (!THREE) return;
 
     const viewport = document.getElementById('planet-3d-viewport');
     if (!viewport) return;
 
-    // Очищаем skeleton
     viewport.innerHTML = '';
 
     const w = viewport.clientWidth || 300;
@@ -94,7 +112,7 @@ function _init3DPlanet(planet, dirMeta) {
     _planetRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     _planetRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     _planetRenderer.setSize(w, h, false);
-    _planetRenderer.setClearColor(0x000000, 0); // прозрачный фон
+    _planetRenderer.setClearColor(0x000000, 0);
     _planetRenderer.domElement.style.cssText = 'width:100%;height:100%;display:block;';
     viewport.appendChild(_planetRenderer.domElement);
 
@@ -105,7 +123,7 @@ function _init3DPlanet(planet, dirMeta) {
 
     // Освещение
     _planetScene.add(new THREE.AmbientLight(0x334155, 0.5));
-    const dirLight = new THREE.DirectionalLight(dirMeta.color, 1.0);
+    const dirLight = new THREE.DirectionalLight(clusterMeta.color, 1.0);
     dirLight.position.set(3, 4, 5);
     _planetScene.add(dirLight);
     const rimLight = new THREE.PointLight(0xffffff, 0.3, 20);
@@ -113,7 +131,7 @@ function _init3DPlanet(planet, dirMeta) {
     _planetScene.add(rimLight);
 
     // Сфера планеты
-    const planetColor = new THREE.Color(dirMeta.color);
+    const planetColor = new THREE.Color(clusterMeta.color);
     const geo = new THREE.SphereGeometry(1.8, 48, 36);
     const mat = new THREE.MeshStandardMaterial({
         color: planetColor,
@@ -125,7 +143,7 @@ function _init3DPlanet(planet, dirMeta) {
     _planetMesh = new THREE.Mesh(geo, mat);
     _planetScene.add(_planetMesh);
 
-    // Атмосфера (полупрозрачная оболочка)
+    // Атмосфера
     const atmoGeo = new THREE.SphereGeometry(2.0, 48, 36);
     const atmoMat = new THREE.MeshBasicMaterial({
         color: planetColor,
@@ -138,7 +156,7 @@ function _init3DPlanet(planet, dirMeta) {
     // Орбитальное кольцо
     const ringGeo = new THREE.RingGeometry(2.2, 2.35, 64);
     const ringMat = new THREE.MeshBasicMaterial({
-        color: dirMeta.color,
+        color: clusterMeta.color,
         side: THREE.DoubleSide,
         transparent: true,
         opacity: 0.2,
@@ -147,9 +165,9 @@ function _init3DPlanet(planet, dirMeta) {
     ring.rotation.x = Math.PI / 2.5;
     _planetScene.add(ring);
 
-    // «Облака» — пятна на поверхности (декоративные)
-    const reqCount = Object.values(planet.crystalRequirements ?? {}).reduce((a, b) => a + b, 0);
-    for (let i = 0; i < Math.min(reqCount, 8); i++) {
+    // «Облака»
+    const cost = planet.unlockCost ?? 5;
+    for (let i = 0; i < Math.min(cost, 8); i++) {
         const spotGeo = new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 8, 6);
         const spotMat = new THREE.MeshBasicMaterial({
             color: 0xffffff,
@@ -174,7 +192,6 @@ function _init3DPlanet(planet, dirMeta) {
     });
     _resizeObs.observe(viewport);
 
-    // Render loop
     _planetAnimId = requestAnimationFrame(_planetRenderLoop);
 }
 
@@ -221,47 +238,54 @@ function _renderList(listId, items, icon) {
         : `<li class="planet-skill-item" style="opacity:0.5;">— нет данных</li>`;
 }
 
-function _renderCrystals(requirements) {
+function _renderUnlockCost(planet) {
     const el = document.getElementById('crystal-requirements');
     if (!el) return;
 
-    const entries = Object.entries(requirements);
-    if (entries.length === 0) {
-        el.innerHTML = '<span style="font-size:0.85rem;color:var(--color-text-muted);">Нет требований</span>';
+    const cost = planet.unlockCost ?? 0;
+    if (cost === 0) {
+        el.innerHTML = '<span style="font-size:0.85rem;color:#4ade80;">✅ Открыта по умолчанию</span>';
         return;
     }
 
-    el.innerHTML = entries.map(([dir, n]) => {
-        const meta = DIR_META[dir] ?? { label: dir, color: 0x888888 };
-        const colorHex = `#${meta.color.toString(16).padStart(6, '0')}`;
-        return `<div class="crystal-req-badge" style="--crystal-color:${colorHex};">
-            <span class="crystal-req-icon">${meta.emoji ?? '💎'}</span>
-            <span class="crystal-req-label">${meta.label?.split(' ').slice(1).join(' ') ?? dir}</span>
-            <span class="crystal-req-count">×${n}</span>
-        </div>`;
-    }).join('');
+    const meta     = CLUSTER_META[planet.crystalType] ?? { label: 'Кристаллы', emoji: '💎', color: 0x888888 };
+    const colorHex = `#${meta.color.toString(16).padStart(6, '0')}`;
+
+    el.innerHTML = `<div class="crystal-req-badge" style="--crystal-color:${colorHex};">
+        <span class="crystal-req-icon">${meta.emoji}</span>
+        <span class="crystal-req-label">${meta.label?.split(' ').slice(1).join(' ') ?? 'Кристаллы'}</span>
+        <span class="crystal-req-count">×${cost}</span>
+    </div>`;
 }
 
-function _updateMiniGameButton(planet, player) {
+function _updateUnlockButton(planet, player) {
     const btn = document.getElementById('btn-play-minigame');
     if (!btn) return;
 
-    const requirements = planet.crystalRequirements ?? {};
-    const playerCrystals = player?.crystals ?? {};
+    const discovered      = (player?.discoveredPlanets ?? []).includes(planet.id) || planet.isStarterVisible;
+    const cost            = planet.unlockCost ?? 0;
+    const crystalType     = planet.crystalType;
+    const playerCrystals  = player?.crystals?.[crystalType] ?? 0;
 
-    const canPlay = Object.entries(requirements).every(([dir, n]) => {
-        return (playerCrystals[dir] ?? 0) >= n;
-    });
-
-    if (!canPlay && Object.keys(requirements).length > 0) {
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-        btn.title = 'Не хватает кристаллов для посадки';
-        btn.textContent = '🔒 Не хватает кристаллов';
+    if (discovered) {
+        // Планета открыта — кнопка мини-игры
+        btn.disabled        = false;
+        btn.style.opacity   = '1';
+        btn.title           = '';
+        btn.textContent     = '🎮 Пробная посадка';
+        btn.onclick         = () => window._planetDetail?.startMiniGame();
+    } else if (playerCrystals >= cost) {
+        // Достаточно кристаллов — кнопка открытия
+        btn.disabled        = false;
+        btn.style.opacity   = '1';
+        btn.title           = '';
+        btn.textContent     = `🔓 Открыть за ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
+        btn.onclick         = () => window._planetDetail?.unlockPlanet(planet.id);
     } else {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.title = '';
-        btn.textContent = '🎮 Пробная посадка';
+        // Не хватает кристаллов
+        btn.disabled        = true;
+        btn.style.opacity   = '0.5';
+        btn.title           = `Нужно ещё ${cost - playerCrystals} кристаллов`;
+        btn.textContent     = `🔒 Нужно ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')} (есть ${playerCrystals})`;
     }
 }

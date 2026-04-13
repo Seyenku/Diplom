@@ -5,6 +5,8 @@
  *   1. COUNTDOWN  — обратный отсчёт 3..2..1
  *   2. PLAYING    — активный геймплей (60 сек)
  *   3. RESULTS    — итоги полёта
+ *
+ * Кристаллы одного типа — определяется из sessionData.crystalType (regionId).
  */
 
 import { dispatch, getStore, transition, Screen } from '../stateManager.js';
@@ -13,28 +15,24 @@ import { loadModel } from '../gltfLoader.js';
 
 const FLIGHT_DURATION_S = 60;
 
-const CRYSTAL_TYPES = [
-    { id: 'it',      color: 0x4fc3f7, emoji: '💎' },
-    { id: 'bio',     color: 0x4ade80, emoji: '🧬' },
-    { id: 'math',    color: 0xfbbf24, emoji: '🔢' },
-    { id: 'design',  color: 0xf472b6, emoji: '🎨' },
-    { id: 'eco',     color: 0x34d399, emoji: '🌿' },
-    { id: 'med',     color: 0xf87171, emoji: '❤️' },
-    { id: 'physics', color: 0xa78bfa, emoji: '⚛️' },
-    { id: 'neuro',   color: 0xc084fc, emoji: '🧠' },
-];
+const CRYSTAL_COLORS = {
+    programming: { color: 0x4fc3f7, emoji: '💎', label: 'Программирование' },
+    medicine:    { color: 0xf87171, emoji: '❤️', label: 'Медицина' },
+    geology:     { color: 0x34d399, emoji: '🌿', label: 'Геология' },
+};
 
 // ── внутреннее состояние ────────────────────────
-let _state     = 'idle'; // idle | countdown | playing | results
-let _animId    = null;
-let _elapsed   = 0;
-let _shield    = 100;
-let _collected = {};
-let _shipModel = null;
-let _asteroids = [];
-let _crystals  = [];
-let _keys      = {};
-let _lastTime  = 0;
+let _state       = 'idle'; // idle | countdown | playing | results
+let _animId      = null;
+let _elapsed     = 0;
+let _shield      = 100;
+let _collected   = 0;      // количество собранных кристаллов
+let _crystalType = 'programming'; // тип кристаллов текущего региона
+let _shipModel   = null;
+let _asteroids   = [];
+let _crystals    = [];
+let _keys        = {};
+let _lastTime    = 0;
 
 // Размеры игрового поля
 const FIELD_W = 16;
@@ -55,28 +53,40 @@ window._flightScreen = {
 
 export async function init(store) {
     _state = 'idle';
-    _collected = {};
+    _collected = 0;
     _shield = 100;
     _elapsed = 0;
     _keys = {};
 
+    // Тип кристаллов из sessionData (установлен Galaxy Map)
+    _crystalType = store.sessionData?.crystalType ?? 'programming';
+
+    // Обновляем UI-индикатор типа кристаллов
+    const ct = CRYSTAL_COLORS[_crystalType] ?? CRYSTAL_COLORS.programming;
+    const typeEl = document.getElementById('flight-crystal-type');
+    if (typeEl) typeEl.textContent = `${ct.emoji} ${ct.label}`;
+
     // Переключаем Three.js на сцену полёта
     await switchScene('flight');
 
-    // Загружаем модель корабля
+    // Загружаем модель корабля, оборачиваем в Group
+    const THREE = window.THREE;
+    _shipModel = new THREE.Group();
+    _shipModel.position.set(0, 0, 0);
+
     try {
-        _shipModel = await loadModel('/models/ship.glb');
-        _shipModel.scale.set(0.5, 0.5, 0.5);
-        _shipModel.position.set(0, 0, 0);
-        if (window.__threeScene) {
-            window.__threeScene.add(_shipModel);
-        }
+        const mesh = await loadModel('/models/ship.glb');
+        mesh.scale.set(0.5, 0.5, 0.5);
+        mesh.rotation.y = -Math.PI / 2; // модель экспортирована носом по X → корректируем на -Z
+        _shipModel.add(mesh);
     } catch (e) {
         console.warn('[Flight] ship.glb not loaded, using fallback');
-        _shipModel = _createFallbackShip();
-        if (window.__threeScene) {
-            window.__threeScene.add(_shipModel);
-        }
+        const fallback = _createFallbackShip();
+        _shipModel.add(fallback);
+    }
+
+    if (window.__threeScene) {
+        window.__threeScene.add(_shipModel);
     }
 
     // Слушаем клавиатуру
@@ -129,7 +139,7 @@ function _startPlaying() {
     _state = 'playing';
     _elapsed = 0;
     _shield = 100;
-    _collected = {};
+    _collected = 0;
     _lastTime = performance.now();
 
     const hudEl = document.getElementById('flight-hud');
@@ -143,11 +153,10 @@ function _startPlaying() {
 function _gameLoop(now) {
     if (_state !== 'playing') return;
 
-    const dt = Math.min((now - _lastTime) / 1000, 0.1); // cap delta
+    const dt = Math.min((now - _lastTime) / 1000, 0.1);
     _lastTime = now;
     _elapsed += dt;
 
-    // Таймер
     const remaining = Math.max(0, FLIGHT_DURATION_S - _elapsed);
     _setText('flight-timer', String(Math.ceil(remaining)));
 
@@ -156,22 +165,15 @@ function _gameLoop(now) {
         return;
     }
 
-    // Движение корабля
     _moveShip(dt);
-
-    // Движение объектов
     _moveObjects(dt);
-
-    // Проверка столкновений
     _checkCollisions();
 
-    // Щиты
     if (_shield <= 0) {
         _endFlight();
         return;
     }
 
-    // Спавн новой волны
     if (Math.random() < 0.04) _spawnWave();
 
     _animId = requestAnimationFrame(_gameLoop);
@@ -187,14 +189,18 @@ function _moveShip(dt) {
     if (_keys['KeyW'] || _keys['ArrowUp'])    _shipModel.position.y += speed;
     if (_keys['KeyS'] || _keys['ArrowDown'])  _shipModel.position.y -= speed;
 
-    // Ограничения поля
     _shipModel.position.x = Math.max(-FIELD_W / 2, Math.min(FIELD_W / 2, _shipModel.position.x));
     _shipModel.position.y = Math.max(-FIELD_H / 2, Math.min(FIELD_H / 2, _shipModel.position.y));
 
-    // Небольшой крен при повороте
+    // Крен (roll): наклон при движении влево/вправо
     const targetRoll = (_keys['KeyA'] || _keys['ArrowLeft']) ? 0.3
         : (_keys['KeyD'] || _keys['ArrowRight']) ? -0.3 : 0;
     _shipModel.rotation.z += (targetRoll - _shipModel.rotation.z) * 0.1;
+
+    // Тангаж (pitch): наклон носа при движении вверх/вниз
+    const targetPitch = (_keys['KeyW'] || _keys['ArrowUp']) ? 0.15
+        : (_keys['KeyS'] || _keys['ArrowDown']) ? -0.15 : 0;
+    _shipModel.rotation.x += (targetPitch - _shipModel.rotation.x) * 0.1;
 }
 
 function _moveObjects(dt) {
@@ -202,15 +208,12 @@ function _moveObjects(dt) {
     const scene = window.__threeScene;
     if (!scene) return;
 
-    // Двигаем астероиды и кристаллы к камере (отриц. z)
     [..._asteroids, ..._crystals].forEach(obj => {
         obj.position.z += speed;
-        // Вращение
         obj.rotation.x += dt * 0.5;
         obj.rotation.y += dt * 0.3;
     });
 
-    // Убираем объекты, пролетевшие мимо
     _asteroids = _asteroids.filter(a => {
         if (a.position.z > 10) { scene.remove(a); return false; }
         return true;
@@ -226,12 +229,10 @@ function _checkCollisions() {
     const sp = _shipModel.position;
     const hitR = 1.2;
 
-    // Кристаллы
     _crystals = _crystals.filter(c => {
         const dist = sp.distanceTo(c.position);
         if (dist < hitR + 0.6) {
-            const type = c.userData.crystalType || 'any';
-            _collected[type] = (_collected[type] || 0) + 1;
+            _collected++;
             _updateHud();
             const scene = window.__threeScene;
             if (scene) scene.remove(c);
@@ -240,7 +241,6 @@ function _checkCollisions() {
         return true;
     });
 
-    // Астероиды
     _asteroids.forEach(a => {
         const dist = sp.distanceTo(a.position);
         if (dist < hitR + 0.8 && !a.userData._hit) {
@@ -256,14 +256,14 @@ function _spawnWave() {
     const scene = window.__threeScene;
     if (!THREE || !scene) return;
 
+    const ct = CRYSTAL_COLORS[_crystalType] ?? CRYSTAL_COLORS.programming;
+
     // 2–4 астероида
     const aCount = 2 + Math.floor(Math.random() * 3);
     for (let i = 0; i < aCount; i++) {
         const geo = new THREE.IcosahedronGeometry(0.4 + Math.random() * 0.6, 1);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x555566,
-            roughness: 0.9,
-            metalness: 0.2,
+            color: 0x555566, roughness: 0.9, metalness: 0.2,
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(
@@ -275,10 +275,9 @@ function _spawnWave() {
         _asteroids.push(mesh);
     }
 
-    // 1–3 кристалла
+    // 1–3 кристалла (все одного типа!)
     const cCount = 1 + Math.floor(Math.random() * 3);
     for (let i = 0; i < cCount; i++) {
-        const ct = CRYSTAL_TYPES[Math.floor(Math.random() * CRYSTAL_TYPES.length)];
         const geo = new THREE.OctahedronGeometry(0.3, 0);
         const mat = new THREE.MeshStandardMaterial({
             color: ct.color,
@@ -293,7 +292,6 @@ function _spawnWave() {
             (Math.random() - 0.5) * FIELD_H,
             -(FIELD_D * 0.3 + Math.random() * FIELD_D * 0.7)
         );
-        mesh.userData.crystalType = ct.id;
         scene.add(mesh);
         _crystals.push(mesh);
     }
@@ -311,24 +309,23 @@ function _endFlight() {
     if (hudEl) hudEl.classList.add('hidden');
     if (resultsEl) resultsEl.classList.remove('hidden');
 
-    // Записываем собранные кристаллы в стор
-    const totalCollected = Object.values(_collected).reduce((a, b) => a + b, 0);
-    if (totalCollected > 0) {
-        dispatch('EARN_CRYSTALS', { earned: { ..._collected } });
+    // Записываем собранные кристаллы (одного типа)
+    if (_collected > 0) {
+        dispatch('EARN_CRYSTALS', { earned: { [_crystalType]: _collected } });
     }
 
     // Рендерим результаты
+    const ct = CRYSTAL_COLORS[_crystalType] ?? CRYSTAL_COLORS.programming;
     const statsEl = document.getElementById('flight-results-stats');
     if (statsEl) {
-        const lines = Object.entries(_collected).map(([type, n]) => {
-            const ct = CRYSTAL_TYPES.find(c => c.id === type);
-            return `<div style="display:flex;justify-content:space-between;align-items:center;">
-                <span>${ct?.emoji ?? '💎'} ${type.toUpperCase()}</span>
-                <span style="font-family:var(--font-display);color:var(--color-primary);">+${n}</span>
-            </div>`;
-        });
+        const lines = [];
 
-        if (lines.length === 0) {
+        if (_collected > 0) {
+            lines.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+                <span>${ct.emoji} ${ct.label}</span>
+                <span style="font-family:var(--font-display);color:var(--color-primary);">+${_collected}</span>
+            </div>`);
+        } else {
             lines.push('<p style="color:var(--color-text-muted);">Кристаллы не собраны. Попробуй ещё!</p>');
         }
 
@@ -344,8 +341,7 @@ function _endFlight() {
 // ── Helpers ─────────────────────────────────────
 
 function _updateHud() {
-    const total = Object.values(_collected).reduce((a, b) => a + b, 0);
-    _setText('flight-crystals-count', String(total));
+    _setText('flight-crystals-count', String(_collected));
     _updateShieldBar();
 }
 

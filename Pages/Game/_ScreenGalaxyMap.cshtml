@@ -1,77 +1,57 @@
-<!-- _ScreenGalaxyMap.cshtml — Звёздная карта с 3D-визуализацией -->
+<!-- _ScreenGalaxyMap.cshtml — Звёздная карта: 3 туманности -->
 <div class="screen" id="screen-galaxy-map"
-     style="width:100%;height:100%;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden;">
+     style="width:100%;height:100%;display:grid;grid-template-rows:auto 1fr;overflow:hidden;">
 
     <!-- ═══ Шапка ═══ -->
     <header class="galaxy-header">
         <h1 class="game-title" style="font-size:1.15rem;">🌌 Карта Галактики</h1>
 
-        <!-- Tabs: 3D ↔ Список -->
-        <div class="galaxy-tabs">
-            <button id="tab-3d" class="galaxy-tab galaxy-tab--active" onclick="window._galaxyMap?.setView('3d')">
-                <span class="nav-icon">🪐</span> 3D-вид
-            </button>
-            <button id="tab-list" class="galaxy-tab" onclick="window._galaxyMap?.setView('list')">
-                <span class="nav-icon">📋</span> Список
-            </button>
-        </div>
-
-        <!-- Фильтры -->
-        <div class="galaxy-filters">
-            <select id="filter-category" onchange="window._galaxyMap?.applyFilter()"
-                    class="galaxy-select">
-                <option value="">Все направления</option>
-                <option value="technology">💻 Технологии</option>
-                <option value="medicine">⚕ Медицина</option>
-                <option value="biotech">🧬 Биотех</option>
-                <option value="ecology">🌿 Экология</option>
-                <option value="design">🎨 Дизайн</option>
-                <option value="neuroscience">🧠 Нейронауки</option>
-                <option value="physics">⚛ Физика</option>
-                <option value="mathematics">📐 Математика</option>
-            </select>
-            <select id="filter-status" onchange="window._galaxyMap?.applyFilter()"
-                    class="galaxy-select">
-                <option value="">Все планеты</option>
-                <option value="discovered">Открытые</option>
-                <option value="hidden">Не открытые</option>
-            </select>
-        </div>
-
-        <!-- Кнопки -->
+        <!-- Кнопки навигации -->
         <div class="galaxy-actions">
-            <button class="btn-game btn-primary" onclick="window._galaxyMap?.openScan()" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
-                🔭 Сканировать
+            <button id="btn-galaxy-back" class="btn-game btn-secondary hidden" onclick="window._galaxyMap?.backToOverview()" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
+                ← Назад
             </button>
-            <button class="btn-game btn-secondary" onclick="window._spa?.goto('flight')" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
-                🚀 Полёт
+            <button class="btn-game btn-secondary" onclick="window._spa?.goto('achievements')" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
+                📊 Прогресс
             </button>
         </div>
     </header>
 
     <!-- ═══ Контент: 3D Вид ═══ -->
     <div id="galaxy-3d-container" class="galaxy-content-panel" style="position:relative;">
-        <!-- 3D-звёздная карта рендерится сюда через JS -->
         <div id="galaxy-3d-canvas-wrap" style="width:100%;height:100%;position:relative;">
-            <!-- Тултип при наведении на планету -->
+
+            <!-- Тултип при наведении -->
             <div id="galaxy-tooltip" class="galaxy-tooltip hidden">
                 <div id="galaxy-tooltip-name" class="galaxy-tooltip-name"></div>
                 <div id="galaxy-tooltip-cat" class="galaxy-tooltip-cat"></div>
                 <div id="galaxy-tooltip-hint" class="galaxy-tooltip-hint">ЛКМ — выбрать</div>
             </div>
-            
+
             <!-- Индикатор масштабирования камеры -->
             <div class="galaxy-zoom-control" style="position:absolute;top:0.625rem;right:0.625rem;background:var(--color-surface-trans);backdrop-filter:blur(8px);border:1px solid var(--color-border);border-radius:var(--radius);padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.625rem;z-index:5;">
                 <span style="font-size:0.8rem;color:var(--color-text-muted);">Масштаб: <strong id="galaxy-zoom-percent" style="color:var(--color-text);">61%</strong></span>
                 <button type="button" class="btn-game btn-secondary" onclick="event.stopPropagation(); window._galaxyMap?.resetCamera()" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Сброс</button>
             </div>
 
-            <!-- Панель выбранной планеты -->
-            <div id="galaxy-selected-panel" class="galaxy-selected-panel hidden" style="position:absolute;bottom:1.25rem;left:50%;transform:translateX(-50%);background:var(--color-surface-trans);backdrop-filter:blur(10px);border:1px solid var(--color-focus);border-radius:var(--radius);padding:0.9375rem 1.5625rem;display:flex;flex-direction:column;align-items:center;gap:0.625rem;z-index:10;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
-                <div id="galaxy-selected-title" style="font-weight:700;font-size:1.1rem;color:var(--color-text);">Планета</div>
-                <button class="btn-game btn-primary" onclick="window._galaxyMap?.openSelectedPlanet()">
-                    🚀 Открыть планету
+            <!-- Панель выбранного региона / туманности -->
+            <div id="nebula-info-panel" class="nebula-info-panel hidden">
+                <div class="nebula-info-header">
+                    <span id="nebula-info-icon" class="nebula-info-icon">🌀</span>
+                    <div>
+                        <div id="nebula-info-name" class="nebula-info-name">Туманность</div>
+                        <div id="nebula-info-desc" class="nebula-info-desc"></div>
+                    </div>
+                </div>
+                <div class="nebula-info-stats">
+                    <span id="nebula-info-crystal" class="nebula-info-stat">💎 Кристаллы: —</span>
+                    <span id="nebula-info-planets" class="nebula-info-stat">🪐 Планет: —</span>
+                </div>
+                <button id="btn-nebula-fly" class="btn-game btn-primary" onclick="window._galaxyMap?.flyToRegion()" style="width:100%;margin-top:0.5rem;">
+                    🚀 Полёт
                 </button>
+                <!-- Сетка планет региона -->
+                <div id="nebula-planet-grid" class="nebula-planet-grid"></div>
             </div>
 
             <!-- Подсказка по навигации -->
@@ -80,29 +60,4 @@
             </div>
         </div>
     </div>
-
-    <!-- ═══ Контент: Список ═══ -->
-    <div id="galaxy-list-container" class="galaxy-content-panel hidden">
-        <div id="planet-grid"
-             style="display:grid;grid-template-columns:repeat(auto-fill,minmax(12.5rem,1fr));gap:1rem;padding:0.75rem;overflow-y:auto;max-height:100%;">
-            <div style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:3rem;">
-                <div style="font-size:2rem;margin-bottom:0.5rem;">🌌</div>
-                <p>Загрузка карты галактики…</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ Подвал ═══ -->
-    <footer class="galaxy-footer">
-        <span id="stat-discovered" class="galaxy-stat">📍 Открыто: 0</span>
-        <span id="stat-total" class="galaxy-stat">🌐 Всего: 0</span>
-        <div class="galaxy-footer-actions">
-            <button class="btn-game btn-secondary" onclick="window._spa?.goto('achievements')" style="padding:0.25rem 0.75rem;font-size:0.72rem;">
-                📊 Прогресс
-            </button>
-            <button class="btn-game btn-secondary" onclick="window._spa?.goto('vocation-constellation')" style="padding:0.25rem 0.75rem;font-size:0.72rem;">
-                🌠 Созвездие
-            </button>
-        </div>
-    </footer>
 </div>

@@ -52,10 +52,12 @@ GO
 -- 2. ИГРОВОЙ ЛОР (Справочник Галактики)
 -- ==============================================================================
 
--- Астероидные пояса (Образовательные направления)
+-- Туманности (Образовательные кластеры: Программирование, Медицина, Геология)
 CREATE TABLE Clusters (
     Id INT IDENTITY(1,1) PRIMARY KEY,
-    Name NVARCHAR(255) NOT NULL,
+    Name NVARCHAR(255) NOT NULL,        -- 'programming', 'medicine', 'geology'
+    DisplayName NVARCHAR(255),          -- 'Туманность Кибернетики'
+    CrystalType NVARCHAR(50),           -- тип кристалла: 'programming', 'medicine', 'geology'
     Description NVARCHAR(MAX)
 );
 GO
@@ -66,7 +68,7 @@ CREATE TABLE Planets (
     ClusterId INT NOT NULL,
     Title NVARCHAR(255) NOT NULL,
     TextureId INT,
-    ScanCost INT NOT NULL DEFAULT 0,
+    UnlockCost INT NOT NULL DEFAULT 0,  -- стоимость открытия в кристаллах кластера
     Description NVARCHAR(MAX),
     CONSTRAINT FK_Planets_Clusters FOREIGN KEY (ClusterId) REFERENCES Clusters(Id) ON DELETE CASCADE,
     CONSTRAINT FK_Planets_Textures FOREIGN KEY (TextureId) REFERENCES Textures(Id) ON DELETE SET NULL

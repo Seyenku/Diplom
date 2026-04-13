@@ -645,7 +645,7 @@
 }
 
 /* ═══════════════════════════════════════════════════
-   Galaxy Map
+   Galaxy Map — 3 Nebulae System
    ═══════════════════════════════════════════════════ */
 
 .galaxy-header {
@@ -658,66 +658,10 @@
     border-bottom: 1px solid var(--color-border);
 }
 
-.galaxy-tabs {
-    display: flex;
-    gap: 2px;
-    background: rgba(15, 23, 42, 0.6);
-    border-radius: var(--radius-sm);
-    padding: 2px;
-}
-
-.galaxy-tab {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.35rem 0.75rem;
-    border: none;
-    border-radius: calc(var(--radius-sm) - 2px);
-    background: transparent;
-    color: var(--color-text-muted);
-    font-family: var(--font-display);
-    font-size: 0.9rem;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.galaxy-tab:hover {
-    color: var(--color-text);
-}
-
-.galaxy-tab--active {
-    background: rgba(79, 195, 247, 0.12);
-    color: var(--color-primary);
-}
-
-.galaxy-filters {
-    display: flex;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-    margin-left: auto;
-}
-
-.galaxy-select {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid var(--color-border);
-    color: var(--color-text);
-    border-radius: var(--radius-sm);
-    padding: 0.375rem 0.75rem;
-    font-size: 0.95rem;
-    font-family: var(--font-body);
-    cursor: pointer;
-    transition: border-color 0.2s;
-}
-
-.galaxy-select:focus {
-    border-color: var(--color-primary);
-    outline: none;
-}
-
 .galaxy-actions {
     display: flex;
     gap: 0.35rem;
+    margin-left: auto;
 }
 
 .galaxy-content-panel {
@@ -757,95 +701,112 @@
     opacity: 0.7;
 }
 
-/* Galaxy footer */
-.galaxy-footer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.5rem 1rem;
-    background: rgba(5, 10, 26, 0.7);
-    border-top: 1px solid var(--color-border);
-}
-
-.galaxy-stat {
-    color: var(--color-text-muted);
-    font-size: 0.9rem;
-}
-
-.galaxy-footer-actions {
-    display: flex;
-    gap: 0.35rem;
-    margin-left: auto;
-}
-
-/* List view planet cards */
-.planet-list-card {
-    position: relative;
-    background: rgba(15, 23, 42, 0.7);
+/* Nebula info panel (appears when a nebula is selected) */
+.nebula-info-panel {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 10;
+    width: min(320px, 85vw);
+    max-height: calc(100% - 1.5rem);
+    overflow-y: auto;
+    background: rgba(5, 10, 26, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     padding: 1rem;
-    cursor: pointer;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
-}
-
-.planet-list-card--discovered {
-    border-left: 3px solid var(--card-accent, var(--color-primary));
-}
-
-.planet-list-card--discovered:hover {
-    border-color: var(--card-accent, var(--color-primary));
-    box-shadow: 0 0 20px rgba(79, 195, 247, 0.1);
-    transform: translateY(-2px);
-}
-
-.planet-list-card--hidden {
-    opacity: 0.45;
-    cursor: default;
-}
-
-.planet-card-fog {
-    position: absolute;
-    inset: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    gap: 0.75rem;
+    animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+    from { transform: translateX(-20px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+}
+
+.nebula-info-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.nebula-info-icon {
     font-size: 2rem;
-    pointer-events: none;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
-.planet-card-category {
-    font-size: 0.68rem;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.25rem;
-}
-
-.planet-card-name {
+.nebula-info-name {
     font-family: var(--font-display);
-    font-size: 0.88rem;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
     color: var(--color-text);
-    margin-bottom: 0.5rem;
 }
 
-.planet-card-desc {
-    font-size: 0.78rem;
+.nebula-info-desc {
+    font-size: 0.82rem;
     color: var(--color-text-muted);
     line-height: 1.5;
-    margin-bottom: 0.6rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    margin-top: 0.2rem;
 }
 
-.planet-card-badges {
+.nebula-info-stats {
     display: flex;
+    gap: 1rem;
     flex-wrap: wrap;
-    gap: 0.25rem;
+}
+
+.nebula-info-stat {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+/* Planet mini-cards inside the nebula panel */
+.nebula-planet-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.nebula-planet-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--color-border);
+    border-radius: calc(var(--radius-sm) - 2px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nebula-planet-card:hover {
+    border-color: var(--accent, var(--color-primary));
+    background: rgba(15, 23, 42, 0.85);
+}
+
+.nebula-planet-card--open {
+    border-left: 3px solid var(--accent, var(--color-primary));
+}
+
+.nebula-planet-card--locked {
+    opacity: 0.55;
+}
+
+.nebula-planet-name {
+    font-size: 0.82rem;
+    color: var(--color-text);
+}
+
+.nebula-planet-cost {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
 }
 
 .crystal-badge {
@@ -993,8 +954,10 @@
         flex-direction: column;
         align-items: stretch;
     }
-    .galaxy-filters {
-        margin-left: 0;
+    .nebula-info-panel {
+        width: 90vw;
+        top: 0.5rem;
+        left: 0.5rem;
     }
     .planet-3d-viewport {
         width: min(220px, 70vw);

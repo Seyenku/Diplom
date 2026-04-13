@@ -6,4 +6,5 @@ public interface IPlanetCatalogService
 {
     IReadOnlyList<PlanetDto> GetAll();
     PlanetDto? GetById(string id);
+    IReadOnlyList<ClusterDto> GetClusters();
 }

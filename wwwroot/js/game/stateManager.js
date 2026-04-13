@@ -20,7 +20,7 @@ export const Screen = Object.freeze({
     PAUSE:            'pause',
     FLIGHT:           'flight',
     GALAXY_MAP:       'galaxy-map',
-    NEBULA_SCAN:      'nebula-scan',
+
     PLANET_DETAIL:    'planet-detail',
     MINIGAME:         'minigame',
     SHIP_UPGRADE:     'ship-upgrade',

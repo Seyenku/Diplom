@@ -24,9 +24,11 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
                 SELECT p.Id                AS Id,
                        p.ClusterId         AS ClusterId,
                        c.Name              AS ClusterName,
+                       c.DisplayName       AS ClusterDisplayName,
+                       c.CrystalType       AS CrystalType,
                        p.Title             AS Title,
                        p.TextureId         AS TextureId,
-                       p.ScanCost          AS ScanCost,
+                       p.UnlockCost        AS UnlockCost,
                        p.Description       AS Description,
                        ISNULL((
                            SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(s.Name, 'json') + '""', ',') + ']'
