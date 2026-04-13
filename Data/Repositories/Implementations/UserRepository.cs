@@ -15,9 +15,10 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
         try
         {
             const string sql = @"
-                SELECT Id        AS Id,
-                       Login     AS Login,
-                       PasswordHash AS PassHash
+                SELECT Id           AS Id,
+                       Login        AS Login,
+                       PasswordHash AS PasswordHash,
+                       RoleId       AS RoleId
                 FROM dbo.Admins
                 WHERE Login = @Username AND PasswordHash = @PasswordHash";
 

@@ -22,26 +22,28 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
         {
             const string sql = @"
                 SELECT p.Id                AS Id,
-                       p.Title             AS Title,
+                       p.ClusterId         AS ClusterId,
                        c.Name              AS ClusterName,
-                       p.Description       AS Description,
+                       p.Title             AS Title,
+                       p.TextureId         AS TextureId,
                        p.ScanCost          AS ScanCost,
+                       p.Description       AS Description,
                        ISNULL((
                            SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(s.Name, 'json') + '""', ',') + ']'
-                           FROM dbo.Planet_Skills_Map psm 
-                           JOIN dbo.Skills s ON psm.SkillId = s.Id 
+                           FROM dbo.Planet_Skills_Map psm
+                           JOIN dbo.Skills s ON psm.SkillId = s.Id
                            WHERE psm.PlanetId = p.Id AND s.SkillType = 'Hard'
                        ), '[]') AS HardSkills,
                        ISNULL((
                            SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(s.Name, 'json') + '""', ',') + ']'
-                           FROM dbo.Planet_Skills_Map psm 
-                           JOIN dbo.Skills s ON psm.SkillId = s.Id 
+                           FROM dbo.Planet_Skills_Map psm
+                           JOIN dbo.Skills s ON psm.SkillId = s.Id
                            WHERE psm.PlanetId = p.Id AND s.SkillType = 'Soft'
                        ), '[]') AS SoftSkills,
                        ISNULL((
                            SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(r.Name, 'json') + '""', ',') + ']'
-                           FROM dbo.Planet_Risks_Map prm 
-                           JOIN dbo.Risks r ON prm.RiskId = r.Id 
+                           FROM dbo.Planet_Risks_Map prm
+                           JOIN dbo.Risks r ON prm.RiskId = r.Id
                            WHERE prm.PlanetId = p.Id
                        ), '[]') AS Risks
                 FROM dbo.Planets p
