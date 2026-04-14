@@ -88,6 +88,10 @@ window._galaxyMap = {
         _targetDest!.set(0, 0, 0);
         _spherical.radius = 120;
         _updateZoomUI();
+        // Восстанавливаем качество
+        if (_mapRenderer) {
+            _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        }
     },
 
     resetCamera() {
@@ -136,6 +140,65 @@ export function destroy(): void {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  Утилиты: генерация текстур через Canvas
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Генерирует мягкую glow-текстуру для спрайтов (radial gradient)
+ */
+function _createGlowTexture(size: number, color: string, softness: number = 0.5): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    
+    const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(softness, color + '80');
+    gradient.addColorStop(1, 'transparent');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    
+    return new THREE.CanvasTexture(canvas);
+}
+
+/**
+ * Генерирует текстуру звезды с мерцанием
+ */
+function _createStarTexture(size: number = 32): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    
+    const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.2, 'rgba(200, 220, 255, 0.8)');
+    gradient.addColorStop(0.5, 'rgba(150, 180, 255, 0.3)');
+    gradient.addColorStop(1, 'transparent');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    
+    // Добавляем "блики" — 4 луча
+    ctx.strokeStyle = 'rgba(200, 220, 255, 0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+        ctx.save();
+        ctx.translate(size/2, size/2);
+        ctx.rotate((i * Math.PI) / 4);
+        ctx.beginPath();
+        ctx.moveTo(-size/2, 0);
+        ctx.lineTo(size/2, 0);
+        ctx.stroke();
+        ctx.restore();
+    }
+    
+    return new THREE.CanvasTexture(canvas);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  3D MAP
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -147,10 +210,12 @@ function _init3DMap(): void {
     const h = wrap.clientHeight || 400;
 
     // Рендерер
-    _mapRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    _mapRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     _mapRenderer.setSize(w, h, false);
     _mapRenderer.setClearColor(0x050a1a, 1);
+    // Output encoding для корректного цвета
+    _mapRenderer.outputColorSpace = THREE.SRGBColorSpace;
     _mapRenderer.domElement.style.cssText = 'width:100%;height:100%;display:block;border-radius:var(--radius-sm);';
     wrap.insertBefore(_mapRenderer.domElement, wrap.firstChild);
 
@@ -172,7 +237,7 @@ function _init3DMap(): void {
     _addMapStars();
 
     // 3 туманности
-    _buildNebulae();
+    _buildNebulae(['programming', 'medicine', 'geology']);
 
     _targetCenter = new THREE.Vector3(0, 0, 0);
     _targetDest = new THREE.Vector3(0, 0, 0);
@@ -214,68 +279,113 @@ function _addMapStars(): void {
     _mapScene!.add(new THREE.Points(geo, mat));
 }
 
-// ── Туманности (облака частиц) ──────────────────────────────────────────────
+// ── Туманности (оптимизированные: Points вместо отдельных Sprite) ──────────────
 
-function _buildNebulae(): void {
-    const clusterTypes: ClusterType[] = ['programming', 'medicine', 'geology'];
+function _buildNebulae(clusterIds: ClusterType[]): void {
+    const PARTICLE_COUNT = 600;  // уменьшили с 800
+    const SPARKS_COUNT = 80;
 
-    for (const clusterId of clusterTypes) {
+    for (const clusterId of clusterIds) {
         const meta = CLUSTER_META[clusterId];
         const group = new THREE.Group();
         group.position.set(meta.position.x, meta.position.y, meta.position.z);
         group.userData = { clusterId, type: 'nebula' };
 
-        // Облако частиц (sphere of particles)
-        const count = 800;
-        const geo = new THREE.BufferGeometry();
-        const pos = new Float32Array(count * 3);
-        const colors = new Float32Array(count * 3);
-        const color = new THREE.Color(meta.color);
+        // Текстуры под цвет кластера
+        const glowTexture = _createGlowTexture(128, meta.colorHex);
+        const coreTexture = _createGlowTexture(256, meta.colorHex, 0.3);
+        const sparksColor = _getSparksColor(clusterId);
 
-        for (let i = 0; i < count; i++) {
-            const r = 8 + Math.random() * 10;
+        // ── Слой 1: Облако частиц через Points (1 draw call!) ──
+        const cloudGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const colors = new Float32Array(PARTICLE_COUNT * 3);
+        const sizes = new Float32Array(PARTICLE_COUNT);
+        const phases = new Float32Array(PARTICLE_COUNT);
+
+        const baseColor = new THREE.Color(meta.color);
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const r = 8 + Math.random() * 12;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
-            pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-            pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.6;
-            pos[i * 3 + 2] = r * Math.cos(phi);
 
-            const brightness = 0.5 + Math.random() * 0.5;
-            colors[i * 3] = color.r * brightness;
-            colors[i * 3 + 1] = color.g * brightness;
-            colors[i * 3 + 2] = color.b * brightness;
+            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.5;
+            positions[i * 3 + 2] = r * Math.cos(phi);
+
+            // Вариация яркости
+            const brightness = 0.6 + Math.random() * 0.4;
+            colors[i * 3] = baseColor.r * brightness;
+            colors[i * 3 + 1] = baseColor.g * brightness;
+            colors[i * 3 + 2] = baseColor.b * brightness;
+
+            sizes[i] = 1.5 + Math.random() * 3;
+            phases[i] = Math.random() * Math.PI * 2;
         }
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-        const mat = new THREE.PointsMaterial({
-            size: 1.2,
-            sizeAttenuation: true,
-            transparent: true,
-            opacity: 0.45,
+        cloudGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        cloudGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        cloudGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        cloudGeo.userData = { phases };
+
+        const cloudMat = new THREE.PointsMaterial({
+            size: 2.5,
+            map: glowTexture,
             vertexColors: true,
+            transparent: true,
+            opacity: 0.5,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
+            sizeAttenuation: true,
         });
-        const cloud = new THREE.Points(geo, mat);
+        const cloud = new THREE.Points(cloudGeo, cloudMat);
+        cloud.userData = { type: 'nebula-cloud' };
         group.add(cloud);
 
-        // Ядро (Sprite glow)
-        const spriteMat = new THREE.SpriteMaterial({
-            color: meta.color,
-            transparent: true,
-            opacity: 0.3,
-            blending: THREE.AdditiveBlending,
-        });
-        const sprite = new THREE.Sprite(spriteMat);
-        sprite.scale.set(25, 25, 1);
-        group.add(sprite);
+        // ── Слой 2: Яркие "искры" (1 draw call) ──
+        const sparksGeo = new THREE.BufferGeometry();
+        const sparksPos = new Float32Array(SPARKS_COUNT * 3);
+        for (let i = 0; i < SPARKS_COUNT; i++) {
+            const r = 5 + Math.random() * 8;
+            const theta = Math.random() * Math.PI * 2;
+            sparksPos[i * 3] = r * Math.cos(theta);
+            sparksPos[i * 3 + 1] = (Math.random() - 0.5) * 3;
+            sparksPos[i * 3 + 2] = r * Math.sin(theta);
+        }
+        sparksGeo.setAttribute('position', new THREE.BufferAttribute(sparksPos, 3));
 
-        // Точечный свет
-        const light = new THREE.PointLight(meta.color, 0.8, 60);
+        const sparksMat = new THREE.PointsMaterial({
+            size: 2,
+            map: _createGlowTexture(64, sparksColor),
+            color: new THREE.Color(sparksColor),
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            sizeAttenuation: true,
+        });
+        const sparks = new THREE.Points(sparksGeo, sparksMat);
+        sparks.userData = { type: 'sparks' };
+        group.add(sparks);
+
+        // ── Слой 3: Пульсирующее ядро (1 спрайт) ──
+        const coreSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: coreTexture,
+            color: new THREE.Color(meta.color),
+            transparent: true,
+            opacity: 0.4,
+            blending: THREE.AdditiveBlending,
+        }));
+        coreSprite.scale.set(30, 30, 1);
+        coreSprite.userData = { type: 'core' };
+        group.add(coreSprite);
+
+        // ── Слой 4: Точечный свет ──
+        const light = new THREE.PointLight(meta.color, 1.2, 80);
         group.add(light);
 
-        // Хит-бокс (невидимая сфера для raycasting)
+        // ── Хит-бокс (невидимая сфера для raycasting) ──
         const hitGeo = new THREE.SphereGeometry(14, 16, 12);
         const hitMat = new THREE.MeshBasicMaterial({ visible: false });
         const hitMesh = new THREE.Mesh(hitGeo, hitMat);
@@ -284,6 +394,17 @@ function _buildNebulae(): void {
 
         _mapScene!.add(group);
         (_nebulaMeshes as Record<ClusterType, THREE.Group>)[clusterId] = group;
+    }
+}
+
+/**
+ * Возвращает акцентный цвет искр для каждой туманности
+ */
+function _getSparksColor(clusterId: ClusterType): string {
+    switch (clusterId) {
+        case 'programming': return '#a78bfa'; // фиолетовый (IT)
+        case 'medicine':    return '#fca5a5'; // розовый (Медицина)
+        case 'geology':     return '#6ee7b7'; // мятный (Геология)
     }
 }
 
@@ -383,9 +504,25 @@ function _mapRenderLoop(): void {
         _mapCamera.lookAt(_targetCenter);
     }
 
-    // Вращение частиц туманности
+    // Вращение и пульсация туманности
+    const time = performance.now() / 1000;
     for (const group of Object.values(_nebulaMeshes)) {
         group.rotation.y += 0.001;
+        
+        // Пульсация только ядра (1 объект вместо 800)
+        for (const child of group.children) {
+            const ud = child.userData as Record<string, unknown>;
+            if (ud.type === 'core') {
+                const pulse = 1 + Math.sin(time * 1.5) * 0.08;
+                (child as THREE.Sprite).scale.setScalar(30 * pulse);
+                (child as THREE.Sprite).material.opacity = 0.35 + Math.sin(time * 1.2) * 0.1;
+            } else if (ud.type === 'nebula-cloud') {
+                // Лёгкое мерцание всего облака
+                ((child as THREE.Points).material as THREE.PointsMaterial).opacity = 0.45 + Math.sin(time * 0.6) * 0.05;
+            } else if (ud.type === 'sparks') {
+                (child as THREE.Points).rotation.y += 0.003;
+            }
+        }
     }
 
     // Вращение планет
@@ -497,6 +634,11 @@ function _onMapClick(): void {
         _spherical.radius = 30;
         _updateZoomUI();
         _showBackButton(true);
+
+        // Снижаем pixel ratio при приближении для производительности
+        if (_mapRenderer) {
+            _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        }
 
         // Строим планеты
         _buildPlanetsForCluster(clusterId);
