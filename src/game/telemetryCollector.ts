@@ -1,5 +1,5 @@
 /**
- * telemetryCollector.js — Клиентский сборщик телеметрии
+ * telemetryCollector.ts — Клиентский сборщик телеметрии
  *
  * Собирает игровые события в буфер и периодически отправляет
  * на сервер batch-запросом. При закрытии окна — flush.
@@ -9,16 +9,18 @@
  *   telemetry.track('SCREEN_CHANGED', { from: 'main-menu', to: 'flight' });
  */
 
+import { TelemetryEventDto } from './types.js';
+
 const FLUSH_INTERVAL_MS = 15_000; // 15 секунд
 const MAX_BUFFER_SIZE   = 50;     // макс. событий в буфере до принудительного flush
 const ENDPOINT          = '/game?handler=Telemetry';
 
 // ── Состояние ───────────────────────────────────────────────────────────────
 
-let _sessionId = null;
-let _buffer    = [];
-let _flushTimer = null;
-let _started    = false;
+let _sessionId: string | null = null;
+let _buffer: TelemetryEventDto[] = [];
+let _flushTimer: ReturnType<typeof setInterval> | null = null;
+let _started = false;
 
 // ── Публичный API ───────────────────────────────────────────────────────────
 
@@ -27,7 +29,7 @@ export const telemetry = {
      * Инициализирует сессию телеметрии.
      * Вызывается один раз при старте SPA.
      */
-    startSession() {
+    startSession(): void {
         if (_started) return;
         _started = true;
 
@@ -37,13 +39,13 @@ export const telemetry = {
         _send({
             sessionId: _sessionId,
             action: 'SESSION_START',
-            details: {
+            details: JSON.stringify({
                 deviceType: _getDeviceType(),
                 screenWidth: window.innerWidth,
                 screenHeight: window.innerHeight,
                 userAgent: navigator.userAgent.substring(0, 200),
                 timestamp: new Date().toISOString(),
-            }
+            }),
         });
 
         // Автоматический flush
@@ -63,28 +65,28 @@ export const telemetry = {
 
     /**
      * Отслеживает игровое событие.
-     * @param {string} actionType — тип действия (e.g. 'SCREEN_CHANGED', 'CRYSTAL_COLLECTED')
-     * @param {object} details    — дополнительные данные
-     * @param {number} [targetId] — ID связанного объекта (планеты и т.п.)
+     * @param actionType — тип действия (e.g. 'SCREEN_CHANGED', 'CRYSTAL_COLLECTED')
+     * @param details    — дополнительные данные
+     * @param targetId   — ID связанного объекта (планеты и т.п.)
      */
-    track(actionType, details = {}, targetId = null) {
+    track(actionType: string, details: Record<string, unknown> = {}, targetId: string | null = null): void {
         _track(actionType, details, targetId);
     },
 
     /** Принудительный flush буфера */
-    flush() { _flush(); },
+    flush(): void { _flush(); },
 
     /** Получить ID текущей сессии */
-    getSessionId() { return _sessionId; },
+    getSessionId(): string | null { return _sessionId; },
 };
 
 // ── Внутренние функции ──────────────────────────────────────────────────────
 
-function _track(actionType, details = {}, targetId = null) {
+function _track(actionType: string, details: Record<string, unknown> = {}, targetId: string | null = null): void {
     if (!_started) return;
 
     _buffer.push({
-        sessionId: _sessionId,
+        sessionId: _sessionId!,
         actionType,
         targetId,
         createdAt: new Date().toISOString(),
@@ -96,7 +98,7 @@ function _track(actionType, details = {}, targetId = null) {
     }
 }
 
-async function _flush(sync = false) {
+async function _flush(sync = false): Promise<void> {
     if (_buffer.length === 0) return;
 
     const batch = [..._buffer];
@@ -116,10 +118,10 @@ async function _flush(sync = false) {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
-                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? ''
+                'RequestVerificationToken': (document.querySelector('input[name="__RequestVerificationToken"]') as HTMLInputElement)?.value ?? ''
             },
             body,
-            keepalive: true, // для beforeunload
+            keepalive: true,
         });
     } catch (e) {
         // При ошибке — возвращаем события в буфер
@@ -128,17 +130,17 @@ async function _flush(sync = false) {
     }
 }
 
-function _send(event) {
+function _send(event: { sessionId: string; action: string; details: string }): void {
     _buffer.push({
         sessionId: event.sessionId,
         actionType: event.action,
         targetId: null,
         createdAt: new Date().toISOString(),
-        details: JSON.stringify(event.details),
+        details: event.details,
     });
 }
 
-function _generateSessionId() {
+function _generateSessionId(): string {
     // Простой UUID v4
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
         const r = (Math.random() * 16) | 0;
@@ -146,7 +148,7 @@ function _generateSessionId() {
     });
 }
 
-function _getDeviceType() {
+function _getDeviceType(): 'mobile' | 'tablet' | 'desktop' {
     const ua = navigator.userAgent;
     if (/Mobi|Android/i.test(ua)) return 'mobile';
     if (/Tablet|iPad/i.test(ua)) return 'tablet';

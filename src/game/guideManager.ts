@@ -1,11 +1,12 @@
 /**
- * guideManager.js — Глобальный менеджер ИИ «Гайд»
+ * guideManager.ts — Глобальный менеджер ИИ «Гайд»
  *
  * Живёт независимо от экранов — инициализируется один раз при старте,
  * слушает события store через dispatch-хуки и добавляет контекстные подсказки.
  */
 
 import { on, getStore } from './stateManager.js';
+import { ScreenId } from './types.js';
 
 // ── Быстрые вопросы по умолчанию ─────────────────────────────────────────────
 const DEFAULT_HINTS = [
@@ -15,7 +16,7 @@ const DEFAULT_HINTS = [
     { id: 'how-upgrade',  text: 'Как улучшить корабль?' },
 ];
 
-const HINT_ANSWERS = {
+const HINT_ANSWERS: Record<string, string> = {
     'how-crystals': 'Летай по астероидным поясам на Звёздной карте 🌌 и врезайся в астероиды! Каждый астероид — это мини-игра, которая приносит Кристаллы Знаний конкретного направления.',
     'how-scan':     'Открой Карту галактики → нажми «Сканировать туманность» 🔭. Распредели кристаллы по направлениям — чем точнее совпадение с профессией, тем выше шанс.',
     'how-planets':  'Каждая планета — профессия будущего со своими навыками и требованиями. Открой её через сканирование, затем пройди «Пробную посадку» — мини-игру от первого лица.',
@@ -23,7 +24,7 @@ const HINT_ANSWERS = {
 };
 
 // Контекстные подсказки для конкретных экранов
-const SCREEN_TIPS = {
+const SCREEN_TIPS: Record<string, string> = {
     'main-menu':              '👋 Привет, Навигатор! Нажми «Новая игра» чтобы начать своё путешествие.',
     'char-creation':          '✍ Придумай имя и выбери аватар — это твой образ в Галактике Призвания.',
     'onboarding':             '📚 Этот тур познакомит тебя с основными механиками. Можно пропустить, если уже знаком.',
@@ -41,9 +42,9 @@ const SCREEN_TIPS = {
 
 /**
  * Инициализирует Guide-панель — вставляет HTML во #guide-panel.
- * Должна вызываться один раз при старте игры (в main.js после DOM-готовности).
+ * Должна вызываться один раз при старте игры (в main.ts после DOM-готовности).
  */
-export async function initGuide() {
+export async function initGuide(): Promise<void> {
     const panel = document.getElementById('guide-panel');
     if (!panel) return;
 
@@ -54,7 +55,7 @@ export async function initGuide() {
         });
         if (resp.ok) panel.innerHTML = await resp.text();
     } catch {
-        // Offlilne fallback — рисуем минималистичную панель
+        // Offline fallback — рисуем минималистичную панель
         panel.innerHTML = `
             <div style="padding:1rem;color:var(--color-text-muted);font-size:0.85rem;">
                 <p>🤖 <strong>Гайд</strong> недоступен офлайн.</p>
@@ -66,17 +67,17 @@ export async function initGuide() {
 
     // Хук: при каждой смене экрана показываем контекстную подсказку
     on('SCREEN_CHANGED', (_store, { screenId }) => {
-        const tip = SCREEN_TIPS[screenId];
+        const tip = SCREEN_TIPS[screenId as ScreenId];
         if (tip) addMessage(tip, 'guide');
     });
 }
 
+type MessageSender = 'guide' | 'player';
+
 /**
  * Добавляет сообщение в поток Guide-панели.
- * @param {string} text
- * @param {'guide'|'player'} sender
  */
-export function addMessage(text, sender = 'guide') {
+export function addMessage(text: string, sender: MessageSender = 'guide'): void {
     const container = document.getElementById('guide-messages');
     if (!container) return;
 
@@ -100,7 +101,7 @@ export function addMessage(text, sender = 'guide') {
 
 // ── Внутренние хелперы ────────────────────────────────────────────────────────
 
-function _renderQuickHints(hints) {
+function _renderQuickHints(hints: typeof DEFAULT_HINTS): void {
     const el = document.getElementById('guide-quick-hints');
     if (!el) return;
     el.innerHTML = hints.map(h => `
@@ -118,7 +119,7 @@ function _renderQuickHints(hints) {
 // ── Глобальный API для onclick-атрибутов ─────────────────────────────────────
 
 window._guide = {
-    askHint(id) {
+    askHint(id: string) {
         const answer = HINT_ANSWERS[id];
         if (answer) addMessage(answer, 'guide');
     }

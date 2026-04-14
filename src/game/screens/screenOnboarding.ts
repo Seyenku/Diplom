@@ -1,10 +1,17 @@
 /**
- * screenOnboarding.js — Модуль экрана онбординга (интерактивный тур)
+ * screenOnboarding.ts — Модуль экрана онбординга (интерактивный тур)
  */
 
 import { transition, Screen } from '../stateManager.js';
+import { GameStore } from '../types.js';
 
-const STEPS = [
+interface OnboardingStep {
+    icon: string;
+    title: string;
+    text: string;
+}
+
+const STEPS: OnboardingStep[] = [
     {
         icon:  '🚀',
         title: 'Добро пожаловать!',
@@ -54,15 +61,16 @@ window._onboarding = {
     }
 };
 
-function _render() {
+function _render(): void {
     const step = STEPS[_currentStep];
-    document.getElementById('step-icon')?.setText?.(step.icon) ?? _setText('step-icon', step.icon);
+    const iconEl = document.getElementById('step-icon');
+    if (iconEl) iconEl.textContent = step.icon;
     _setText('step-title', step.title);
     _setText('step-text', step.text);
 
     // Кнопки навигации
     const backBtn = document.getElementById('btn-tour-back');
-    if (backBtn) backBtn.style.visibility = _currentStep > 0 ? 'visible' : 'hidden';
+    if (backBtn) (backBtn as HTMLElement).style.visibility = _currentStep > 0 ? 'visible' : 'hidden';
 
     const nextBtn = document.getElementById('btn-tour-next');
     if (nextBtn) nextBtn.textContent = _currentStep === STEPS.length - 1 ? 'В галактику 🚀' : 'Далее →';
@@ -70,19 +78,18 @@ function _render() {
     // Точки прогресса
     STEPS.forEach((_, i) => {
         const dot = document.getElementById(`step-dot-${i}`);
-        if (dot) dot.style.background = i === _currentStep ? 'var(--color-primary)' : 'var(--color-border)';
+        if (dot) (dot as HTMLElement).style.background = i === _currentStep ? 'var(--color-primary)' : 'var(--color-border)';
     });
 }
 
-function _setText(id, text) {
+function _setText(id: string, text: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
 }
 
-export async function init(_store) {
+export async function init(_store: Readonly<GameStore>): Promise<void> {
     _currentStep = 0;
     _render();
 }
 
-export function destroy() {
-}
+export function destroy(): void {}

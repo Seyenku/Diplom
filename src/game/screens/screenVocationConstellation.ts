@@ -1,24 +1,31 @@
 /**
- * screenVocationConstellation.js — Созвездие Призвания
+ * screenVocationConstellation.ts — Созвездие Призвания
  */
+
 import { getStore, transition, Screen } from '../stateManager.js';
+import { GameStore, PlanetDto } from '../types.js';
 
 window._vocationConst = {
     exportPdf() { alert('Экспорт PDF будет доступен в следующей версии.'); },
     showPath()  { alert('Отображение пути развития — в разработке.'); }
 };
 
-export async function init(store) {
+interface RankedPlanet {
+    planet: PlanetDto;
+    score: number;
+}
+
+export async function init(store: Readonly<GameStore>): Promise<void> {
     const discovered = new Set(store.player?.discoveredPlanets ?? []);
-    const catalog    = store.sessionData?.catalog ?? [];
+    const catalog    = store.sessionData?.catalog as PlanetDto[] ?? [];
     const planets    = catalog.filter(p => discovered.has(p.id) || p.isStarterVisible);
 
     if (planets.length === 0) return;
 
     // Строим рекомендации: топ-5 по кристаллам
     const crystals  = store.player?.crystals ?? {};
-    const ranked    = planets
-        .map(p => ({ planet: p, score: _matchScore(crystals, p.crystalRequirements) }))
+    const ranked: RankedPlanet[] = planets
+        .map(p => ({ planet: p, score: _matchScore(crystals, (p as unknown as Record<string, unknown>).crystalRequirements as Record<string, number> | undefined) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
 
@@ -26,24 +33,29 @@ export async function init(store) {
     _renderList(ranked);
 
     const placeholder = document.getElementById('constellation-placeholder');
-    if (placeholder) placeholder.style.display = 'none';
+    if (placeholder) (placeholder as HTMLElement).style.display = 'none';
 }
 
-export function destroy() {}
+export function destroy(): void {}
 
-function _matchScore(crystals, req) {
+function _matchScore(crystals: Record<string, number>, req?: Record<string, number>): number {
     if (!req || Object.keys(req).length === 0) return 0;
     let s = 0;
     for (const [d, n] of Object.entries(req)) s += Math.min(1, (crystals[d] ?? 0) / n);
     return s / Object.keys(req).length;
 }
 
-function _renderSvg(ranked) {
+interface Point {
+    x: number;
+    y: number;
+}
+
+function _renderSvg(ranked: RankedPlanet[]): void {
     const svg = document.getElementById('constellation-svg');
     if (!svg || ranked.length === 0) return;
     const cx = 350, cy = 262, r = 180;
     let html = '';
-    const pts = ranked.map((_, i) => {
+    const pts: Point[] = ranked.map((_, i) => {
         const a = (i / ranked.length) * 2 * Math.PI - Math.PI / 2;
         return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
     });
@@ -61,7 +73,7 @@ function _renderSvg(ranked) {
     svg.innerHTML = html;
 }
 
-function _renderList(ranked) {
+function _renderList(ranked: RankedPlanet[]): void {
     const el = document.getElementById('recommendations-list');
     if (!el) return;
     el.innerHTML = ranked.map(({ planet, score }, i) => `

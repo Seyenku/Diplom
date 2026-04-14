@@ -1,7 +1,10 @@
 /**
- * screenOfflineError.js — Экран офлайн-ошибки
+ * screenOfflineError.ts — Экран офлайн-ошибки
  */
-export async function init(store) {
+
+import { GameStore } from '../types.js';
+
+export async function init(store: Readonly<GameStore>): Promise<void> {
     const err  = store.sessionData?.errorMessage ?? '';
     const log  = store.sessionData?.errorLog     ?? '';
     const msgEl  = document.getElementById('offline-error-message');
@@ -10,4 +13,4 @@ export async function init(store) {
     if (logEl && log) logEl.textContent = log;
 }
 
-export function destroy() {}
+export function destroy(): void {}

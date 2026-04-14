@@ -1,0 +1,26 @@
+{
+  "name": "diplom",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Seyenku/Diplom.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Seyenku/Diplom/issues"
+  },
+  "homepage": "https://github.com/Seyenku/Diplom#readme",
+  "devDependencies": {
+    "@types/three": "^0.183.1",
+    "typescript": "^6.0.2"
+  }
+}

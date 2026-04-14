@@ -1,11 +1,20 @@
 /**
- * screenAchievements.js — Достижения, Radar Chart и аналитика прогресса
+ * screenAchievements.ts — Достижения, Radar Chart и аналитика прогресса
  */
+
 import { getStore } from '../stateManager.js';
+import { GameStore, CrystalType } from '../types.js';
 
 // ── Определения направлений ─────────────────────────────────────────────────
 
-const DIRS = [
+interface DirInfo {
+    key: string;
+    label: string;
+    color: string;
+    emoji: string;
+}
+
+const DIRS: DirInfo[] = [
     { key: 'it',      label: 'IT',          color: '#4fc3f7', emoji: '💻' },
     { key: 'bio',     label: 'Биотех',      color: '#4ade80', emoji: '🧬' },
     { key: 'math',    label: 'Математика',  color: '#fbbf24', emoji: '📐' },
@@ -18,7 +27,14 @@ const DIRS = [
 
 // ── Определения достижений ──────────────────────────────────────────────────
 
-const ACHIEVEMENTS_DEF = [
+interface AchievementDef {
+    id: string;
+    icon: string;
+    title: string;
+    desc: string;
+}
+
+const ACHIEVEMENTS_DEF: AchievementDef[] = [
     { id: 'first-scan',       icon: '🔭', title: 'Первый сканер',      desc: 'Запустил первое сканирование туманности.' },
     { id: 'first-planet',     icon: '🌍', title: 'Первое открытие',    desc: 'Открыл свою первую профессию-планету.' },
     { id: 'minigame-3',       icon: '🎮', title: 'Мини-игрок',         desc: 'Прошёл 3 мини-игры.' },
@@ -47,8 +63,8 @@ window._achievements = {
     }
 };
 
-export async function init(store) {
-    const player  = store.player ?? {};
+export async function init(store: Readonly<GameStore>): Promise<void> {
+    const player  = store.player ?? {} as NonNullable<typeof store.player>;
     const badges  = new Set(player.badges ?? []);
     const crystals = player.crystals ?? {};
     const stats   = player.stats ?? {};
@@ -60,7 +76,7 @@ export async function init(store) {
     _set('stat-minigames',       String(stats.miniGamesPlayed ?? 0));
     _set('stat-flights',         String(stats.flights ?? 0));
 
-    const totalCr = Object.values(crystals).reduce((a, b) => a + b, 0);
+    const totalCr = Object.values(crystals).reduce((a, b) => a + (b as number), 0);
     _set('stat-total-crystals', String(stats.totalCrystalsEarned ?? totalCr));
 
     // Авто-выдача достижений на основе прогресса
@@ -72,31 +88,33 @@ export async function init(store) {
     _renderAchievements(badges);
 }
 
-export function destroy() {
-}
+export function destroy(): void {}
 
 // ── Авто-проверка достижений ────────────────────────────────────────────────
 
-function _autoCheckAchievements(player, badges) {
-    const stats   = player.stats ?? {};
-    const crystals = player.crystals ?? {};
-    const planets = (player.discoveredPlanets ?? []).length;
-    const totalCr = Object.values(crystals).reduce((a, b) => a + b, 0);
-    const catsWithCrystals = Object.keys(crystals).filter(k => crystals[k] > 0).length;
+function _autoCheckAchievements(
+    player: NonNullable<Parameters<typeof init>[0]['player']>,
+    badges: Set<string>
+): void {
+    const stats   = player!.stats ?? {};
+    const crystals = player!.crystals ?? {};
+    const planets = (player!.discoveredPlanets ?? []).length;
+    const totalCr = Object.values(crystals).reduce((a, b) => a + (b as number), 0);
+    const catsWithCrystals = Object.keys(crystals).filter(k => (crystals[k as keyof typeof crystals] as number) > 0).length;
 
-    if (stats.scans > 0)           badges.add('first-scan');
+    if ((stats as Record<string, number>).scans > 0)           badges.add('first-scan');
     if (planets > 0)               badges.add('first-planet');
     if (planets >= 5)              badges.add('explorer-5');
-    if ((stats.miniGamesPlayed ?? 0) >= 3) badges.add('minigame-3');
+    if (((stats as Record<string, number>).miniGamesPlayed ?? 0) >= 3) badges.add('minigame-3');
     if (totalCr >= 100)            badges.add('crystals-100');
     if (catsWithCrystals >= 8)     badges.add('all-cats');
-    if ((stats.flights ?? 0) >= 10) badges.add('flight-10');
-    if ((player.appliedUpgrades ?? []).length > 0) badges.add('upgrade-1');
+    if (((stats as Record<string, number>).flights ?? 0) >= 10) badges.add('flight-10');
+    if ((player!.appliedUpgrades ?? []).length > 0) badges.add('upgrade-1');
 }
 
 // ── Radar Chart (SVG) ───────────────────────────────────────────────────────
 
-function _renderRadarChart(crystals) {
+function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void {
     const svg = document.getElementById('radar-chart');
     if (!svg) return;
 
@@ -105,7 +123,7 @@ function _renderRadarChart(crystals) {
     const angleStep = (Math.PI * 2) / n;
 
     // Максимальное значение для нормализации
-    const values = DIRS.map(d => crystals[d.key] ?? 0);
+    const values = DIRS.map(d => (crystals as Record<string, number>)[d.key] ?? 0);
     const max = Math.max(...values, 1);
 
     let html = '';
@@ -113,7 +131,7 @@ function _renderRadarChart(crystals) {
     // Концентрические кольца (фон)
     for (let ring = 1; ring <= 4; ring++) {
         const r = (ring / 4) * maxR;
-        const pts = [];
+        const pts: string[] = [];
         for (let i = 0; i < n; i++) {
             const angle = i * angleStep - Math.PI / 2;
             pts.push(`${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`);
@@ -131,12 +149,12 @@ function _renderRadarChart(crystals) {
         // Подписи
         const lx = cx + Math.cos(angle) * (maxR + 22);
         const ly = cy + Math.sin(angle) * (maxR + 22);
-        html += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" 
+        html += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle"
                        font-size="11" fill="${DIRS[i].color}" font-family="var(--font-display)">${DIRS[i].emoji} ${DIRS[i].label}</text>`;
     }
 
     // Полигон данных
-    const dataPts = [];
+    const dataPts: string[] = [];
     for (let i = 0; i < n; i++) {
         const angle = i * angleStep - Math.PI / 2;
         const v = values[i] / max;
@@ -167,7 +185,7 @@ function _renderRadarChart(crystals) {
         if (values[i] > 0) {
             const vx = cx + Math.cos(angle) * (r + 14);
             const vy = cy + Math.sin(angle) * (r + 14);
-            html += `<text x="${vx}" y="${vy}" text-anchor="middle" dominant-baseline="middle" 
+            html += `<text x="${vx}" y="${vy}" text-anchor="middle" dominant-baseline="middle"
                            font-size="10" fill="#94a3b8" font-family="var(--font-display)">${values[i]}</text>`;
         }
     }
@@ -177,11 +195,11 @@ function _renderRadarChart(crystals) {
 
 // ── Bar Chart ───────────────────────────────────────────────────────────────
 
-function _renderActivityChart(crystals) {
+function _renderActivityChart(crystals: Partial<Record<CrystalType, number>>): void {
     const svg = document.getElementById('activity-chart');
     if (!svg) return;
 
-    const entries = DIRS.map(d => ({ ...d, value: crystals[d.key] ?? 0 }));
+    const entries = DIRS.map(d => ({ ...d, value: (crystals as Record<string, number>)[d.key] ?? 0 }));
     const max = Math.max(...entries.map(e => e.value), 1);
     const w = 600, h = 140, padding = 12;
     const barW = Math.floor((w - padding * 2) / entries.length) - 6;
@@ -206,7 +224,7 @@ function _renderActivityChart(crystals) {
 
 // ── Achievements Grid ───────────────────────────────────────────────────────
 
-function _renderAchievements(earnedBadges) {
+function _renderAchievements(earnedBadges: Set<string>): void {
     const grid = document.getElementById('achievements-grid');
     if (!grid) return;
 
@@ -225,7 +243,7 @@ function _renderAchievements(earnedBadges) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function _set(id, v) {
+function _set(id: string, v: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = v;
 }

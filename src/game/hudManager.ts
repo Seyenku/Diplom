@@ -1,5 +1,5 @@
 /**
- * hudManager.js — Глобальный менеджер игрового HUD
+ * hudManager.ts — Глобальный менеджер игрового HUD
  *
  * HUD (#hud-overlay) всегда в DOM, показывается только при экране HUD.
  * hudManager инициализируется один раз при старте, периодически читает
@@ -7,17 +7,18 @@
  */
 
 import { getStore, on } from './stateManager.js';
+import { PlayerState, UpgradeDto, CrystalType } from './types.js';
 import { addMessage } from './guideManager.js';
 
-let _updateInterval = null;
+let _updateInterval: ReturnType<typeof setInterval> | null = null;
 
 // ── Инициализация ────────────────────────────────────────────────────────────
 
 /**
  * Загружает HTML HUD-оверлея и запускает цикл обновления.
- * Вызывается один раз в main.js при старте.
+ * Вызывается один раз в main.ts при старте.
  */
-export async function initHud() {
+export async function initHud(): Promise<void> {
     const overlay = document.getElementById('hud-overlay');
     if (!overlay) return;
 
@@ -42,7 +43,7 @@ export async function initHud() {
     on('SET_PLAYER',      () => _tick());
 }
 
-export function destroyHud() {
+export function destroyHud(): void {
     if (_updateInterval) {
         clearInterval(_updateInterval);
         _updateInterval = null;
@@ -51,8 +52,8 @@ export function destroyHud() {
 
 // ── Обновление состояния ──────────────────────────────────────────────────────
 
-function _tick() {
-    const store  = getStore();
+function _tick(): void {
+    const store = getStore();
     const player = store.player;
     if (!player) return;
 
@@ -66,37 +67,46 @@ function _tick() {
     _setText('hud-speed', `${stats.speedPct}%`);
 }
 
-function _calcShipStats(player) {
-    const applied  = new Set(player.appliedUpgrades ?? []);
-    const store    = getStore();
-    const upgrades = store.sessionData?.upgrades ?? [];
+interface ShipStats {
+    speedPct: number;
+    shieldPct: number;
+    energyPct: number;
+}
 
-    let speedBonus  = 0;
+function _calcShipStats(player: PlayerState): ShipStats {
+    const applied = new Set(player.appliedUpgrades ?? []);
+    const store = getStore();
+    const upgrades = (store.sessionData?.upgrades ?? []) as UpgradeDto[];
+
+    let speedBonus = 0;
     let shieldBonus = 0;
 
-    upgrades.filter(u => applied.has(u.id)).forEach(u => {
-        speedBonus  += (u.effect?.speedBonus  ?? 0);
-        shieldBonus += (u.effect?.shieldBonus ?? 0);
-    });
+    upgrades
+        .filter(u => applied.has(u.id))
+        .forEach(u => {
+            speedBonus += (u.effect?.speedBonus ?? 0);
+            shieldBonus += (u.effect?.shieldBonus ?? 0);
+        });
 
     return {
-        speedPct:  Math.min(200, 100 + speedBonus),
-        shieldPct: Math.min(100, Math.round((100 + shieldBonus) / 1.6)), // нормируем к 100%
-        energyPct: 100, // в будущем — зависит от активных способностей
+        speedPct: Math.min(200, 100 + speedBonus),
+        shieldPct: Math.min(100, Math.round((100 + shieldBonus) / 1.6)),
+        energyPct: 100,
     };
 }
 
-function _updateCrystals(crystals) {
+function _updateCrystals(crystals: Partial<Record<CrystalType, number>>): void {
     const container = document.getElementById('hud-crystals');
     if (!container) return;
 
-    const DIR_ICONS = {
+    const DIR_ICONS: Record<string, string> = {
         it: '💻', bio: '🧬', math: '📐', eco: '🌿',
-        design: '🎨', med: '⚕', neuro: '🧠', physics: '⚛'
+        design: '🎨', med: '⚕', neuro: '🧠', physics: '⚛',
+        programming: '💎', medicine: '❤️', geology: '🌿',
     };
 
     const html = Object.entries(crystals)
-        .filter(([, n]) => n > 0)
+        .filter(([, n]) => (n as number) > 0)
         .map(([dir, n]) => `<span class="crystal-badge" style="font-size:0.72rem;">${DIR_ICONS[dir] ?? '💎'} ${n}</span>`)
         .join('');
 
@@ -105,33 +115,34 @@ function _updateCrystals(crystals) {
 
 // ── Индикатор синхронизации ───────────────────────────────────────────────────
 
+type SyncStatus = 'saved' | 'syncing' | 'error';
+
 /**
  * Обновляет индикатор синхронизации в HUD.
- * @param {'saved'|'syncing'|'error'} status
  */
-export function setSyncStatus(status) {
-    const dot  = document.getElementById('hud-sync-dot');
+export function setSyncStatus(status: SyncStatus): void {
+    const dot = document.getElementById('hud-sync-dot');
     const text = document.getElementById('hud-sync-text');
     if (!dot || !text) return;
 
-    const map = {
+    const map: Record<SyncStatus, { color: string; label: string }> = {
         saved:   { color: '#39ff14', label: 'Сохранено' },
         syncing: { color: '#fb923c', label: 'Сохранение…' },
         error:   { color: '#f87171', label: 'Ошибка!' },
     };
     const s = map[status] ?? map.saved;
-    dot.style.background = s.color;
-    text.textContent     = s.label;
+    (dot as HTMLElement).style.background = s.color;
+    text.textContent = s.label;
 }
 
 // ── Хелперы ───────────────────────────────────────────────────────────────────
 
-function _setBar(id, pct) {
+function _setBar(id: string, pct: number): void {
     const el = document.getElementById(id);
-    if (el) el.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+    if (el) (el as HTMLElement).style.width = `${Math.max(0, Math.min(100, pct))}%`;
 }
 
-function _setText(id, val) {
+function _setText(id: string, val: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
 }

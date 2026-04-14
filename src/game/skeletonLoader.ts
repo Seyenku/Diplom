@@ -1,5 +1,5 @@
 /**
- * skeletonLoader.js — Скелетон-плейсхолдеры при загрузке Partial-экранов
+ * skeletonLoader.ts — Скелетон-плейсхолдеры при загрузке Partial-экранов
  *
  * Используется в stateManager.transition() для показа анимированного лоадера
  * в контейнере экрана пока грузится HTML через fetch.
@@ -38,10 +38,12 @@ const SKELETON_HTML = `
 
 /**
  * Показывает skeleton-placeholder внутри контейнера
- * @param {string|HTMLElement} container — id или элемент
+ * @param container — id или элемент
  */
-export function showSkeleton(container) {
-    const el = typeof container === 'string' ? document.getElementById(container) : container;
+export function showSkeleton(container: string | HTMLElement): void {
+    const el = typeof container === 'string'
+        ? document.getElementById(container)
+        : container;
     if (!el) return;
     el.innerHTML = SKELETON_HTML;
 }
@@ -49,8 +51,10 @@ export function showSkeleton(container) {
 /**
  * Скрывает skeleton (обычно не нужно — transition заменит innerHTML)
  */
-export function hideSkeleton(container) {
-    const el = typeof container === 'string' ? document.getElementById(container) : container;
+export function hideSkeleton(container: string | HTMLElement): void {
+    const el = typeof container === 'string'
+        ? document.getElementById(container)
+        : container;
     if (!el) return;
     const shimmer = el.querySelector('.skeleton-shimmer');
     if (shimmer) shimmer.remove();

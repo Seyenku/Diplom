@@ -1,5 +1,5 @@
 /**
- * screenFlight.js — Экран полёта: сбор кристаллов в астероидном поясе
+ * screenFlight.ts — Экран полёта: сбор кристаллов в астероидном поясе
  *
  * Стейты:
  *   1. COUNTDOWN  — обратный отсчёт 3..2..1
@@ -9,30 +9,34 @@
  * Кристаллы одного типа — определяется из sessionData.crystalType (regionId).
  */
 
+import * as THREE from 'three';
 import { dispatch, getStore, transition, Screen } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
 import { loadModel } from '../gltfLoader.js';
+import { GameStore, CrystalType, ClusterType } from '../types.js';
 
 const FLIGHT_DURATION_S = 60;
 
-const CRYSTAL_COLORS = {
+const CRYSTAL_COLORS: Record<string, { color: number; emoji: string; label: string }> = {
     programming: { color: 0x4fc3f7, emoji: '💎', label: 'Программирование' },
     medicine:    { color: 0xf87171, emoji: '❤️', label: 'Медицина' },
     geology:     { color: 0x34d399, emoji: '🌿', label: 'Геология' },
 };
 
 // ── внутреннее состояние ────────────────────────
-let _state       = 'idle'; // idle | countdown | playing | results
-let _animId      = null;
-let _elapsed     = 0;
-let _shield      = 100;
-let _collected   = 0;      // количество собранных кристаллов
-let _crystalType = 'programming'; // тип кристаллов текущего региона
-let _shipModel   = null;
-let _asteroids   = [];
-let _crystals    = [];
-let _keys        = {};
-let _lastTime    = 0;
+type FlightState = 'idle' | 'countdown' | 'playing' | 'results';
+
+let _state: FlightState = 'idle';
+let _animId: number | null = null;
+let _elapsed = 0;
+let _shield = 100;
+let _collected = 0;      // количество собранных кристаллов
+let _crystalType: CrystalType = 'programming';
+let _shipModel: THREE.Group | null = null;
+let _asteroids: THREE.Object3D[] = [];
+let _crystals: THREE.Object3D[] = [];
+let _keys: Record<string, boolean> = {};
+let _lastTime = 0;
 
 // Размеры игрового поля
 const FIELD_W = 16;
@@ -51,7 +55,7 @@ window._flightScreen = {
 
 // ── Lifecycle ───────────────────────────────────
 
-export async function init(store) {
+export async function init(store: Readonly<GameStore>): Promise<void> {
     _state = 'idle';
     _collected = 0;
     _shield = 100;
@@ -59,7 +63,7 @@ export async function init(store) {
     _keys = {};
 
     // Тип кристаллов из sessionData (установлен Galaxy Map)
-    _crystalType = store.sessionData?.crystalType ?? 'programming';
+    _crystalType = (store.sessionData?.crystalType ?? 'programming') as CrystalType;
 
     // Обновляем UI-индикатор типа кристаллов
     const ct = CRYSTAL_COLORS[_crystalType] ?? CRYSTAL_COLORS.programming;
@@ -70,7 +74,6 @@ export async function init(store) {
     await switchScene('flight');
 
     // Загружаем модель корабля, оборачиваем в Group
-    const THREE = window.THREE;
     _shipModel = new THREE.Group();
     _shipModel.position.set(0, 0, 0);
 
@@ -82,7 +85,7 @@ export async function init(store) {
     } catch (e) {
         console.warn('[Flight] ship.glb not loaded, using fallback');
         const fallback = _createFallbackShip();
-        _shipModel.add(fallback);
+        if (fallback) _shipModel.add(fallback);
     }
 
     if (window.__threeScene) {
@@ -96,7 +99,7 @@ export async function init(store) {
     _startCountdown();
 }
 
-export function destroy() {
+export function destroy(): void {
     _cleanup();
     document.removeEventListener('keydown', _onKeyDown);
     document.removeEventListener('keyup', _onKeyUp);
@@ -104,15 +107,15 @@ export function destroy() {
 
 // ── Countdown ───────────────────────────────────
 
-function _startCountdown() {
+function _startCountdown(): void {
     _state = 'countdown';
     const overlay = document.getElementById('flight-countdown');
     const numberEl = document.getElementById('countdown-number');
     const hudEl = document.getElementById('flight-hud');
     const resultsEl = document.getElementById('flight-results');
 
-    if (overlay)  overlay.classList.remove('hidden');
-    if (hudEl)    hudEl.classList.add('hidden');
+    if (overlay) overlay.classList.remove('hidden');
+    if (hudEl) hudEl.classList.add('hidden');
     if (resultsEl) resultsEl.classList.add('hidden');
 
     let count = 3;
@@ -135,7 +138,7 @@ function _startCountdown() {
 
 // ── Playing ─────────────────────────────────────
 
-function _startPlaying() {
+function _startPlaying(): void {
     _state = 'playing';
     _elapsed = 0;
     _shield = 100;
@@ -150,7 +153,7 @@ function _startPlaying() {
     _animId = requestAnimationFrame(_gameLoop);
 }
 
-function _gameLoop(now) {
+function _gameLoop(now: number): void {
     if (_state !== 'playing') return;
 
     const dt = Math.min((now - _lastTime) / 1000, 0.1);
@@ -179,15 +182,15 @@ function _gameLoop(now) {
     _animId = requestAnimationFrame(_gameLoop);
 }
 
-function _moveShip(dt) {
+function _moveShip(dt: number): void {
     if (!_shipModel) return;
     const boost = _keys['Space'] ? BOOST_MULT : 1;
     const speed = SHIP_SPEED * boost * dt;
 
-    if (_keys['KeyA'] || _keys['ArrowLeft'])  _shipModel.position.x -= speed;
+    if (_keys['KeyA'] || _keys['ArrowLeft']) _shipModel.position.x -= speed;
     if (_keys['KeyD'] || _keys['ArrowRight']) _shipModel.position.x += speed;
-    if (_keys['KeyW'] || _keys['ArrowUp'])    _shipModel.position.y += speed;
-    if (_keys['KeyS'] || _keys['ArrowDown'])  _shipModel.position.y -= speed;
+    if (_keys['KeyW'] || _keys['ArrowUp']) _shipModel.position.y += speed;
+    if (_keys['KeyS'] || _keys['ArrowDown']) _shipModel.position.y -= speed;
 
     _shipModel.position.x = Math.max(-FIELD_W / 2, Math.min(FIELD_W / 2, _shipModel.position.x));
     _shipModel.position.y = Math.max(-FIELD_H / 2, Math.min(FIELD_H / 2, _shipModel.position.y));
@@ -203,7 +206,7 @@ function _moveShip(dt) {
     _shipModel.rotation.x += (targetPitch - _shipModel.rotation.x) * 0.1;
 }
 
-function _moveObjects(dt) {
+function _moveObjects(dt: number): void {
     const speed = 25 * dt;
     const scene = window.__threeScene;
     if (!scene) return;
@@ -224,7 +227,7 @@ function _moveObjects(dt) {
     });
 }
 
-function _checkCollisions() {
+function _checkCollisions(): void {
     if (!_shipModel) return;
     const sp = _shipModel.position;
     const hitR = 1.2;
@@ -243,16 +246,15 @@ function _checkCollisions() {
 
     _asteroids.forEach(a => {
         const dist = sp.distanceTo(a.position);
-        if (dist < hitR + 0.8 && !a.userData._hit) {
-            a.userData._hit = true;
+        if (dist < hitR + 0.8 && !(a as THREE.Object3D & { userData: { _hit?: boolean } }).userData._hit) {
+            (a as THREE.Object3D & { userData: { _hit?: boolean } }).userData._hit = true;
             _shield = Math.max(0, _shield - 20);
             _updateShieldBar();
         }
     });
 }
 
-function _spawnWave() {
-    const THREE = window.THREE;
+function _spawnWave(): void {
     const scene = window.__threeScene;
     if (!THREE || !scene) return;
 
@@ -299,7 +301,7 @@ function _spawnWave() {
 
 // ── End Flight ──────────────────────────────────
 
-function _endFlight() {
+function _endFlight(): void {
     _state = 'results';
     if (_animId) cancelAnimationFrame(_animId);
     _animId = null;
@@ -311,14 +313,14 @@ function _endFlight() {
 
     // Записываем собранные кристаллы (одного типа)
     if (_collected > 0) {
-        dispatch('EARN_CRYSTALS', { earned: { [_crystalType]: _collected } });
+        dispatch('EARN_CRYSTALS', { earned: { [_crystalType]: _collected } as Record<CrystalType, number> });
     }
 
     // Рендерим результаты
     const ct = CRYSTAL_COLORS[_crystalType] ?? CRYSTAL_COLORS.programming;
     const statsEl = document.getElementById('flight-results-stats');
     if (statsEl) {
-        const lines = [];
+        const lines: string[] = [];
 
         if (_collected > 0) {
             lines.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
@@ -340,24 +342,22 @@ function _endFlight() {
 
 // ── Helpers ─────────────────────────────────────
 
-function _updateHud() {
+function _updateHud(): void {
     _setText('flight-crystals-count', String(_collected));
     _updateShieldBar();
 }
 
-function _updateShieldBar() {
+function _updateShieldBar(): void {
     const bar = document.getElementById('flight-shield-bar');
-    if (bar) bar.style.width = `${_shield}%`;
+    if (bar) (bar as HTMLElement).style.width = `${_shield}%`;
 }
 
-function _setText(id, v) {
+function _setText(id: string, v: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = v;
 }
 
-function _createFallbackShip() {
-    const THREE = window.THREE;
-    if (!THREE) return null;
+function _createFallbackShip(): THREE.Group | null {
     const group = new THREE.Group();
     const body = new THREE.Mesh(
         new THREE.ConeGeometry(0.4, 1.5, 6),
@@ -375,10 +375,10 @@ function _createFallbackShip() {
     return group;
 }
 
-function _onKeyDown(e) { _keys[e.code] = true; }
-function _onKeyUp(e)   { _keys[e.code] = false; }
+function _onKeyDown(e: KeyboardEvent): void { _keys[e.code] = true; }
+function _onKeyUp(e: KeyboardEvent): void { _keys[e.code] = false; }
 
-function _cleanup() {
+function _cleanup(): void {
     if (_animId) cancelAnimationFrame(_animId);
     _animId = null;
     _state = 'idle';
