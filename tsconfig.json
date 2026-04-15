@@ -6,7 +6,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
     "outDir": "./wwwroot/js/game",
-    "rootDir": "./src/game",
+    "rootDir": "./wwwroot/ts/game",
     "sourceMap": true,
 
     "strict": true,
@@ -29,11 +29,11 @@
     "types": ["three"]
   },
   "include": [
-    "src/**/*.ts"
+    "wwwroot/ts/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "wwwroot",
+    "wwwroot/js",
     "bin",
     "obj"
   ]

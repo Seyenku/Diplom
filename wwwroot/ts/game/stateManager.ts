@@ -33,7 +33,7 @@ const _store: GameStore = {
 // ─── Readonly-доступ к store ─────────────────────────────────────────────────
 
 export function getStore(): Readonly<GameStore> {
-    return Object.freeze({ ..._store });
+    return _store;
 }
 
 // ─── Actions / dispatch ──────────────────────────────────────────────────────
@@ -49,6 +49,14 @@ export function on<T extends ActionType>(
     _handlers.get(action)!.add(handler as (store: GameStore, payload: unknown) => void);
 }
 
+/** Actions, при которых нужно сохранять player */
+const _PLAYER_ACTIONS: ReadonlySet<ActionType> = new Set<ActionType>([
+    'SET_PLAYER', 'ADD_CRYSTALS', 'SPEND_CRYSTALS', 'EARN_CRYSTALS',
+    'DISCOVER_PLANET', 'APPLY_UPGRADE', 'INCREMENT_STAT', 'ADD_BADGE',
+]);
+
+let _persistTimeout: ReturnType<typeof setTimeout> | null = null;
+
 /** Мутация store через action */
 export function dispatch<T extends ActionType>(action: T, payload: ActionPayload[T] = {} as ActionPayload[T]): void {
     const handlers = _handlers.get(action);
@@ -59,7 +67,11 @@ export function dispatch<T extends ActionType>(action: T, payload: ActionPayload
     } else if (action !== 'SCREEN_CHANGED') {
         console.warn(`[StateManager] No handlers for: "${action}"`);
     }
-    _persistPlayer();
+    // Debounced persist — только для player-мутирующих actions
+    if (_PLAYER_ACTIONS.has(action)) {
+        if (_persistTimeout) clearTimeout(_persistTimeout);
+        _persistTimeout = setTimeout(_persistPlayer, 300);
+    }
 }
 
 // Встроенные actions
@@ -293,7 +305,9 @@ window.addEventListener('popstate', (e: PopStateEvent) => {
     });
 });
 
-// ─── Автосейв ────────────────────────────────────────────────────────────────
+// ─── Автосейв через beforeunload (flush debounced persist) ──────────────────
 
-const AUTOSAVE_INTERVAL_MS = 3 * 60 * 1000; // каждые 3 минуты
-setInterval(_persistPlayer, AUTOSAVE_INTERVAL_MS);
+window.addEventListener('beforeunload', () => {
+    if (_persistTimeout) { clearTimeout(_persistTimeout); _persistTimeout = null; }
+    _persistPlayer();
+});

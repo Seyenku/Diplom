@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { getStore, dispatch, transition, Screen, ScreenId } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
 import { GameStore, PlanetDto, ClusterDto, ClusterType, CrystalType, ClusterMeta } from '../types.js';
+import { getProfile, onQualityChange, offQualityChange } from '../qualityPresets.js';
 
 // ── Мета-данные кластеров ───────────────────────────────────────────────────
 
@@ -70,6 +71,14 @@ let _targetDest: THREE.Vector3 | null = null;
 let _lastPinchDist = 0;
 let _mapResizeObs: ResizeObserver | null = null;
 
+// Optimizations
+let _mouseMovedSinceLastRaycast = false;
+let _tooltipEl: HTMLElement | null = null;
+let _tooltipNameEl: HTMLElement | null = null;
+let _tooltipCatEl: HTMLElement | null = null;
+const _textureCache = new Map<string, THREE.CanvasTexture>();
+let _isGalaxyMapActive = false;
+
 interface SphericalState {
     radius: number;
     theta: number;
@@ -90,7 +99,7 @@ window._galaxyMap = {
         _updateZoomUI();
         // Восстанавливаем качество
         if (_mapRenderer) {
-            _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            _mapRenderer.setPixelRatio(getProfile().pixelRatio);
         }
     },
 
@@ -133,10 +142,25 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _cameraState = 'overview';
     _focusedCluster = null;
     _init3DMap();
+
+    // Подписка на изменение качества графики (полная переинициализация карты)
+    _isGalaxyMapActive = true;
+    onQualityChange(_onQualityChanged);
 }
 
 export function destroy(): void {
+    _isGalaxyMapActive = false;
+    offQualityChange(_onQualityChanged);
     _cleanup3D();
+}
+
+/** Коллбэк смены качества: полная переинициализация 3D-карты */
+function _onQualityChanged(): void {
+    if (!_isGalaxyMapActive) return;
+    // Очищаем текстурный кеш, т.к. размеры текстур могли измениться
+    _textureCache.clear();
+    _cleanup3D();
+    _init3DMap();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -147,6 +171,9 @@ export function destroy(): void {
  * Генерирует мягкую glow-текстуру для спрайтов (radial gradient)
  */
 function _createGlowTexture(size: number, color: string, softness: number = 0.5): THREE.CanvasTexture {
+    const key = `glow_${size}_${color}_${softness}`;
+    if (_textureCache.has(key)) return _textureCache.get(key)!;
+
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -160,7 +187,9 @@ function _createGlowTexture(size: number, color: string, softness: number = 0.5)
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
     
-    return new THREE.CanvasTexture(canvas);
+    const texture = new THREE.CanvasTexture(canvas);
+    _textureCache.set(key, texture);
+    return texture;
 }
 
 /**
@@ -210,8 +239,9 @@ function _init3DMap(): void {
     const h = wrap.clientHeight || 400;
 
     // Рендерер
-    _mapRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const profile = getProfile();
+    _mapRenderer = new THREE.WebGLRenderer({ antialias: profile.antialias, alpha: true, powerPreference: 'high-performance' });
+    _mapRenderer.setPixelRatio(profile.pixelRatio);
     _mapRenderer.setSize(w, h, false);
     _mapRenderer.setClearColor(0x050a1a, 1);
     // Output encoding для корректного цвета
@@ -259,6 +289,11 @@ function _init3DMap(): void {
     canvas.addEventListener('touchend', _onMapTouchEnd);
     canvas.addEventListener('touchcancel', _onMapTouchEnd);
 
+    // DOM Caching
+    _tooltipEl = document.getElementById('galaxy-tooltip');
+    _tooltipNameEl = document.getElementById('galaxy-tooltip-name');
+    _tooltipCatEl = document.getElementById('galaxy-tooltip-cat');
+
     _mapResizeObs = new ResizeObserver(() => _onMapResize());
     _mapResizeObs.observe(wrap);
 
@@ -268,8 +303,9 @@ function _init3DMap(): void {
 // ── Звёзды ──────────────────────────────────────────────────────────────────
 
 function _addMapStars(): void {
+    const profile = getProfile();
     const geo = new THREE.BufferGeometry();
-    const n = 1500;
+    const n = profile.mapStarsCount;
     const pos = new Float32Array(n * 3);
     for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - 0.5) * 600;
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -282,8 +318,9 @@ function _addMapStars(): void {
 // ── Туманности (оптимизированные: Points вместо отдельных Sprite) ──────────────
 
 function _buildNebulae(clusterIds: ClusterType[]): void {
-    const PARTICLE_COUNT = 600;  // уменьшили с 800
-    const SPARKS_COUNT = 80;
+    const profile = getProfile();
+    const PARTICLE_COUNT = profile.nebulaParticles;
+    const SPARKS_COUNT = profile.nebulaSparks;
 
     for (const clusterId of clusterIds) {
         const meta = CLUSTER_META[clusterId];
@@ -292,8 +329,9 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
         group.userData = { clusterId, type: 'nebula' };
 
         // Текстуры под цвет кластера
-        const glowTexture = _createGlowTexture(128, meta.colorHex);
-        const coreTexture = _createGlowTexture(256, meta.colorHex, 0.3);
+        const texSize = profile.glowTextureSize;
+        const glowTexture = _createGlowTexture(texSize, meta.colorHex);
+        const coreTexture = _createGlowTexture(texSize * 2, meta.colorHex, 0.3);
         const sparksColor = _getSparksColor(clusterId);
 
         // ── Слой 1: Облако частиц через Points (1 draw call!) ──
@@ -376,6 +414,7 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
             transparent: true,
             opacity: 0.4,
             blending: THREE.AdditiveBlending,
+            depthWrite: false,
         }));
         coreSprite.scale.set(30, 30, 1);
         coreSprite.userData = { type: 'core' };
@@ -426,7 +465,8 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         const baseColor = new THREE.Color(meta.color);
 
         const radius = 0.8 + Math.min(planet.unlockCost ?? 5, 10) * 0.08;
-        const geo = new THREE.SphereGeometry(radius, 24, 18);
+        const profile = getProfile();
+        const geo = new THREE.SphereGeometry(radius, profile.planetSegments[0], profile.planetSegments[1]);
         const mat = new THREE.MeshStandardMaterial({
             color: discovered ? baseColor : 0x333344,
             emissive: discovered ? baseColor : new THREE.Color(0x111122),
@@ -461,7 +501,8 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
 
         // Кольцо для открытых планет
         if (discovered) {
-            const ringGeo = new THREE.RingGeometry(radius + 0.3, radius + 0.45, 32);
+            const p = getProfile();
+            const ringGeo = new THREE.RingGeometry(radius + 0.3, radius + 0.45, p.planetRingSegments);
             const ringMat = new THREE.MeshBasicMaterial({
                 color: meta.color,
                 side: THREE.DoubleSide,
@@ -530,34 +571,38 @@ function _mapRenderLoop(): void {
         mesh.rotation.y += 0.005;
     });
 
-    // Raycasting
-    _raycaster!.setFromCamera(_mouse!, _mapCamera);
+    // Raycasting (only if mouse moved)
+    if (_mouseMovedSinceLastRaycast) {
+        _mouseMovedSinceLastRaycast = false;
+        
+        _raycaster!.setFromCamera(_mouse!, _mapCamera);
 
-    // Определяем что рейкастим в зависимости от состояния
-    let targets: THREE.Object3D[] = [];
-    if (_cameraState === 'overview') {
-        // Рейкастим хит-боксы туманностей
-        for (const group of Object.values(_nebulaMeshes)) {
-            group.children.forEach(child => {
-                if ((child.userData as { type?: string })?.type === 'nebula-hitbox') targets.push(child);
-            });
+        // Определяем что рейкастим в зависимости от состояния
+        let targets: THREE.Object3D[] = [];
+        if (_cameraState === 'overview') {
+            // Рейкастим хит-боксы туманностей
+            for (const group of Object.values(_nebulaMeshes)) {
+                group.children.forEach(child => {
+                    if ((child.userData as { type?: string })?.type === 'nebula-hitbox') targets.push(child);
+                });
+            }
+        } else {
+            // Рейкастим планеты
+            targets = _planetMeshes;
         }
-    } else {
-        // Рейкастим планеты
-        targets = _planetMeshes;
-    }
 
-    const intersects = _raycaster!.intersectObjects(targets, false);
+        const intersects = _raycaster!.intersectObjects(targets, false);
 
-    if (intersects.length > 0) {
-        const hit = intersects[0].object;
-        if (_hoveredObj !== hit) {
+        if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            if (_hoveredObj !== hit) {
+                _unhover();
+                _hoveredObj = hit;
+                _hover(hit);
+            }
+        } else {
             _unhover();
-            _hoveredObj = hit;
-            _hover(hit);
         }
-    } else {
-        _unhover();
     }
 
     _mapRenderer.render(_mapScene, _mapCamera);
@@ -601,19 +646,15 @@ function _unhover(): void {
 }
 
 function _showTooltip(name: string, cat: string): void {
-    const tooltip = document.getElementById('galaxy-tooltip');
-    const nameEl = document.getElementById('galaxy-tooltip-name');
-    const catEl = document.getElementById('galaxy-tooltip-cat');
-    if (tooltip && nameEl && catEl) {
-        nameEl.textContent = name;
-        catEl.textContent = cat;
-        tooltip.classList.remove('hidden');
+    if (_tooltipEl && _tooltipNameEl && _tooltipCatEl) {
+        _tooltipNameEl.textContent = name;
+        _tooltipCatEl.textContent = cat;
+        _tooltipEl.classList.remove('hidden');
     }
 }
 
 function _hideTooltip(): void {
-    const tooltip = document.getElementById('galaxy-tooltip');
-    if (tooltip) tooltip.classList.add('hidden');
+    if (_tooltipEl) _tooltipEl.classList.add('hidden');
 }
 
 // ── Обработка кликов ────────────────────────────────────────────────────────
@@ -736,12 +777,12 @@ function _onMapMouseMove(e: MouseEvent): void {
     const rect = _mapRenderer!.domElement.getBoundingClientRect();
     _mouse!.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     _mouse!.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    _mouseMovedSinceLastRaycast = true;
 
     // Тултип следует за мышью
-    const tooltip = document.getElementById('galaxy-tooltip');
-    if (tooltip && !tooltip.classList.contains('hidden')) {
-        tooltip.style.left = `${e.clientX - rect.left + 12}px`;
-        tooltip.style.top = `${e.clientY - rect.top - 10}px`;
+    if (_tooltipEl && !_tooltipEl.classList.contains('hidden')) {
+        _tooltipEl.style.left = `${e.clientX - rect.left + 12}px`;
+        _tooltipEl.style.top = `${e.clientY - rect.top - 10}px`;
     }
 }
 
@@ -813,6 +854,7 @@ function _onMapTouchMove(e: TouchEvent): void {
         const t = e.touches[0];
         _mouse!.x = ((t.clientX - rect.left) / rect.width) * 2 - 1;
         _mouse!.y = -((t.clientY - rect.top) / rect.height) * 2 + 1;
+        _mouseMovedSinceLastRaycast = true;
     }
 }
 
@@ -856,6 +898,7 @@ function _cleanup3D(): void {
         canvas.removeEventListener('touchend', _onMapTouchEnd);
         canvas.removeEventListener('touchcancel', _onMapTouchEnd);
         canvas.parentNode?.removeChild(canvas);
+        _mapRenderer.forceContextLoss(); // explicitly free GPU context since we use a 2nd renderer
         _mapRenderer.dispose();
         _mapRenderer = null;
     }

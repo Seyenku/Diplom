@@ -7,62 +7,109 @@
  *
  * Three.js файл: three.module.min.js (WebGL renderer)
  */
-
 import * as THREE from 'three';
-
-type SceneName = 'starfield' | 'asteroid-belt' | 'flight' | 'galaxy-map' | 'planet' | 'none';
-
-let _renderer: THREE.WebGLRenderer | null = null;
-let _currentScene: { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | null = null;
-let _animFrameId: number | null = null;
-
+import { getProfile, onQualityChange } from './qualityPresets.js';
+let _renderer = null;
+let _currentScene = null;
+let _animFrameId = null;
+let _starfieldPoints = null;
+let _lastSceneName = 'none';
 // ────────────────────────────────────────────────────────────────────────────
-
 /**
  * Инициализирует Three.js рендерер на указанном canvas.
  * Вызывается один раз при старте.
  */
-export async function initThreeScene(canvasId: string): Promise<void> {
-    const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    if (!canvas) throw new Error(`Canvas #${canvasId} not found`);
-
+export async function initThreeScene(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas)
+        throw new Error(`Canvas #${canvasId} not found`);
+    const profile = getProfile();
     _renderer = new THREE.WebGLRenderer({
         canvas,
-        antialias: true,
+        antialias: profile.antialias,
         alpha: true,
     });
-
-    _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    _renderer.setSize((canvas.parentNode as HTMLElement)!.clientWidth, (canvas.parentNode as HTMLElement)!.clientHeight, false);
+    _renderer.setPixelRatio(profile.pixelRatio);
+    _renderer.setSize(canvas.parentNode.clientWidth, canvas.parentNode.clientHeight, false);
     _renderer.setClearColor(0x050a1a, 1);
-
     window.addEventListener('resize', _onResize);
-
+    // Подписка на изменение качества графики
+    onQualityChange(() => {
+        recreateRenderer();
+    });
     // Стартовая сцена — звёздное поле (фон главного меню)
     await switchScene('starfield');
 }
-
 // ────────────────────────────────────────────────────────────────────────────
-
 /**
  * Переключает Three.js сцену без пересоздания WebGL-контекста.
+ * Предыдущая сцена корректно очищается (dispose GPU-ресурсов).
  */
-export async function switchScene(sceneName: SceneName): Promise<void> {
-    if (_animFrameId) cancelAnimationFrame(_animFrameId);
-
+export async function switchScene(sceneName) {
+    if (_animFrameId)
+        cancelAnimationFrame(_animFrameId);
+    _disposeCurrentScene();
+    _lastSceneName = sceneName;
     _currentScene = _buildScene(sceneName);
     _startRenderLoop();
 }
-
+/**
+ * Пересоздаёт WebGL-рендерер с новыми параметрами качества.
+ * Необходимо для смены antialias (параметр WebGL-контекста, нельзя менять на лету).
+ */
+export function recreateRenderer() {
+    if (!_renderer)
+        return;
+    const profile = getProfile();
+    const canvas = _renderer.domElement;
+    const container = canvas.parentNode;
+    if (_animFrameId)
+        cancelAnimationFrame(_animFrameId);
+    _disposeCurrentScene();
+    _renderer.dispose();
+    _renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: profile.antialias,
+        alpha: true,
+    });
+    _renderer.setPixelRatio(profile.pixelRatio);
+    _renderer.setSize(container.clientWidth, container.clientHeight, false);
+    _renderer.setClearColor(0x050a1a, 1);
+    // Пересоздаём текущую сцену с новыми параметрами
+    _currentScene = _buildScene(_lastSceneName);
+    _startRenderLoop();
+}
+/** Рекурсивно освобождает GPU-ресурсы текущей сцены */
+function _disposeCurrentScene() {
+    if (!_currentScene)
+        return;
+    _currentScene.scene.traverse(obj => {
+        const mesh = obj;
+        if (mesh.geometry)
+            mesh.geometry.dispose();
+        if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => {
+                // Dispose текстур материала
+                for (const key of Object.keys(mat)) {
+                    const val = mat[key];
+                    if (val instanceof THREE.Texture)
+                        val.dispose();
+                }
+                mat.dispose();
+            });
+        }
+    });
+    _starfieldPoints = null;
+    _currentScene = null;
+}
 // ── Билдеры сцен ──────────────────────────────────────────────────────────
-
-function _buildScene(name: SceneName): { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | null {
+function _buildScene(name) {
     const scene = new THREE.Scene();
-    const canvas = _renderer!.domElement;
-    const container = canvas.parentNode as HTMLElement;
+    const canvas = _renderer.domElement;
+    const container = canvas.parentNode;
     const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 2000);
     camera.position.z = 300;
-
     switch (name) {
         case 'starfield':
             _addStarfield(scene);
@@ -71,8 +118,9 @@ function _buildScene(name: SceneName): { scene: THREE.Scene; camera: THREE.Persp
             _addStarfield(scene);
             _addAsteroidBelt(scene);
             break;
-        case 'flight':
-            _addStarfield(scene, 2500, 0.6);
+        case 'flight': {
+            const profile = getProfile();
+            _addStarfield(scene, profile.flightStarfieldCount, 0.6);
             camera.position.set(0, 2, 8);
             camera.lookAt(0, 0, -50);
             // Освещение для flight
@@ -84,6 +132,7 @@ function _buildScene(name: SceneName): { scene: THREE.Scene; camera: THREE.Persp
             backLight.position.set(0, -5, -20);
             scene.add(backLight);
             break;
+        }
         case 'galaxy-map':
             _addStarfield(scene, 2000, 0.8);
             _addNebulaFog(scene);
@@ -95,31 +144,31 @@ function _buildScene(name: SceneName): { scene: THREE.Scene; camera: THREE.Persp
         default:
             break;
     }
-
     // Глобальный доступ к текущей сцене (для screenFlight динамического добавления объектов)
     window.__threeScene = scene;
-
     return { scene, camera };
 }
-
-function _addStarfield(scene: THREE.Scene, count = 1500, size = 1.0): void {
+function _addStarfield(scene, count, size = 1.0) {
+    const n = count ?? getProfile().starfieldCount;
     const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count * 3; i++) {
+    const positions = new Float32Array(n * 3);
+    for (let i = 0; i < n * 3; i++) {
         positions[i] = (Math.random() - 0.5) * 2000;
     }
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const mat = new THREE.PointsMaterial({ color: 0xffffff, size, sizeAttenuation: true, transparent: true, opacity: 0.85 });
-    scene.add(new THREE.Points(geo, mat));
+    const points = new THREE.Points(geo, mat);
+    scene.add(points);
+    _starfieldPoints = points;
 }
-
-function _addAsteroidBelt(scene: THREE.Scene): void {
+function _addAsteroidBelt(scene) {
+    const profile = getProfile();
     const geo = new THREE.SphereGeometry(4, 5, 5);
     const mat = new THREE.MeshStandardMaterial({ color: 0x7c8a9e, roughness: 0.9 });
     const light = new THREE.PointLight(0x4fc3f7, 2, 800);
     light.position.set(0, 0, 200);
     scene.add(light, new THREE.AmbientLight(0x334155, 0.5));
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < profile.asteroidBeltCount; i++) {
         const mesh = new THREE.Mesh(geo, mat);
         const angle = Math.random() * Math.PI * 2;
         const r = 100 + Math.random() * 120;
@@ -129,45 +178,37 @@ function _addAsteroidBelt(scene: THREE.Scene): void {
         scene.add(mesh);
     }
 }
-
-function _addNebulaFog(scene: THREE.Scene): void {
+function _addNebulaFog(scene) {
     scene.fog = new THREE.FogExp2(0x0a0f2e, 0.0015);
     const light = new THREE.PointLight(0xa78bfa, 1.5, 600);
     light.position.set(0, 50, 0);
     scene.add(light, new THREE.AmbientLight(0x1e1b4b, 0.4));
 }
-
 // ── Render loop ───────────────────────────────────────────────────────────
-
-function _startRenderLoop(): void {
-    if (!_renderer || !_currentScene) return;
-
-    function render(): void {
+function _startRenderLoop() {
+    if (!_renderer || !_currentScene)
+        return;
+    function render() {
         _animFrameId = requestAnimationFrame(render);
-        const { scene } = _currentScene!;
         // Лёгкое вращение звёздного поля для атмосферности
-        scene.children.forEach(obj => {
-            if ((obj as THREE.Object3D).isObject3D && (obj as THREE.Points).isPoints) {
-                (obj as THREE.Points).rotation.y += 0.00015;
-            }
-        });
-        _renderer!.render(scene, _currentScene!.camera);
+        if (_starfieldPoints)
+            _starfieldPoints.rotation.y += 0.00015;
+        _renderer.render(_currentScene.scene, _currentScene.camera);
     }
     render();
 }
-
-function _onResize(): void {
-    if (!_renderer || !_currentScene) return;
+function _onResize() {
+    if (!_renderer || !_currentScene)
+        return;
     const { camera } = _currentScene;
     const canvas = _renderer.domElement;
-    const container = canvas.parentNode as HTMLElement;
-
+    const container = canvas.parentNode;
     // Если контейнер скрыт или имеет нулевой размер, избегаем ошибок
-    if (container.clientWidth === 0 || container.clientHeight === 0) return;
-
+    if (container.clientWidth === 0 || container.clientHeight === 0)
+        return;
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
     _renderer.setSize(container.clientWidth, container.clientHeight, false);
 }
-
 export { _renderer as renderer };
+//# sourceMappingURL=threeScene.js.map

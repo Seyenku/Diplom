@@ -89,7 +89,7 @@ function _track(actionType: string, details: Record<string, unknown> = {}, targe
         sessionId: _sessionId!,
         actionType,
         targetId,
-        createdAt: new Date().toISOString(),
+        createdAt: Date.now() as unknown as string, // stored as number, converted at flush
         details: JSON.stringify(details),
     });
 
@@ -101,7 +101,12 @@ function _track(actionType: string, details: Record<string, unknown> = {}, targe
 async function _flush(sync = false): Promise<void> {
     if (_buffer.length === 0) return;
 
-    const batch = [..._buffer];
+    const batch = _buffer.map(e => ({
+        ...e,
+        createdAt: typeof e.createdAt === 'number'
+            ? new Date(e.createdAt as unknown as number).toISOString()
+            : e.createdAt,
+    }));
     _buffer = [];
 
     const body = JSON.stringify({ events: batch });
@@ -135,7 +140,7 @@ function _send(event: { sessionId: string; action: string; details: string }): v
         sessionId: event.sessionId,
         actionType: event.action,
         targetId: null,
-        createdAt: new Date().toISOString(),
+        createdAt: Date.now() as unknown as string, // stored as number, converted at flush
         details: event.details,
     });
 }

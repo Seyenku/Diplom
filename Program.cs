@@ -48,6 +48,12 @@ builder.Services.AddSession(options =>
 // --- Razor Pages ---
 builder.Services.AddRazorPages();
 
+// --- Response Compression (gzip/brotli) ---
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -57,6 +63,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseResponseCompression();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

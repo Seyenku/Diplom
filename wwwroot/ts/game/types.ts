@@ -56,7 +56,7 @@ export interface ClusterDto {
 export interface GameSettingsDto {
     soundVolume: number;
     musicVolume: number;
-    graphicsQuality: 'low' | 'medium' | 'high' | 'ultra';
+    graphicsQuality: 'low' | 'medium' | 'high';
     controlScheme: 'keyboard' | 'mouse' | 'touch';
     subtitles: boolean;
     colorblindMode: boolean;

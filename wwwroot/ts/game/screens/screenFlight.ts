@@ -11,9 +11,10 @@
 
 import * as THREE from 'three';
 import { dispatch, getStore, transition, Screen } from '../stateManager.js';
-import { switchScene } from '../threeScene.js';
+import { switchScene, renderer as globalRenderer } from '../threeScene.js';
 import { loadModel } from '../gltfLoader.js';
 import { GameStore, CrystalType, ClusterType } from '../types.js';
+import { getProfile, onQualityChange, offQualityChange } from '../qualityPresets.js';
 
 const FLIGHT_DURATION_S = 60;
 
@@ -37,6 +38,12 @@ let _asteroids: THREE.Object3D[] = [];
 let _crystals: THREE.Object3D[] = [];
 let _keys: Record<string, boolean> = {};
 let _lastTime = 0;
+
+// Shared GPU resources (created once per init)
+let _asteroidGeo: THREE.IcosahedronGeometry | null = null;
+let _asteroidMat: THREE.MeshStandardMaterial | null = null;
+let _crystalGeo: THREE.OctahedronGeometry | null = null;
+let _crystalMat: THREE.MeshStandardMaterial | null = null;
 
 // Размеры игрового поля
 const FIELD_W = 16;
@@ -96,13 +103,33 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     document.addEventListener('keydown', _onKeyDown);
     document.addEventListener('keyup', _onKeyUp);
 
+    // Создаём общие GPU-ресурсы (переиспользуются при каждом спавне)
+    _asteroidGeo = new THREE.IcosahedronGeometry(0.5, 1);
+    _asteroidMat = new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.9, metalness: 0.2 });
+    _crystalGeo = new THREE.OctahedronGeometry(0.3, 0);
+    _crystalMat = new THREE.MeshStandardMaterial({
+        color: ct.color, emissive: ct.color, emissiveIntensity: 0.6,
+        roughness: 0.2, metalness: 0.8,
+    });
+
     _startCountdown();
+
+    // Подписка на смену качества (только pixelRatio, чтобы не сбрасывать прогресс)
+    onQualityChange(_onFlightQualityChanged);
 }
 
 export function destroy(): void {
+    offQualityChange(_onFlightQualityChanged);
     _cleanup();
     document.removeEventListener('keydown', _onKeyDown);
     document.removeEventListener('keyup', _onKeyUp);
+}
+
+/** Применяем только pixelRatio — переинициализация сцены в середине раунда сбросит прогресс */
+function _onFlightQualityChanged(): void {
+    if (_state !== 'playing' && _state !== 'countdown') return;
+    const profile = getProfile();
+    if (globalRenderer) globalRenderer.setPixelRatio(profile.pixelRatio);
 }
 
 // ── Countdown ───────────────────────────────────
@@ -177,7 +204,7 @@ function _gameLoop(now: number): void {
         return;
     }
 
-    if (Math.random() < 0.04) _spawnWave();
+    if (Math.random() < getProfile().spawnChancePerFrame) _spawnWave();
 
     _animId = requestAnimationFrame(_gameLoop);
 }
@@ -230,11 +257,12 @@ function _moveObjects(dt: number): void {
 function _checkCollisions(): void {
     if (!_shipModel) return;
     const sp = _shipModel.position;
-    const hitR = 1.2;
+    const crystalThresholdSq = (1.2 + 0.6) ** 2;
+    const asteroidThresholdSq = (1.2 + 0.8) ** 2;
 
     _crystals = _crystals.filter(c => {
-        const dist = sp.distanceTo(c.position);
-        if (dist < hitR + 0.6) {
+        const dist2 = sp.distanceToSquared(c.position);
+        if (dist2 < crystalThresholdSq) {
             _collected++;
             _updateHud();
             const scene = window.__threeScene;
@@ -245,8 +273,8 @@ function _checkCollisions(): void {
     });
 
     _asteroids.forEach(a => {
-        const dist = sp.distanceTo(a.position);
-        if (dist < hitR + 0.8 && !(a as THREE.Object3D & { userData: { _hit?: boolean } }).userData._hit) {
+        const dist2 = sp.distanceToSquared(a.position);
+        if (dist2 < asteroidThresholdSq && !(a as THREE.Object3D & { userData: { _hit?: boolean } }).userData._hit) {
             (a as THREE.Object3D & { userData: { _hit?: boolean } }).userData._hit = true;
             _shield = Math.max(0, _shield - 20);
             _updateShieldBar();
@@ -256,18 +284,13 @@ function _checkCollisions(): void {
 
 function _spawnWave(): void {
     const scene = window.__threeScene;
-    if (!THREE || !scene) return;
+    if (!THREE || !scene || !_asteroidGeo || !_asteroidMat || !_crystalGeo || !_crystalMat) return;
 
-    const ct = CRYSTAL_COLORS[_crystalType] ?? CRYSTAL_COLORS.programming;
-
-    // 2–4 астероида
+    // 2–4 астероида (переиспользуем общие Geo/Mat)
     const aCount = 2 + Math.floor(Math.random() * 3);
     for (let i = 0; i < aCount; i++) {
-        const geo = new THREE.IcosahedronGeometry(0.4 + Math.random() * 0.6, 1);
-        const mat = new THREE.MeshStandardMaterial({
-            color: 0x555566, roughness: 0.9, metalness: 0.2,
-        });
-        const mesh = new THREE.Mesh(geo, mat);
+        const mesh = new THREE.Mesh(_asteroidGeo, _asteroidMat);
+        mesh.scale.setScalar(0.8 + Math.random() * 1.2);
         mesh.position.set(
             (Math.random() - 0.5) * FIELD_W,
             (Math.random() - 0.5) * FIELD_H,
@@ -277,18 +300,10 @@ function _spawnWave(): void {
         _asteroids.push(mesh);
     }
 
-    // 1–3 кристалла (все одного типа!)
+    // 1–3 кристалла (все одного типа, общие Geo/Mat)
     const cCount = 1 + Math.floor(Math.random() * 3);
     for (let i = 0; i < cCount; i++) {
-        const geo = new THREE.OctahedronGeometry(0.3, 0);
-        const mat = new THREE.MeshStandardMaterial({
-            color: ct.color,
-            emissive: ct.color,
-            emissiveIntensity: 0.6,
-            roughness: 0.2,
-            metalness: 0.8,
-        });
-        const mesh = new THREE.Mesh(geo, mat);
+        const mesh = new THREE.Mesh(_crystalGeo, _crystalMat);
         mesh.position.set(
             (Math.random() - 0.5) * FIELD_W,
             (Math.random() - 0.5) * FIELD_H,
@@ -392,4 +407,10 @@ function _cleanup(): void {
     _asteroids = [];
     _crystals = [];
     _shipModel = null;
+
+    // Dispose shared GPU resources
+    _asteroidGeo?.dispose(); _asteroidGeo = null;
+    _asteroidMat?.dispose(); _asteroidMat = null;
+    _crystalGeo?.dispose();  _crystalGeo = null;
+    _crystalMat?.dispose();  _crystalMat = null;
 }

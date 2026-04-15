@@ -4,16 +4,23 @@
 
 import { getStore, dispatch } from '../stateManager.js';
 import { GameStore } from '../types.js';
+import { setQuality, QualityLevel } from '../qualityPresets.js';
 
 window._settings = {
     update(key: string, value: string | number) {
         dispatch('SET_SETTINGS', { [key]: isNaN(Number(value)) ? value : parseFloat(String(value)) });
+        // Мгновенное применение качества графики
+        if (key === 'graphicsQuality') {
+            setQuality(value as QualityLevel);
+        }
     },
     saveAndApply() {
         const s = (getStore().settings ?? {}) as Partial<import('../types.js').GameSettingsDto>;
         dispatch('SET_SETTINGS', s as import('../types.js').ActionPayload['SET_SETTINGS']);
         // Применяем масштаб UI через CSS-переменную (работает поверх авто-адаптации clamp)
         document.documentElement.style.setProperty('--user-ui-scale', String(s.uiScale ?? 1.0));
+        // Применяем качество графики
+        if (s.graphicsQuality) setQuality(s.graphicsQuality as QualityLevel);
         alert('Настройки сохранены.');
     }
 };

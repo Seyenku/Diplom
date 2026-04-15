@@ -24,6 +24,7 @@ import { initThreeScene } from './threeScene.js';
 import { initGuide }      from './guideManager.js';
 import { initHud }        from './hudManager.js';
 import { telemetry }      from './telemetryCollector.js';
+import { initQuality, QualityLevel } from './qualityPresets.js';
 
 // ── Модули экранов ───────────────────────────────────────────────────────────
 import * as MainMenu      from './screens/screenMainMenu.js';
@@ -93,7 +94,11 @@ import * as OfflineError  from './screens/screenOfflineError.js';
         dispatch('SET_SETTINGS', (initData.defaultSettings ?? {}) as Parameters<typeof dispatch<'SET_SETTINGS'>>[1]);
     }
 
-    // 2. Three.js сцена (canvas всегда в DOM)
+    // 2. Инициализация качества графики ДО создания рендерера
+    const savedQuality = (getStore().settings?.graphicsQuality ?? 'medium') as QualityLevel;
+    initQuality(savedQuality);
+
+    // 3. Three.js сцена (canvas всегда в DOM)
     try {
         await initThreeScene('game-canvas');
     } catch (e) {

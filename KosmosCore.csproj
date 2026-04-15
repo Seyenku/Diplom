@@ -16,4 +16,37 @@
     <Folder Include="Business\DTOs\Responses\" />
   </ItemGroup>
 
+  <!-- Exclude TypeScript sources and source maps from publish output -->
+  <ItemGroup>
+    <Content Remove="wwwroot\js\game\**\*.js.map" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="wwwroot\ts\game\gltfLoader.ts" />
+    <None Include="wwwroot\ts\game\guideManager.ts" />
+    <None Include="wwwroot\ts\game\hudManager.ts" />
+    <None Include="wwwroot\ts\game\main.ts" />
+    <None Include="wwwroot\ts\game\screens\screenAchievements.ts" />
+    <None Include="wwwroot\ts\game\screens\screenCharCreation.ts" />
+    <None Include="wwwroot\ts\game\screens\screenFlight.ts" />
+    <None Include="wwwroot\ts\game\screens\screenGalaxyMap.ts" />
+    <None Include="wwwroot\ts\game\screens\screenMainMenu.ts" />
+    <None Include="wwwroot\ts\game\screens\screenMiniGame.ts" />
+    <None Include="wwwroot\ts\game\screens\screenOfflineError.ts" />
+    <None Include="wwwroot\ts\game\screens\screenOnboarding.ts" />
+    <None Include="wwwroot\ts\game\screens\screenPlanetDetail.ts" />
+    <None Include="wwwroot\ts\game\screens\screenSettings.ts" />
+    <None Include="wwwroot\ts\game\screens\screenShipUpgrade.ts" />
+    <None Include="wwwroot\ts\game\screens\screenVocationConstellation.ts" />
+    <None Include="wwwroot\ts\game\skeletonLoader.ts" />
+    <None Include="wwwroot\ts\game\stateManager.ts" />
+    <None Include="wwwroot\ts\game\telemetryCollector.ts" />
+    <None Include="wwwroot\ts\game\threeScene.ts" />
+    <None Include="wwwroot\ts\game\types.ts" />
+  </ItemGroup>
+
+  <!-- Compile TypeScript before build -->
+  <Target Name="CompileTypeScript" BeforeTargets="Build">
+    <Exec Command="npm run build" WorkingDirectory="$(ProjectDir)" />
+  </Target>
+
 </Project>

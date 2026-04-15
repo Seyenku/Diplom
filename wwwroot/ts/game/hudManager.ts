@@ -95,6 +95,8 @@ function _calcShipStats(player: PlayerState): ShipStats {
     };
 }
 
+let _lastCrystalsHtml = '';
+
 function _updateCrystals(crystals: Partial<Record<CrystalType, number>>): void {
     const container = document.getElementById('hud-crystals');
     if (!container) return;
@@ -108,9 +110,14 @@ function _updateCrystals(crystals: Partial<Record<CrystalType, number>>): void {
     const html = Object.entries(crystals)
         .filter(([, n]) => (n as number) > 0)
         .map(([dir, n]) => `<span class="crystal-badge" style="font-size:0.72rem;">${DIR_ICONS[dir] ?? '💎'} ${n}</span>`)
-        .join('');
+        .join('')
+        || `<span style="color:rgba(255,255,255,0.3);font-size:0.75rem;">Нет кристаллов</span>`;
 
-    container.innerHTML = html || `<span style="color:rgba(255,255,255,0.3);font-size:0.75rem;">Нет кристаллов</span>`;
+    // Only update DOM if content actually changed
+    if (html !== _lastCrystalsHtml) {
+        container.innerHTML = html;
+        _lastCrystalsHtml = html;
+    }
 }
 
 // ── Индикатор синхронизации ───────────────────────────────────────────────────

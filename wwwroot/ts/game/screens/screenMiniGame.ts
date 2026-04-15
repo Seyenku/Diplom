@@ -62,6 +62,7 @@ interface Obstacle extends GameObject {
     r: number;
     speed: number;
     angle: number;
+    vertices: number[]; // fixed radii for polygon shape
 }
 
 interface Bonus extends GameObject {
@@ -248,12 +249,16 @@ function _spawnObjects(): void {
 
     // Помеха (всегда)
     const r = OBSTACLE_MIN_R + Math.random() * (OBSTACLE_MAX_R - OBSTACLE_MIN_R);
+    // Pre-generate polygon vertices to avoid per-frame Math.random() jitter
+    const vertices: number[] = [];
+    for (let i = 0; i < 6; i++) vertices.push(r * (0.7 + Math.random() * 0.3));
     _obstacles.push({
         x: Math.random() * w,
         y: -r * 2,
         r,
         speed: OBJ_SPEED_BASE + Math.random() * 80 + _elapsed * 2,
         angle: 0,
+        vertices,
     });
 
     // Бонус (50% шанс)
@@ -335,10 +340,10 @@ function _render(): void {
         _ctx!.rotate(o.angle);
         _ctx!.fillStyle = COLORS.obstacle;
         _ctx!.beginPath();
-        // Неправильный многоугольник (астероид)
+        // Use pre-generated vertex radii (no per-frame jitter)
         for (let i = 0; i < 6; i++) {
             const a = (i / 6) * Math.PI * 2;
-            const r2 = o.r * (0.7 + Math.random() * 0.3);
+            const r2 = o.vertices[i];
             const px = Math.cos(a) * r2;
             const py = Math.sin(a) * r2;
             i === 0 ? _ctx!.moveTo(px, py) : _ctx!.lineTo(px, py);
