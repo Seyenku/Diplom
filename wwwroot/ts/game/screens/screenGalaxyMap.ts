@@ -343,18 +343,30 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
 
         const baseColor = new THREE.Color(meta.color);
 
+        // Генерация 4 под-центров для разрыва идеальной сферической формы
+        const subCenters: THREE.Vector3[] = [];
+        for (let j = 0; j < 4; j++) {
+            subCenters.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 40,
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 40
+            ));
+        }
+
         for (let i = 0; i < PARTICLE_COUNT; i++) {
-            const r = 8 + Math.random() * 12;
+            const node = subCenters[Math.floor(Math.random() * subCenters.length)];
+            const r = 10 + Math.random() * 40; // Широкий разброс радиуса
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
 
-            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-            positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.5;
-            positions[i * 3 + 2] = r * Math.cos(phi);
+            // Асимметричное позиционирование 
+            positions[i * 3]     = node.x + r * Math.sin(phi) * Math.cos(theta) * 1.5;
+            positions[i * 3 + 1] = node.y + r * Math.sin(phi) * Math.sin(theta) * 0.25;
+            positions[i * 3 + 2] = node.z + r * Math.cos(phi) * 1.2;
 
             // Вариация яркости
             const brightness = 0.6 + Math.random() * 0.4;
-            colors[i * 3] = baseColor.r * brightness;
+            colors[i * 3]     = baseColor.r * brightness;
             colors[i * 3 + 1] = baseColor.g * brightness;
             colors[i * 3 + 2] = baseColor.b * brightness;
 
@@ -385,11 +397,13 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
         const sparksGeo = new THREE.BufferGeometry();
         const sparksPos = new Float32Array(SPARKS_COUNT * 3);
         for (let i = 0; i < SPARKS_COUNT; i++) {
-            const r = 5 + Math.random() * 8;
+            const node = subCenters[Math.floor(Math.random() * subCenters.length)];
+            const r = 10 + Math.random() * 25;
             const theta = Math.random() * Math.PI * 2;
-            sparksPos[i * 3] = r * Math.cos(theta);
-            sparksPos[i * 3 + 1] = (Math.random() - 0.5) * 3;
-            sparksPos[i * 3 + 2] = r * Math.sin(theta);
+            
+            sparksPos[i * 3]     = node.x + r * Math.cos(theta) * 1.5;
+            sparksPos[i * 3 + 1] = node.y + (Math.random() - 0.5) * 5;
+            sparksPos[i * 3 + 2] = node.z + r * Math.sin(theta) * 1.2;
         }
         sparksGeo.setAttribute('position', new THREE.BufferAttribute(sparksPos, 3));
 
@@ -416,16 +430,17 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
             blending: THREE.AdditiveBlending,
             depthWrite: false,
         }));
-        coreSprite.scale.set(30, 30, 1);
+        coreSprite.scale.set(60, 60, 1);
         coreSprite.userData = { type: 'core' };
         group.add(coreSprite);
 
         // ── Слой 4: Точечный свет ──
-        const light = new THREE.PointLight(meta.color, 1.2, 80);
+        const light = new THREE.PointLight(meta.color, 1.2, 120);
         group.add(light);
 
         // ── Хит-бокс (невидимая сфера для raycasting) ──
-        const hitGeo = new THREE.SphereGeometry(14, 16, 12);
+        // Увеличен радиус с 14 до 30 из-за размашистости туманностей
+        const hitGeo = new THREE.SphereGeometry(30, 16, 12);
         const hitMat = new THREE.MeshBasicMaterial({ visible: false });
         const hitMesh = new THREE.Mesh(hitGeo, hitMat);
         hitMesh.userData = { clusterId, type: 'nebula-hitbox' };
