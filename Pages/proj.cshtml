@@ -20,13 +20,30 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" />
     <link rel="stylesheet" href="~/css/game.css" asp-append-version="true" />
+    <style>
+        /* Переопределяем глобальный layout для полноэкранной игры */
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #020710 !important; }
+        .site-header, .site-footer { display: none !important; }
+        main.container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; height: 100vh; }
+        .game-page-container { height: 100vh; width: 100vw; display: flex; flex-direction: column; background: #020710; }
+        .game-header { position: absolute; z-index: 100; top: 15px; left: 15px; right: 15px; gap: 10px; pointer-events: none; }
+        .game-header h2 { display: none; }
+        .btn-game-sys { pointer-events: auto; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(99, 102, 241, 0.3); color: #fff; padding: 8px 16px; border-radius: 8px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: 'Inter', sans-serif; font-size: 14px; }
+        .btn-game-sys:hover { background: rgba(15, 23, 42, 0.9); border-color: #4fc3f7; color: #4fc3f7; }
+        #game-root { height: 100vh !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; flex-grow: 1; }
+    </style>
 }
 
 <div class="game-page-container">
-    <div class="game-header d-flex justify-content-between align-items-center mb-3">
-        <h2>@ViewData["Title"]</h2>
-        <button id="btn-fullscreen-toggle" class="btn btn-outline-primary btn-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16">
+    <div class="game-header d-flex justify-content-between align-items-center">
+        <a href="~/" class="btn-game-sys">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+            </svg>
+            На главную
+        </a>
+        <button id="btn-fullscreen-toggle" class="btn-game-sys">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
               <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707m4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707m0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707m-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707"/>
             </svg>
             На весь экран

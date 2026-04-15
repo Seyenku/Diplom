@@ -1,8 +1,28 @@
 @page
 @{
     ViewData["Title"] = "Админ-панель";
+    Layout = "_AdminLayout";
 }
-<div class="container-fluid" style="margin-top: 30px;">
-    <h3 align="center">Админ-панель Главная</h3>
-    <p align="center">Добро пожаловать в панель управления.</p>
+
+<div class="admin-card">
+    <h2 class="admin-card-title">Добро пожаловать</h2>
+    <p style="color: var(--color-text-muted);">Вы находитесь в панели управления проектом KosmosCore. Выберите нужный раздел в левом меню.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+    <div class="admin-card">
+        <h3 class="admin-card-title">Статистика системы</h3>
+        <ul style="list-style: none; padding: 0; margin: 0; line-height: 2;">
+            <li><strong>Всего профессий:</strong> <span style="float: right; color: var(--color-text-muted);">--</span></li>
+            <li><strong>Активных пользователей:</strong> <span style="float: right; color: var(--color-text-muted);">--</span></li>
+            <li><strong>Пройдено тестов:</strong> <span style="float: right; color: var(--color-text-muted);">--</span></li>
+        </ul>
+    </div>
+    <div class="admin-card">
+        <h3 class="admin-card-title">Быстрые действия</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="site-nav__btn site-nav__btn--accent" style="width: 100%;">Добавить профессию</button>
+            <button class="site-nav__btn site-nav__btn--ghost" style="width: 100%;">Посмотреть логи</button>
+        </div>
+    </div>
 </div>

@@ -6,16 +6,83 @@
 
 @section Head {
     <style>
-        .hero-header #particles-js {
-            height: 100vh !important;
+        .hero-wrapper {
+            position: relative;
+            width: 100%;
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-top: -64px; /* Compensate for the sticky nav */
+            padding-top: 64px;
+        }
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            background-color: var(--color-bg-primary);
+        }
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 40px 20px;
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        @@keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .hero-title {
+            font-family: var(--font-heading);
+            font-size: clamp(40px, 6vw, 64px);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--color-accent) 0%, #0ea5e9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 24px;
+            line-height: 1.1;
+        }
+        .hero-subtitle {
+            font-size: clamp(16px, 2vw, 20px);
+            color: var(--color-text-muted);
+            margin: 0 auto 40px;
+            line-height: 1.6;
         }
     </style>
 }
 
-<div class="container-fluid py-4">
+<div class="hero-wrapper">
+    <div id="particles-js"></div>
+    <div class="hero-content">
+        <h1 class="hero-title">Атлас профессий будущего</h1>
+        <p class="hero-subtitle">Ваш интерактивный проводник в мир новых компетенций, технологий и специальностей Сыктывкарского государственного университета им. Питирима Сорокина.</p>
+        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+            <a href="~/game" class="site-nav__btn site-nav__btn--accent" style="padding: 16px 32px; font-size: 16px; font-weight: 600; border-radius: 12px;">Открыть Атлас</a>
+            <a href="#about" class="site-nav__btn site-nav__btn--ghost" style="padding: 16px 32px; font-size: 16px; font-weight: 600; border-radius: 12px; background: white;">О проекте</a>
+        </div>
+    </div>
+</div>
+
+<div id="about" class="container-fluid py-4" style="position: relative; z-index: 10;">
     <div class="proekt">
         <div class="proekt-content">
-            <h1 class="proekt-title">О проекте</h1>
+            <h2 class="proekt-title">О проекте</h2>
             
             <div class="proekt-section">
                 <h3>Что такое «Атлас профессий будущего?»</h3>
@@ -41,18 +108,95 @@
         </div>
     </div>
 
-    <h2 class="proekt-title">Что вас интересует?</h2>
+    <h2 class="proekt-title" style="margin-top: 20px;">Что вас интересует?</h2>
     
     <div class="rules-grid">
         <div class="card-item">
             <div class="image naprav"></div>
             <a href="~/spec" class="card-link">Направления подготовки</a>
-            <p class="card-text">Выбери одно из существующих направлений</p>
+            <p class="card-text">Выделенные образовательные программы и факультеты СГУ, связанные с профессиями будущего.</p>
         </div>
         <div class="card-item">
             <div class="image atlas"></div>
-            <a href="~/proj" class="card-link">Атлас профессий будущего</a>
-            <p class="card-text">Узнай, какие профессии будут востребованы в будущем</p>
+            <a href="~/proj" class="card-link">Интерактивный Атлас</a>
+            <p class="card-text">Исследуйте 3D-галактику профессий, навыков и необходимых компетенций.</p>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            tsParticles.load("particles-js", {
+                fpsLimit: 60,
+                particles: {
+                    number: {
+                        value: 60,
+                        density: {
+                            enable: true,
+                            value_area: 800
+                        }
+                    },
+                    color: {
+                        value: "#3b82f6" // blue accent
+                    },
+                    shape: {
+                        type: "circle"
+                    },
+                    opacity: {
+                        value: 0.5,
+                        random: true,
+                        anim: {
+                            enable: true,
+                            speed: 1,
+                            opacity_min: 0.1,
+                            sync: false
+                        }
+                    },
+                    size: {
+                        value: 3,
+                        random: true,
+                        anim: {
+                            enable: false,
+                            speed: 40,
+                            size_min: 0.1,
+                            sync: false
+                        }
+                    },
+                    links: {
+                        enable: true,
+                        distance: 150,
+                        color: "#93c5fd",
+                        opacity: 0.4,
+                        width: 1
+                    },
+                    move: {
+                        enable: true,
+                        speed: 1.5,
+                        direction: "none",
+                        random: true,
+                        straight: false,
+                        outModes: "out"
+                    }
+                },
+                interactivity: {
+                    detectsOn: "canvas",
+                    events: {
+                        onHover: {
+                            enable: true,
+                            mode: "repulse"
+                        },
+                        resize: true
+                    },
+                    modes: {
+                        repulse: {
+                            distance: 100,
+                            duration: 0.4
+                        }
+                    }
+                },
+                retina_detect: true
+            });
+        });
+    </script>
+}

@@ -1,0 +1,59 @@
+@namespace KosmosCore.Pages.Admin
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - KosmosCore Админ-панель</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="~/css/bootstrap.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/StyleSheet.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="admin-body">
+    <div class="admin-wrapper">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar-header">
+                <h2>KosmosCore</h2>
+                <span>Панель управления</span>
+            </div>
+            <nav class="admin-nav">
+                <ul>
+                    <li><a href="~/admin" class="@(ViewContext.RouteData.Values["page"]?.ToString().EndsWith("Index") == true ? "active" : "")">Главная</a></li>
+                    <li><a href="~/admin/grafic_view" class="@(ViewContext.RouteData.Values["page"]?.ToString().EndsWith("grafic_view") == true ? "active" : "")">Аналитика</a></li>
+                    <li><a href="~/">Перейти на сайт</a></li>
+                </ul>
+            </nav>
+            <div class="admin-sidebar-footer">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <div style="font-size: 14px; margin-bottom: 10px; opacity: 0.8;">Вы вошли как <br/><b>@User.Identity.Name</b></div>
+                    <form method="post" asp-page="/Default" asp-page-handler="LoggingOut">
+                        <button type="submit" class="admin-btn-logout">Выйти</button>
+                    </form>
+                }
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-topbar">
+                <h1 class="admin-page-title">@ViewData["Title"]</h1>
+            </header>
+            
+            <div class="admin-content-inner">
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

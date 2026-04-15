@@ -1,16 +1,41 @@
-/* @font-face for Century Gothic removed to prevent 404 error */
+:root {
+    --color-bg-primary: #f8fafc;
+    --color-bg-secondary: #ffffff;
+    --color-bg-card: rgba(255, 255, 255, 0.85);
+    
+    --color-accent: #3b82f6;          /* Blue */
+    --color-accent-hover: #2563eb;
+    --color-accent-light: rgba(59, 130, 246, 0.1);
+    
+    --color-text-primary: #1e293b;
+    --color-text-muted: #64748b;
+    
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-blur: blur(12px);
+    
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.08);
+    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
 
 html, body {
     font-size: 16px;
-    font-family: 'Century Gothic', 'Verdana';
+    font-family: var(--font-body);
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
     height: 100%;
     width: 100%;
+    margin: 0;
 }
+
 body {
     display: flex;
-    flex-direction:column;
-    min-height:100vh;
-    margin:0;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 main {
@@ -24,129 +49,155 @@ main {
 }
 
 .table {
-    font-family: 'Century Gothic', 'Verdana';
+    font-family: var(--font-body);
 }
 
 /* Навигация */
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-sm);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--glass-border);
+}
+
 .site-nav {
-    background-color: #2b3442;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 24px;
-    height: 56px;
+    height: 64px;
     width: 100%;
     box-sizing: border-box;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .site-nav__brand {
-    color: #fff;
-    font-family: 'Century Gothic', 'Verdana', sans-serif;
-    font-size: 15px;
-    font-weight: bold;
-    letter-spacing: 0.04em;
+    color: var(--color-accent);
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     text-decoration: none;
     flex-shrink: 0;
     text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.site-nav__brand:hover {
+    color: var(--color-accent-hover);
 }
 
 .site-nav__links {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 8px;
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-    .site-nav__links li a {
-        display: block;
-        padding: 6px 14px;
-        font-size: 14px;
-        font-family: 'Century Gothic', 'Verdana', sans-serif;
-        color: rgba(255, 255, 255, 0.72);
-        text-decoration: none;
-        border-radius: 6px;
-        transition: background 0.18s ease, color 0.18s ease;
-        white-space: nowrap;
-    }
+.site-nav__links li a {
+    display: block;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.18s ease, color 0.18s ease;
+    white-space: nowrap;
+}
 
-        .site-nav__links li a:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-        }
+.site-nav__links li a:hover {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+}
 
-        .site-nav__links li a.active {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-        }
+.site-nav__links li a.active {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+    font-weight: 600;
+}
 
 .site-nav__actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     flex-shrink: 0;
 }
 
 .site-nav__username {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.55);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-muted);
     white-space: nowrap;
 }
 
 .site-nav__btn {
     display: inline-block;
-    padding: 6px 16px;
-    font-size: 13px;
-    font-family: 'Century Gothic', 'Verdana', sans-serif;
-    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    border-radius: 8px;
     text-decoration: none;
     cursor: pointer;
-    transition: background 0.18s ease;
+    transition: all 0.2s ease;
     white-space: nowrap;
     line-height: 1.5;
 }
 
-/* Кнопка «Войти» / «Выйти» */
 .site-nav__btn--ghost {
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--color-text-muted);
     background: transparent;
-    color: #fff;
+    color: var(--color-text-muted);
 }
 
-    .site-nav__btn--ghost:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
-    }
+.site-nav__btn--ghost:hover {
+    background: var(--color-accent-light);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
 
-/* Кнопка «Личный кабинет» */
 .site-nav__btn--accent {
-    border: 1px solid rgba(124, 214, 148, 0.45);
-    background: rgba(124, 214, 148, 0.15);
-    color: #7CD694;
+    border: 1px solid transparent;
+    background: var(--color-accent);
+    color: #ffffff;
+    box-shadow: var(--shadow-sm);
 }
 
-    .site-nav__btn--accent:hover {
-        background: rgba(124, 214, 148, 0.28);
-        color: #7CD694;
-    }
+.site-nav__btn--accent:hover {
+    background: var(--color-accent-hover);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
+}
 
-/* Адаптив */
+/* Адаптив навигации */
 @media (max-width: 768px) {
     .site-nav {
         flex-wrap: wrap;
         height: auto;
-        padding: 10px 16px;
-        gap: 8px;
+        padding: 12px 16px;
+        gap: 12px;
     }
 
     .site-nav__links {
         order: 3;
         width: 100%;
         flex-wrap: wrap;
-        gap: 4px;
-        padding: 6px 0;
-        border-top: 1px solid rgba(255,255,255,0.1);
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 0 4px;
+        border-top: 1px solid rgba(0,0,0,0.05);
     }
 
     .site-nav__username {
@@ -154,208 +205,79 @@ main {
     }
 }
 
-.header {
-    flex-shrink: 0;
-}
-
-.header li {
-    font-family: 'Century Gothic';
-    color: blueviolet;
-    font-size: 11px;
-}
-
-.header_dd {
-    background-color: #7CD694;
-    background-size: cover;
-    font-size: 14px;
-    height: 100vh;
-    background-position: center bottom;
-}
-
-.header a {
-    display: block;
-    text-decoration: none !important;
-    padding: 5px 25px;
-    font-size: 114%;
-    color: #fff;
-}
-
-    .header a:hover {
-        background-color: #000 !important;
-        color: #fff;
-    }
-
-.header-proj {
-    background-color: #000;
-    font-size: 13px;
-}
-
-.header_dd h1 {
-    font-size: 40px;
-    color: white;
-    line-height: 240px;
-    font-family: 'Century Gothic';
-    text-transform: uppercase;
-    text-align: center;
-    margin-top: -146.5px;
-    position: absolute;
-    left: 0;
-    top: 50%;
-    padding: 0 20px;
+/* О проекте - Главная */
+.hero-wrapper {
+    position: relative;
     width: 100%;
-}
-
-.bttn {
-    display: inline-block;
-    padding: 15px 30px;
-    border: 2px solid #fff;
-    text-transform: uppercase;
-    letter-spacing: 0.015em;
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 1;
-    color: #fff;
-    text-decoration: none;
-    -webkit-transition: all 0.4s;
-    -moz-transition: all 0.4s;
-    -o-transition: all 0.4s;
-    transition: all 0.4s;
-}
-
-
-
-.nav-pills > li.active > a,
-.nav-pills > li.active > a:hover,
-.nav-pills > li.active > a:focus {
-    color: #000;
-    background-color: #B8AF3D;
-}
-
-@media only screen and (max-width: 768px) {
-    .nav-pills > li {
-        float: none;
-    }
-}
-
-.active > a,
-.active > a:hover {
-    background-color: #fff !important;
-    color: #897862 !important;
-}
-
-@keyframes round {
-    25% {
-        opacity: 1;
-    }
-
-    60% {
-        opacity: 1;
-    }
-}
-
-.rules {
-    width: 920px;
-    margin: 80px auto 20px;
-}
-
-.card > image {
-    transition: all 0.6s ease;
-}
-
-.card {
-    width: 420px;
-    min-height: 420px;
-    display: inline-block;
-    vertical-align: top;
-    margin-right: 76px;
-    text-align: center;
-}
-
-.rules a {
-    font-size: 25px;
-    text-align: center;
-    font-family: 'Century Gothic';
-    font-weight: bold;
-    margin: 20px auto 30px;
-    white-space: nowrap;
-}
-
-.rules p {
-    font-size: 18px;
-    line-height: 30px;
-    margin-bottom: 140px;
-    margin-top: 20px;
-}
-
-.module {
-    width: 420px;
-    height: 420px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #ff3333;
-}
-
-.atlas {
-    background-image: url('/images/atlas1.png');
-    opacity: 0.85;
-}
-
-    .atlas:hover,
-    .naprav:hover {
-        opacity: 1;
-        transition: all 0.4s ease;
-        -webkit-transform: scale(1.1);
-        -ms-transform: scale(1.1);
-        transform: scale(1.1);
-    }
-
-.naprav {
-    background-image: url('/images/naprav1.png');
-    opacity: 0.9;
-}
-
-/* О проекте */
-.proekt-content {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-
-.proekt-title {
-    font-size: 28px;
-    text-align: center;
-    font-family: 'Century Gothic', sans-serif;
-    font-weight: bold;
-    margin: 60px 0 40px;
-}
-
-.proekt-section {
     margin-bottom: 40px;
 }
 
-    .proekt-section h3 {
-        font-size: 22px;
-        text-align: left;
-        font-family: 'Century Gothic', sans-serif;
-        font-weight: bold;
-        margin-bottom: 15px;
-    }
+#particles-js {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
 
-    .proekt-section p {
-        font-size: 18px;
-        line-height: 1.6;
-        text-align: justify;
-        margin: 0;
-    }
+.proekt {
+    position: relative;
+    z-index: 1;
+    padding: 60px 20px;
+    text-align: center;
+}
 
-/* --- Карточки --- */
+.proekt-content {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: var(--shadow-card);
+}
+
+.proekt-title {
+    font-size: 36px;
+    text-align: center;
+    font-family: var(--font-heading);
+    font-weight: 800;
+    color: var(--color-text-primary);
+    margin: 0 0 40px;
+}  
+
+.proekt-section {
+    margin-bottom: 40px;
+    text-align: left;
+}
+
+.proekt-section h3 {
+    font-size: 24px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--color-accent);
+    margin-bottom: 16px;
+}
+
+.proekt-section p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+/* Карточки на главной */
 .rules-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 40px;
-    max-width: 900px;
-    margin: 0 auto 60px;
+    max-width: 1000px;
+    margin: 0 auto 80px;
     padding: 0 20px;
+    position: relative;
+    z-index: 1;
 }
 
 .card-item {
@@ -363,211 +285,240 @@ main {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    min-width: 0;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 40px 24px;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-    .card-item .image {
-        display: block;
-        width: 100%;
-        max-width: 380px;
-        aspect-ratio: 1 / 1;
-        background-size: cover;
-        background-position: center;
-        margin-bottom: 25px;
-        transition: transform 0.4s ease;
-    }
+.card-item:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+.card-item .image {
+    display: block;
+    width: 200px;
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    margin-bottom: 30px;
+    transition: transform 0.4s ease;
+    border-radius: 20px;
+}
+
+.card-item:hover .image {
+    transform: scale(1.05);
+}
 
 .card-link {
-    font-size: 22px;
-    font-family: 'Century Gothic', sans-serif;
-    font-weight: bold;
-    margin-bottom: 15px;
+    font-size: 24px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    margin-bottom: 16px;
     text-decoration: none;
-    color: #333;
+    color: var(--color-text-primary);
     transition: color 0.3s ease;
 }
 
-    .card-link:hover {
-        color: #007bff;
-    }
+.card-item:hover .card-link {
+    color: var(--color-accent);
+}
 
 .card-text {
-    font-size: 16px;
-    color: #555;
-    line-height: 1.4;
+    font-size: 15px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
     margin: 0;
 }
 
+.atlas { background-image: url('/images/atlas1.png'); }
+.naprav { background-image: url('/images/naprav1.png'); }
+
 @media (max-width: 768px) {
-    .rules-grid {
-        grid-template-columns: 1fr;
-        gap: 30px;
-    }
-
-    .proekt-title {
-        font-size: 24px;
-        margin: 40px 0 25px;
-    }
-
-    .proekt-section h3 {
-        font-size: 20px;
-    }
-
-    .proekt-section p {
-        font-size: 16px;
-        text-align: left;
-    }
+    .rules-grid { grid-template-columns: 1fr; gap: 30px; }
+    .proekt-content { padding: 30px 20px; }
+    .proekt-title { font-size: 28px; }
 }
 
-.test {
-    margin-left: 0px;
-    line-height: 22px;
-    font-size: 13px;
-}
-
-    .test h3 {
-        font-size: 16px;
-    }
-
-    .test p {
-        padding-left: 60px;
-    }
-
-    .test image a {
-        text-align: center;
-    }
-
+/* Таблицы старые - оставляем как есть, но чиним фон */
 .table-spec h1 {
-    font-size: 30px;
+    font-size: 28px;
     text-align: center;
-    font-family: 'Century Gothic';
-    font-weight: bold;
-    margin-bottom: 60px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    margin-bottom: 40px;
     margin-top: 20px;
+    color: var(--color-text-primary);
 }
 
-.label {
-    color: #FFF;
-    font-family: sans-serif;
-    padding: 2px;
-    background: rgba( 0, 0, 0, .6 );
+/* Тест (Wizard) */
+.test-wizard-container {
+    max-width: 800px;
+    margin: 60px auto;
+    padding: 0 20px;
 }
 
-.labelproj {
-    color: #fff;
-    font-family: sans-serif;
-    padding: 2px;
-    background: rgba( 0, 0, 0, .6 );
-    font-size: 8px;
-    white-space: pre;
+.wizard-card {
+    background: var(--color-bg-secondary);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: var(--shadow-card);
+    border: 1px solid rgba(0,0,0,0.05);
 }
 
-.labelsuns {
-    font-size: 13px;
-    font-family: 'Century Gothic';
-    color: #fbf619;
-    font-weight: bold;
+.wizard-header {
+    text-align: center;
+    margin-bottom: 40px;
 }
 
-/* логин пароль */
-.form-group {
-    width: 380px;
-    height: 400px;
-    margin: 70px auto;
-    padding: 3px 2px 2px 2px;
-    background: white;
-    font-family: 'Century Gothic';
+.wizard-title {
+    font-family: var(--font-heading);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: 12px;
+}
+
+.wizard-subtitle {
+    color: var(--color-text-muted);
     font-size: 16px;
 }
 
-    .form-group titletext {
-        margin-bottom: 20px;
-    }
+.wizard-progress {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 40px;
+}
 
-.input {
-    font-size: 18px;
-    padding: 8px 10px 10px 5px;
-    display: block;
-    background: #fff;
-    color: #636363;
-    width: 100%;
+.progress-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.progress-dot.active {
+    background: var(--color-accent);
+    transform: scale(1.2);
+}
+
+.options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.option-btn {
+    background: var(--color-bg-primary);
+    border: 2px solid transparent;
+    padding: 20px;
+    border-radius: 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.option-btn:hover {
+    border-color: var(--color-accent-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.option-btn.selected {
+    border-color: var(--color-accent);
+    background: var(--color-accent-light);
+}
+
+.option-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--color-text-primary);
+}
+
+.option-desc {
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+.wizard-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding-top: 24px;
+}
+
+.btn-wizard {
+    padding: 12px 32px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+}
+
+.btn-prev {
+    background: transparent;
+    border: 1px solid var(--color-text-muted);
+    color: var(--color-text-muted);
+}
+
+.btn-prev:hover {
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+}
+
+.btn-next {
+    background: var(--color-accent);
     border: none;
-    border-radius: 1px;
-    border-bottom: 1px solid #757575;
+    color: white;
+    box-shadow: var(--shadow-sm);
 }
 
-.higl {
-    position: absolute;
-    height: 60%;
-    width: 100px;
-    top: 75%;
-    left: 0;
-    pointer-events: none;
-    opacity: 0.5;
+.btn-next:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
 }
 
-.buttn {
-    display: inline-block;
-    padding: 14px 30px;
-    border: 1px solid #fff;
-    border-color: rgb(20, 25, 34);
-    text-transform: uppercase;
-    letter-spacing: 0.015em;
-    font-size: 18px;
-    font-weight: 500;
-    line-height: 1;
-    color: rgb(20, 25, 34);
-    background-color: #fff;
-    text-decoration: none;
-    -webkit-transition: all 0.4s;
-    -moz-transition: all 0.4s;
-    -o-transition: all 0.4s;
-    transition: all 0.4s;
-    margin: 30px 75px auto 60px;
+.btn-next:disabled {
+    background: rgba(0,0,0,0.1);
+    color: rgba(0,0,0,0.3);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
 }
 
-/* стили для таблицы в админке */
-.adm-table {
-    font-size: 10px;
-    border-collapse: collapse;
+/* Result Screen */
+.result-box {
     text-align: center;
-    width: 90%;
+    padding: 20px;
 }
 
-.adm-th {
-    background: #2b3442;
-    text-align: center;
-    padding: 10px 20px;
-    color: #fff;
-    border: solid 1px #fff;
-    max-width: 150px;
+.result-professions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin: 30px 0;
 }
 
-.adm-td {
-    background: #fff;
-    text-align: left;
-    padding: 5px 10px;
-    color: #000;
-    max-width: 300px;
+.profession-badge {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+    padding: 12px 24px;
+    border-radius: 100px;
+    font-weight: 600;
+    font-size: 16px;
 }
-
-.adm-th-content {
-    background: #484231;
-    text-align: left;
-    padding: 10px 20px;
-    color: #fff;
-    border: solid 1px #fff;
-    max-width: 150px;
-}
-
-.adm-pager a, .adm-pager span {
-    margin-right: 10px;
-}
-
-.gradient {
-    background-color: #2b3442;
-    background-image: repeating-radial-gradient(ellipse farthest-corner at right bottom, rgb(72, 85, 108) 0%, rgb(27, 33, 43) 73.8%, rgb(20, 25, 34) 84.1%, rgb(20, 25, 34) 94%, rgb(53, 59, 69) 100%);
-    background-image: -ms-repeating-radial-gradient(right bottom, ellipse farthest-corner, rgb(72, 85, 108) 0%, rgb(27, 33, 43) 73.8%, rgb(20, 25, 34) 84.1%, rgb(20, 25, 34) 94%, rgb(53, 59, 69) 100%);
-}
-
-/* End of StyleSheet */

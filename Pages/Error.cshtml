@@ -1,61 +1,56 @@
-﻿@page
+@page
 @model ErrorModel
 @{
     ViewData["Title"] = "Произошла ошибка";
 }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-            <div class="error-icon mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" class="text-secondary opacity-50" viewBox="0 0 16 16">
-                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1a.05.05 0 0 1 .1-.1h.8a.05.05 0 0 1 .1.1v4.7a.05.05 0 0 1-.1.1h-.8a.05.05 0 0 1-.1-.1V7.1z"/>
+<div class="test-wizard-container" style="text-align: center; margin-top: 100px;">
+    <div class="wizard-card">
+        <div class="error-icon" style="color: #ef4444; margin-bottom: 30px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1a.05.05 0 0 1 .1-.1h.8a.05.05 0 0 1 .1.1v4.7a.05.05 0 0 1-.1.1h-.8a.05.05 0 0 1-.1-.1V7.1z"/>
+            </svg>
+        </div>
+
+        <h1 style="font-family: var(--font-heading); font-weight: 800; font-size: 40px; color: var(--color-text-primary); margin-bottom: 20px;">
+            Упс! Что-то пошло не так
+        </h1>
+        
+        <p style="font-size: 18px; color: var(--color-text-muted); margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto;">
+            Мы уже в курсе проблемы и работаем над её решением. Пожалуйста, попробуйте обновить страницу позже.
+        </p>
+
+        @if (Model.ShowRequestId)
+        {
+            <div style="background: var(--color-bg-primary); display: inline-block; padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); margin-bottom: 40px;">
+                <span style="font-size: 14px; font-weight: 500; color: var(--color-text-muted); text-transform: uppercase;">ID запроса:</span>
+                <code style="margin-left: 8px; color: var(--color-accent); font-weight: 600;">@Model.RequestId</code>
+            </div>
+        }
+        <br/>
+        <a href="/" class="site-nav__btn site-nav__btn--accent" style="padding: 14px 32px; font-size: 16px;">Вернуться на главную</a>
+
+        @* Блок для разработчиков *@
+        <div style="margin-top: 60px; text-align: left; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 16px; padding: 24px;">
+            <h4 style="font-family: var(--font-heading); font-weight: 700; color: #d97706; margin-bottom: 12px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-exclamation-triangle-fill" viewBox="0 0 16 16" style="vertical-align: text-bottom; margin-right: 8px;">
+                    <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
                 </svg>
-            </div>
-
-            <h1 class="display-4 fw-bold text-dark">Упс! Что-то пошло не так</h1>
-            <p class="lead text-muted mb-4">
-                Мы уже в курсе проблемы и работаем над её решением. Пожалуйста, попробуйте обновить страницу позже.
+                Режим разработки
+            </h4>
+            <p style="font-size: 14px; color: #92400e; margin-bottom: 8px;">
+                Подробная информация об ошибке доступна только в среде <strong>Development</strong>.
+                В продакшене этот блок должен быть скрыт, чтобы избежать утечки конфиденциальных данных.
             </p>
-
-            @if (Model.ShowRequestId)
-            {
-                <div class="alert alert-light border shadow-sm d-inline-block px-4">
-                    <span class="text-uppercase small fw-bold text-muted">ID запроса:</span>
-                    <code class="ms-2 text-primary">@Model.RequestId</code>
-                </div>
-            }
-
-            <div class="mt-5">
-                <a href="/" class="btn btn-primary btn-lg px-5 shadow-sm">Вернуться на главную</a>
-            </div>
-
-            @* Блок для разработчиков *@
-            <hr class="my-5 opacity-25" />
-
-            <div class="card border-warning bg-light text-start shadow-sm">
-                <div class="card-header bg-warning text-dark fw-bold">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Режим разработки
-                </div>
-                <div class="card-body">
-                    <p class="card-text small text-secondary">
-                        Подробная информация об ошибке доступна только в среде <strong>Development</strong>.
-                        В продакшене этот блок должен быть скрыт, чтобы избежать утечки конфиденциальных данных.
-                    </p>
-                    <p class="mb-0 small">
-                        <strong>Совет:</strong> Установите переменную <code>ASPNETCORE_ENVIRONMENT</code> в значение <code>Development</code> для локальной отладки.
-                    </p>
-                </div>
-            </div>
+            <p style="font-size: 13px; color: #b45309; margin: 0;">
+                Совет: Установите переменную <code>ASPNETCORE_ENVIRONMENT</code> в значение <code>Development</code> для локальной отладки.
+            </p>
         </div>
     </div>
 </div>
 
 <style>
-    body {
-        background-color: #f8f9fa;
-    }
     .error-icon svg {
         animation: pulse 2s infinite ease-in-out;
     }
