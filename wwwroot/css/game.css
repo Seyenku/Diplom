@@ -269,7 +269,7 @@
         radial-gradient(ellipse at 20% 50%, rgba(79, 195, 247, 0.04) 0%, transparent 60%),
         radial-gradient(ellipse at 80% 20%, rgba(167, 139, 250, 0.06) 0%, transparent 60%),
         var(--color-bg);
-    pointer-events: none;
+    pointer-events: auto;
 }
 
 /* ── Скроллбар (тёмная тема) ───────────────────── */

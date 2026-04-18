@@ -71,6 +71,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
     // Тип кристаллов из sessionData (установлен Galaxy Map)
     _crystalType = (store.sessionData?.crystalType ?? 'programming') as CrystalType;
+    const selectedShipColor = store.player?.shipColor ?? '#4fc3f7';
 
     // Обновляем UI-индикатор типа кристаллов
     const ct = CRYSTAL_COLORS[_crystalType] ?? CRYSTAL_COLORS.programming;
@@ -94,6 +95,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
         const fallback = _createFallbackShip();
         if (fallback) _shipModel.add(fallback);
     }
+    _applyShipColor(_shipModel, selectedShipColor);
 
     if (window.__threeScene) {
         window.__threeScene.add(_shipModel);
@@ -370,6 +372,35 @@ function _updateShieldBar(): void {
 function _setText(id: string, v: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = v;
+}
+
+function _applyShipColor(root: THREE.Object3D, hexColor: string): void {
+    let bodyFound = false;
+    let firstPaintable: THREE.Material | null = null;
+
+    root.traverse(obj => {
+        const mesh = obj as THREE.Mesh;
+        if (!mesh.isMesh || !mesh.material) return;
+
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mats.forEach(mat => {
+            if (!firstPaintable && 'color' in (mat as unknown as Record<string, unknown>)) {
+                firstPaintable = mat;
+            }
+
+            if (mat.name === 'ship_body' && 'color' in (mat as unknown as Record<string, unknown>)) {
+                (mat as THREE.Material & { color: THREE.Color }).color.set(hexColor);
+                mat.needsUpdate = true;
+                bodyFound = true;
+            }
+        });
+    });
+
+    if (!bodyFound && firstPaintable && 'color' in (firstPaintable as unknown as Record<string, unknown>)) {
+        const paintable = firstPaintable as THREE.Material & { color: THREE.Color };
+        paintable.color.set(hexColor);
+        paintable.needsUpdate = true;
+    }
 }
 
 function _createFallbackShip(): THREE.Group | null {
