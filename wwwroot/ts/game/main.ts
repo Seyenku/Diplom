@@ -25,6 +25,7 @@ import { initGuide }      from './guideManager.js';
 import { initHud }        from './hudManager.js';
 import { telemetry }      from './telemetryCollector.js';
 import { initQuality, QualityLevel } from './qualityPresets.js';
+import { ClusterDto, PlanetDto, GameSettingsDto } from './types.js';
 
 // ── Модули экранов ───────────────────────────────────────────────────────────
 import * as MainMenu      from './screens/screenMainMenu.js';
@@ -105,13 +106,13 @@ import * as OfflineError  from './screens/screenOfflineError.js';
         console.warn('[main] Three.js init failed, continuing without 3D:', e);
     }
 
-    // 3. Глобальные оверлеи: HUD + Guide (независимо от экранов)
+    // 4. Глобальные оверлеи: HUD + Guide (независимо от экранов)
     await Promise.allSettled([
         initHud(),
         initGuide(),
     ]);
 
-    // 3.5 Телеметрия
+    // 5. Телеметрия
     telemetry.startSession();
     // Трекинг переходов между экранами
     on('SCREEN_CHANGED', (_s, { screenId, previousScreen }) => {
@@ -121,7 +122,7 @@ import * as OfflineError  from './screens/screenOfflineError.js';
         telemetry.track('CRYSTALS_EARNED', earned as Record<string, number>);
     });
 
-    // 4. Регистрируем модули экранов
+    // 6. Регистрируем модули экранов
     registerScreen(Screen.MAIN_MENU,      MainMenu);
     registerScreen(Screen.CHAR_CREATION,  CharCreation);
     registerScreen(Screen.ONBOARDING,     Onboarding);
@@ -135,22 +136,45 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     registerScreen(Screen.SETTINGS,       Settings);
     registerScreen(Screen.OFFLINE_ERROR,  OfflineError);
 
-    // 5. Восстанавливаем сохранение
+    // 7. Восстанавливаем сохранение
     loadSavedPlayer();
 
-    // 6. Определяем стартовый экран
+    // 8. Определяем стартовый экран
     const hashScreen = _screenFromHash(location.hash);
     const startScreen: ScreenId = hashScreen ?? Screen.MAIN_MENU;
 
     await transition(startScreen);
 })();
 
+// ── Глобальный обработчик кликов для SPA-навигации ───────────────────────────
+document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('[data-spa]') as HTMLElement;
+    if (!btn) return;
+    const action = btn.dataset.spa;
+
+    if (action === 'goto') {
+        const target = btn.dataset.screen as ScreenId;
+        if (target) transition(target);
+    } else if (action === 'goBack') {
+        import('./stateManager.js').then(m => m.goBack());
+    } else if (action === 'toggleGuide') {
+        const panel = document.getElementById('guide-panel');
+        panel?.classList.toggle('hidden');
+    } else if (action === 'pause') {
+        transition(Screen.PAUSE ?? Screen.SETTINGS);
+    } else if (action === 'newGame') {
+        transition(Screen.CHAR_CREATION);
+    } else if (action === 'continueGame') {
+        transition(Screen.GALAXY_MAP);
+    }
+});
+
 // ── Хелперы ──────────────────────────────────────────────────────────────────
 
 interface InitData {
-    clusters?: unknown[];
-    catalog?: unknown[];
-    defaultSettings?: Record<string, unknown>;
+    clusters?: ClusterDto[];
+    catalog?: PlanetDto[];
+    defaultSettings?: GameSettingsDto;
 }
 
 function _readInitData(): InitData | null {

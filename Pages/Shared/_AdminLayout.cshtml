@@ -27,15 +27,15 @@
             <nav class="admin-nav">
                 <ul>
                     <li><a href="~/admin" class="@(ViewContext.RouteData.Values["page"]?.ToString().EndsWith("Index") == true ? "active" : "")">Главная</a></li>
-                    <li><a href="~/admin/grafic_view" class="@(ViewContext.RouteData.Values["page"]?.ToString().EndsWith("grafic_view") == true ? "active" : "")">Аналитика</a></li>
+                    <li><a href="~/admin/GraphicView" class="@(ViewContext.RouteData.Values["page"]?.ToString().EndsWith("GraphicView", StringComparison.OrdinalIgnoreCase) == true ? "active" : "")">Аналитика</a></li>
                     <li><a href="~/">Перейти на сайт</a></li>
                 </ul>
             </nav>
             <div class="admin-sidebar-footer">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <div style="font-size: 14px; margin-bottom: 10px; opacity: 0.8;">Вы вошли как <br/><b>@User.Identity.Name</b></div>
-                    <form method="post" asp-page="/Default" asp-page-handler="LoggingOut">
+                    <div class="admin-sidebar-user">Вы вошли как <br/><b>@User.Identity.Name</b></div>
+                    <form method="post" asp-page="/Logout">
                         <button type="submit" class="admin-btn-logout">Выйти</button>
                     </form>
                 }

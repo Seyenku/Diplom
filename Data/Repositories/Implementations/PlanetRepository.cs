@@ -72,4 +72,26 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
         var all = await GetAllAsync(ct);
         return all.FirstOrDefault(p => p.Id == id);
     }
+
+    public async Task<IReadOnlyList<Cluster>> GetClustersAsync(CancellationToken ct = default)
+    {
+        var cacheKey = "clusters_catalog";
+        if (cache.TryGetValue(cacheKey, out IReadOnlyList<Cluster>? cached) && cached is not null)
+            return cached;
+
+        try
+        {
+            const string sql = "SELECT * FROM dbo.Clusters ORDER BY Id";
+            var result = (await db.QueryAsync<Cluster>(
+                new CommandDefinition(sql, cancellationToken: ct))).ToList().AsReadOnly();
+
+            cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+            return result;
+        }
+        catch (DbException ex)
+        {
+            logger.LogError(ex, "SQL error in PlanetRepository.GetClustersAsync");
+            throw;
+        }
+    }
 }

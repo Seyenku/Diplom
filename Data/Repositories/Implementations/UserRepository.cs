@@ -10,20 +10,22 @@ namespace KosmosCore.Data.Repositories.Implementations;
 public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : IUserRepository
 {
 
-    public async Task<User?> AuthenticateAsync(string username, string passwordHash, CancellationToken ct = default)
+    public async Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct = default)
     {
         try
         {
             const string sql = @"
-                SELECT Id           AS Id,
-                       Login        AS Login,
-                       PasswordHash AS PasswordHash,
-                       RoleId       AS RoleId
-                FROM dbo.Admins
-                WHERE Login = @Username AND PasswordHash = @PasswordHash";
+                SELECT a.Id           AS Id,
+                       a.Login        AS Login,
+                       a.PasswordHash AS PasswordHash,
+                       a.RoleId       AS RoleId,
+                       r.RoleName     AS RoleName
+                FROM dbo.Admins a
+                LEFT JOIN dbo.AdminRoles r ON a.RoleId = r.Id
+                WHERE a.Login = @Username";
 
             return await db.QuerySingleOrDefaultAsync<User>(
-                new CommandDefinition(sql, new { Username = username, PasswordHash = passwordHash }, cancellationToken: ct));
+                new CommandDefinition(sql, new { Username = username }, cancellationToken: ct));
         }
         catch (DbException ex)
         {

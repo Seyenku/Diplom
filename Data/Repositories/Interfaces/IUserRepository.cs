@@ -8,6 +8,6 @@ namespace KosmosCore.Data.Repositories.Interfaces;
 /// </summary>
 public interface IUserRepository
 {
-    Task<User?> AuthenticateAsync(string username, string passwordHash, CancellationToken ct = default);
+    Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct = default);
     Task<bool>  UserExistsAsync(string username, CancellationToken ct = default);
 }

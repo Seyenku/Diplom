@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ С‚РёРїС‹ РґР»СЏ Stellar Vocation SPA
 // ============================================================
 
@@ -214,15 +214,6 @@ declare global {
     interface Window {
         THREE: typeof import('three');
         __threeScene: import('three').Scene | null;
-        _spa: {
-            newGame: () => void;
-            continueGame: () => void;
-            openSettings: () => void;
-            goBack: () => void;
-            goto: (screen: ScreenId) => void;
-            pause: () => void;
-            toggleGuide: () => void;
-        };
         _charCreation: {
             nextFromName: () => void;
             backToName: () => void;

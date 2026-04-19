@@ -18,12 +18,11 @@ namespace KosmosCore.Pages;
 ///  - OnPostSaveProgress()   → запись прогресса в game_saves
 /// </summary>
 [IgnoreAntiforgeryToken]
-public class ProjModel(IPlanetRepository planets, IMiniGameService miniGameService, IPlanetCatalogService catalogService, ILogger<ProjModel> logger) : PageModel
+public class GameModel(IPlanetRepository planets, IMiniGameService miniGameService, ILogger<GameModel> logger) : PageModel
 {
     private readonly IPlanetRepository _planets = planets;
     private readonly IMiniGameService _miniGameService = miniGameService;
-    private readonly IPlanetCatalogService _catalogService = catalogService;
-    private readonly ILogger<ProjModel> _logger = logger;
+    private readonly ILogger<GameModel> _logger = logger;
 
     /// <summary>JSON-строка начальных данных для клиентского bootstrapping.</summary>
     public string InitialDataJson { get; private set; } = "null";
@@ -34,10 +33,19 @@ public class ProjModel(IPlanetRepository planets, IMiniGameService miniGameServi
     public async Task OnGetAsync()
     {
         var planetList  = await _planets.GetAllAsync();
+        var clusterList = await _planets.GetClustersAsync();
 
         var initData = new GameInitDto
         {
-            Clusters        = _catalogService.GetClusters(),
+            Clusters        = clusterList.Select(c => new ClusterDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                DisplayName = c.DisplayName,
+                CrystalType = c.CrystalType,
+                Description = c.Description,
+                PlanetCount = planetList.Count(p => p.ClusterId == c.Id)
+            }).ToList().AsReadOnly(),
             Catalog         = planetList.Select(MapPlanet).ToList().AsReadOnly(),
             DefaultSettings = GameSettingsDto.Default
         };
@@ -93,7 +101,8 @@ public class ProjModel(IPlanetRepository planets, IMiniGameService miniGameServi
     {
         if (result is null) return BadRequest("Payload required.");
         _ = int.TryParse(result.PlanetId, out int planetId);
-        var planetModel = await _planets.GetByIdAsync(planetId);
+        var allPlanets = await _planets.GetAllAsync();
+        var planetModel = allPlanets.FirstOrDefault(p => p.Id == planetId);
         var planetDto = planetModel is not null ? MapPlanet(planetModel) : null;
         var reward = _miniGameService.CalculateReward(result, planetDto);
         return new JsonResult(reward, JsonOptions);

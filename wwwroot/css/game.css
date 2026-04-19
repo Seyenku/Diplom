@@ -822,32 +822,105 @@
 }
 
 /* ═══════════════════════════════════════════════════
-   Planet Detail
+   Planet Detail (Glassmorphism & Centered 3D)
    ═══════════════════════════════════════════════════ */
 
+/* Абсолютно центрированная планета (под UI) */
 .planet-3d-viewport {
-    width: min(300px, 80vw);
-    height: min(300px, 80vw);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(600px, 120vw); /* Делаем планету больше, чтобы она была отличным фоном */
+    height: min(600px, 120vw);
     border-radius: 50%;
     overflow: hidden;
-    border: 2px solid var(--color-border);
-    box-shadow: 0 0 40px rgba(79, 195, 247, 0.1),
-                inset 0 0 30px rgba(79, 195, 247, 0.05);
-    flex-shrink: 0;
+    z-index: 0;
+    pointer-events: none; /* Чтобы клики проходили сквозь планету к UI (пока не требуется интерактивность самой 3D) */
+    
+    /* Убираем жесткие бордеры, оставляем свечение (glow) */
+    box-shadow: 0 0 80px rgba(79, 195, 247, 0.15),
+                inset 0 0 60px rgba(79, 195, 247, 0.1);
 }
 
-.planet-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1rem;
+/* Обертка для UI (поверх планеты) */
+.planet-detail-overlay {
+    position: relative;
+    z-index: 10;
     width: 100%;
-    max-width: 760px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 2rem;
+    gap: 2rem;
+}
+
+/* Заголовок вверху */
+.planet-detail-header {
+    text-align: center;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    /* Glassmorphism header */
+    background: rgba(10, 15, 30, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.planet-description {
+    color: var(--color-text-muted);
+    margin-top: 0.75rem;
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+
+/* Центральная часть: две боковые колонки вокруг планеты */
+.planet-detail-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex: 1;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    pointer-events: none; /* Пропускаем клики между колонками */
+}
+
+/* Боковые панели */
+.planet-detail-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 340px;
+    pointer-events: auto; /* Включаем клики на карточках */
+}
+
+/* Glassmorphism карточки */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.glass-panel:hover {
+    background: rgba(15, 23, 42, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .planet-detail-card {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    padding: 1.25rem;
 }
 
 .planet-card-header {
@@ -864,7 +937,7 @@
 
 .planet-card-title {
     font-family: var(--font-display);
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     letter-spacing: 0.06em;
 }
 
@@ -872,13 +945,22 @@
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.4rem;
 }
 
 .planet-skill-item {
     font-size: 0.85rem;
     color: var(--color-text-muted);
     line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.planet-skill-item::before {
+    content: "•";
+    color: var(--color-primary);
+    font-weight: bold;
 }
 
 /* Crystal requirement badges */
@@ -893,7 +975,7 @@
     align-items: center;
     gap: 0.3rem;
     padding: 0.35rem 0.65rem;
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--crystal-color, var(--color-border));
     border-radius: var(--radius-sm);
     transition: box-shadow 0.3s ease;
@@ -938,14 +1020,23 @@
     gap: 0.75rem;
 }
 
+/* Действия / Кнопки */
 .planet-detail-actions {
     display: flex;
     gap: 1rem;
-    flex-wrap: wrap;
     justify-content: center;
-    max-width: 500px;
     width: 100%;
-    margin-top: 0.5rem;
+    margin-top: auto;
+    z-index: 20;
+}
+
+.btn-action {
+    flex: 0 1 200px;
+    height: 48px;
+    font-size: 1rem;
+    border-radius: 2rem;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
 }
 
 /* ── Galaxy / Planet mobile ───────── */
@@ -960,11 +1051,39 @@
         left: 0.5rem;
     }
     .planet-3d-viewport {
-        width: min(220px, 70vw);
-        height: min(220px, 70vw);
+        position: relative;
+        top: 0;
+        left: 0;
+        transform: none;
+        width: 100%;
+        max-width: 320px;
+        height: 320px;
+        margin: 0 auto;
     }
-    .planet-detail-grid {
-        grid-template-columns: 1fr;
+
+    .planet-detail-overlay {
+        padding: 1rem;
+        gap: 1.5rem;
+    }
+
+    .planet-detail-content {
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .planet-detail-side {
+        max-width: 100%;
+    }
+
+    .planet-detail-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-action {
+        width: 100%;
+        flex: 1;
     }
 }
 

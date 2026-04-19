@@ -39,10 +39,10 @@ public class MiniGameService : IMiniGameService
         float ratio = Math.Clamp(result.Score / (float)MaxScore, 0f, 1f);
         int baseReward = (int)Math.Round(2 + ratio * 8); // 2..10
 
-        // Тип кристаллов = первый ключ из CrystalRequirements планеты
-        // string crystalType = planet.CrystalRequirements.Keys.FirstOrDefault() ?? "any";
+        // Тип кристаллов = тип кластера планеты
+        string crystalType = planet.CrystalType;
 
-        // var crystals = new Dictionary<string, int> { [crystalType] = baseReward };
+        var crystals = new Dictionary<string, int> { [crystalType] = baseReward };
 
         // Ачивки
         var badges = new List<string>();
@@ -52,7 +52,7 @@ public class MiniGameService : IMiniGameService
         return new MiniGameRewardDto
         {
             Valid    = true,
-            // Crystals = crystals,
+            Crystals = crystals,
             Badges   = [.. badges]
         };
     }

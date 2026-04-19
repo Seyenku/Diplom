@@ -14,13 +14,13 @@
 
     <!-- Кнопки -->
     <div style="display:flex;flex-direction:column;gap:1rem;width:min(280px,90vw);">
-        <button id="btn-new-game" class="btn-game btn-primary" onclick="window._spa?.newGame()">
+        <button id="btn-new-game" class="btn-game btn-primary" data-spa="newGame">
             🚀 Новая игра
         </button>
-        <button id="btn-continue" class="btn-game btn-secondary" onclick="window._spa?.continueGame()" style="display:none">
+        <button id="btn-continue" class="btn-game btn-secondary" data-spa="continueGame" style="display:none">
             ▶ Продолжить
         </button>
-        <button id="btn-settings-menu" class="btn-game btn-secondary" onclick="window._spa?.openSettings()">
+        <button id="btn-settings-menu" class="btn-game btn-secondary" data-spa="goto" data-screen="settings">
             ⚙ Настройки
         </button>
     </div>

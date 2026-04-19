@@ -1,74 +1,77 @@
 <!-- _ScreenPlanetDetail.cshtml — Описание планеты / профессии с 3D -->
-<div class="screen" id="screen-planet-detail"
-     style="width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1.5rem;gap:1.25rem;">
+<div class="screen" id="screen-planet-detail">
 
-    <!-- 3D-модель планеты -->
+    <!-- 3D-модель планеты (Фон по центру) -->
     <div id="planet-3d-viewport" class="planet-3d-viewport">
         <div class="skeleton-shimmer" style="width:100%;height:100%;border-radius:50%;"></div>
     </div>
 
-    <!-- Заголовок -->
-    <div style="text-align:center;max-width:680px;width:100%;">
-        <p id="planet-category" class="game-subtitle" style="font-size:0.7rem;">…</p>
-        <h1 id="planet-name" class="game-title" style="font-size:1.8rem;margin-top:0.25rem;">…</h1>
-        <p id="planet-description" style="color:var(--color-text-muted);margin-top:0.75rem;line-height:1.7;font-size:0.92rem;">…</p>
-    </div>
-
-    <!-- Карточки с деталями -->
-    <div class="planet-detail-grid">
-
-        <!-- Hard skills -->
-        <div class="game-card planet-detail-card">
-            <div class="planet-card-header">
-                <span class="planet-card-icon">🔧</span>
-                <h3 class="planet-card-title" style="color:var(--color-primary);">HARD SKILLS</h3>
-            </div>
-            <ul id="hard-skills-list" class="planet-skill-list"></ul>
+    <!-- UI Overlay (Поверх планеты) -->
+    <div class="planet-detail-overlay">
+        
+        <!-- Заголовок -->
+        <div class="planet-detail-header">
+            <p id="planet-category" class="game-subtitle">…</p>
+            <h1 id="planet-name" class="game-title">…</h1>
+            <p id="planet-description" class="planet-description">…</p>
         </div>
 
-        <!-- Soft skills -->
-        <div class="game-card planet-detail-card">
-            <div class="planet-card-header">
-                <span class="planet-card-icon">✨</span>
-                <h3 class="planet-card-title" style="color:var(--color-accent);">SOFT SKILLS</h3>
+        <!-- Боковые панели с информацией -->
+        <div class="planet-detail-content">
+            
+            <!-- Левая колонка -->
+            <div class="planet-detail-side">
+                <!-- Hard skills -->
+                <div class="game-card planet-detail-card glass-panel">
+                    <div class="planet-card-header">
+                        <span class="planet-card-icon">🔧</span>
+                        <h3 class="planet-card-title" style="color:var(--color-primary);">HARD SKILLS</h3>
+                    </div>
+                    <ul id="hard-skills-list" class="planet-skill-list"></ul>
+                </div>
             </div>
-            <ul id="soft-skills-list" class="planet-skill-list"></ul>
+
+            <!-- Правая колонка -->
+            <div class="planet-detail-side">
+                <!-- Soft skills -->
+                <div class="game-card planet-detail-card glass-panel">
+                    <div class="planet-card-header">
+                        <span class="planet-card-icon">✨</span>
+                        <h3 class="planet-card-title" style="color:var(--color-accent);">SOFT SKILLS</h3>
+                    </div>
+                    <ul id="soft-skills-list" class="planet-skill-list"></ul>
+                </div>
+
+                <!-- Риски -->
+                <div class="game-card planet-detail-card glass-panel">
+                    <div class="planet-card-header">
+                        <span class="planet-card-icon">⚠️</span>
+                        <h3 class="planet-card-title" style="color:#f87171;">РИСКИ</h3>
+                    </div>
+                    <ul id="risks-list" class="planet-skill-list"></ul>
+                </div>
+                
+                <!-- Образовательные программы -->
+                <div id="planet-programs" class="game-card planet-detail-card glass-panel hidden">
+                    <div class="planet-card-header">
+                        <span class="planet-card-icon">🎓</span>
+                        <h3 class="planet-card-title" style="color:#a78bfa;">ПРОГРАММЫ</h3>
+                    </div>
+                    <div id="programs-list" class="planet-programs-list"></div>
+                </div>
+            </div>
+
         </div>
 
-        <!-- Требования кристаллов -->
-        <div class="game-card planet-detail-card">
-            <div class="planet-card-header">
-                <span class="planet-card-icon">💎</span>
-                <h3 class="planet-card-title" style="color:#4fc3f7;">НУЖНЫЕ КРИСТАЛЛЫ</h3>
-            </div>
-            <div id="crystal-requirements" class="crystal-req-container"></div>
+        <!-- Кнопки действий -->
+        <div class="planet-detail-actions">
+            <button id="btn-play-minigame" class="btn-game btn-primary btn-action" onclick="window._planetDetail?.startMiniGame()">
+                🎮 Пробная посадка
+            </button>
+            <button class="btn-game btn-secondary btn-action" data-spa="goBack">
+                ← Назад
+            </button>
         </div>
 
-        <!-- Риски -->
-        <div class="game-card planet-detail-card">
-            <div class="planet-card-header">
-                <span class="planet-card-icon">⚠️</span>
-                <h3 class="planet-card-title" style="color:#f87171;">РИСКИ</h3>
-            </div>
-            <ul id="risks-list" class="planet-skill-list"></ul>
-        </div>
-
-    </div>
-
-    <!-- Связанные ВУЗы / программы -->
-    <div id="planet-programs" class="planet-programs-container hidden">
-        <h3 class="planet-programs-title">🎓 Образовательные программы</h3>
-        <div id="programs-list" class="planet-programs-list"></div>
-    </div>
-
-    <!-- Кнопки -->
-    <div class="planet-detail-actions">
-        <button id="btn-play-minigame" class="btn-game btn-primary" style="flex:1;min-width:180px;"
-                onclick="window._planetDetail?.startMiniGame()">
-            🎮 Пробная посадка
-        </button>
-        <button class="btn-game btn-secondary" style="flex:1;min-width:140px;" onclick="window._spa?.goBack()">
-            ← Назад
-        </button>
     </div>
 </div>

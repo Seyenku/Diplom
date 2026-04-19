@@ -84,7 +84,7 @@ function _renderList(ranked: RankedPlanet[]): void {
                 <p style="font-size:0.8rem;color:var(--color-text-muted);">Совпадение: ${Math.round(score * 100)}%</p>
             </div>
             <button class="btn-game btn-secondary" style="padding:6px 14px;font-size:0.8rem;"
-                    onclick="window._spa?.goto('planet-detail')">Подробнее</button>
+                    data-spa="goto" data-screen="planet-detail">Подробнее</button>
         </div>`
     ).join('');
 }

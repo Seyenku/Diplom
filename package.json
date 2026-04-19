@@ -21,6 +21,7 @@
   "homepage": "https://github.com/Seyenku/Diplom#readme",
   "devDependencies": {
     "@types/three": "^0.183.1",
+    "eslint": "^10.2.1",
     "typescript": "^6.0.2"
   }
 }

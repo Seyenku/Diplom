@@ -4,26 +4,26 @@
     ViewData["Title"] = "Произошла ошибка";
 }
 
-<div class="test-wizard-container" style="text-align: center; margin-top: 100px;">
+<div class="test-wizard-container error-page-container">
     <div class="wizard-card">
-        <div class="error-icon" style="color: #ef4444; margin-bottom: 30px;">
+        <div class="error-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
                 <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1a.05.05 0 0 1 .1-.1h.8a.05.05 0 0 1 .1.1v4.7a.05.05 0 0 1-.1.1h-.8a.05.05 0 0 1-.1-.1V7.1z"/>
             </svg>
         </div>
 
-        <h1 style="font-family: var(--font-heading); font-weight: 800; font-size: 40px; color: var(--color-text-primary); margin-bottom: 20px;">
+        <h1 class="error-title">
             Упс! Что-то пошло не так
         </h1>
         
-        <p style="font-size: 18px; color: var(--color-text-muted); margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto;">
+        <p class="error-text">
             Мы уже в курсе проблемы и работаем над её решением. Пожалуйста, попробуйте обновить страницу позже.
         </p>
 
         @if (Model.ShowRequestId)
         {
-            <div style="background: var(--color-bg-primary); display: inline-block; padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); margin-bottom: 40px;">
+            <div class="error-request-id">
                 <span style="font-size: 14px; font-weight: 500; color: var(--color-text-muted); text-transform: uppercase;">ID запроса:</span>
                 <code style="margin-left: 8px; color: var(--color-accent); font-weight: 600;">@Model.RequestId</code>
             </div>
@@ -32,7 +32,7 @@
         <a href="/" class="site-nav__btn site-nav__btn--accent" style="padding: 14px 32px; font-size: 16px;">Вернуться на главную</a>
 
         @* Блок для разработчиков *@
-        <div style="margin-top: 60px; text-align: left; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 16px; padding: 24px;">
+        <div class="dev-alert">
             <h4 style="font-family: var(--font-heading); font-weight: 700; color: #d97706; margin-bottom: 12px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-exclamation-triangle-fill" viewBox="0 0 16 16" style="vertical-align: text-bottom; margin-right: 8px;">
                     <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
@@ -49,14 +49,3 @@
         </div>
     </div>
 </div>
-
-<style>
-    .error-icon svg {
-        animation: pulse 2s infinite ease-in-out;
-    }
-    @@keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-</style>

@@ -44,16 +44,15 @@ public class LoginModel : PageModel
             return Page();
         }
 
-        var hash = _passwordHasher.HashPassword(Password);
-        var user = await _userRepository.AuthenticateAsync(UserName, hash);
+        var user = await _userRepository.GetUserByUsernameAsync(UserName);
 
-        if (user == null)
+        if (user == null || !_passwordHasher.VerifyPassword(Password, user.PasswordHash))
         {
             ModelState.AddModelError(string.Empty, "Неверный логин или пароль.");
             return Page();
         }
 
-        var roleName = "admin";
+        var roleName = string.IsNullOrWhiteSpace(user.RoleName) ? "admin" : user.RoleName;
 
         var claims = new List<Claim>
         {

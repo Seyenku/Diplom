@@ -5,66 +5,6 @@
 }
 
 @section Head {
-    <style>
-        .hero-wrapper {
-            position: relative;
-            width: 100%;
-            min-height: 70vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            margin-top: -64px; /* Compensate for the sticky nav */
-            padding-top: 64px;
-        }
-        #particles-js {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 0;
-            background-color: var(--color-bg-primary);
-        }
-        .hero-content {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-            padding: 40px 20px;
-            max-width: 800px;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
-            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        @@keyframes slideUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .hero-title {
-            font-family: var(--font-heading);
-            font-size: clamp(40px, 6vw, 64px);
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--color-accent) 0%, #0ea5e9 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 24px;
-            line-height: 1.1;
-        }
-        .hero-subtitle {
-            font-size: clamp(16px, 2vw, 20px);
-            color: var(--color-text-muted);
-            margin: 0 auto 40px;
-            line-height: 1.6;
-        }
-    </style>
 }
 
 <div class="hero-wrapper">

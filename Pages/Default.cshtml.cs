@@ -10,10 +10,4 @@ public class DefaultModel : PageModel
     public void OnGet()
     {
     }
-
-    public async Task<IActionResult> OnPostLoggingOutAsync()
-    {
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return RedirectToPage("/Login");
-    }
 }

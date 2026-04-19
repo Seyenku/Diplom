@@ -18,7 +18,7 @@
         @if (User.Identity?.IsAuthenticated == true)
         {
             <span class="site-nav__username">@User.Identity.Name</span>
-            <form method="post" asp-page="/Default" asp-page-handler="LoggingOut" style="display:inline;">
+            <form method="post" asp-page="/Logout" style="display:inline;">
                 <button type="submit" class="site-nav__btn site-nav__btn--ghost">Выйти</button>
             </form>
         }
@@ -29,7 +29,7 @@
 
         @if (User.IsInRole("admin"))
         {
-            <a href="~/admin/spec_view" class="site-nav__btn site-nav__btn--accent">Личный кабинет</a>
+            <a href="~/admin" class="site-nav__btn site-nav__btn--accent">Личный кабинет</a>
         }
     </div>
 </nav>

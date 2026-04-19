@@ -78,12 +78,8 @@ StyleCopReport.xml
 *.lock
 .aspnetconfig.module
 node_modules/
-wwwroot/js/game/*.js.map
-wwwroot/js/game/*.js
-!wwwroot/js/game/three*.js
-!wwwroot/js/game/particles.js
-!wwwroot/js/game/app.js
-wwwroot/js/game/screens/*.js
+wwwroot/js/game/**/*.js
+wwwroot/js/game/**/*.js.map
 Properties/launchSettings.json
 
 # Tool-specific files

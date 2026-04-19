@@ -1,18 +1,18 @@
 <!-- _GameNavbar.cshtml — Сквозная навигация SPA -->
 <nav id="game-navbar" class="game-navbar" aria-label="Навигация игры">
-    <button class="nav-btn" data-screen="galaxy-map"   title="Звёздная карта" onclick="window._spa?.goto('galaxy-map')">
+    <button class="nav-btn" data-screen="galaxy-map"   title="Звёздная карта" data-spa="goto" data-screen="galaxy-map">
         <span class="nav-icon">🌌</span>
         <span class="nav-label">Карта</span>
     </button>
-    <button class="nav-btn" data-screen="achievements" title="Прогресс"     onclick="window._spa?.goto('achievements')">
+    <button class="nav-btn" data-screen="achievements" title="Прогресс"     data-spa="goto" data-screen="achievements">
         <span class="nav-icon">📊</span>
         <span class="nav-label">Прогресс</span>
     </button>
-    <button class="nav-btn" data-screen="ship-upgrade" title="Корабль"      onclick="window._spa?.goto('ship-upgrade')">
+    <button class="nav-btn" data-screen="ship-upgrade" title="Корабль"      data-spa="goto" data-screen="ship-upgrade">
         <span class="nav-icon">🛸</span>
         <span class="nav-label">Корабль</span>
     </button>
-    <button class="nav-btn" data-screen="settings"     title="Настройки"    onclick="window._spa?.goto('settings')">
+    <button class="nav-btn" data-screen="settings"     title="Настройки"    data-spa="goto" data-screen="settings">
         <span class="nav-icon">⚙️</span>
         <span class="nav-label">Настройки</span>
     </button>

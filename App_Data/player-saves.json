@@ -1,0 +1,10 @@
+[
+  {
+    "deviceId": "b820f90b-d80e-40cf-b597-fdeab613f27d",
+    "saveJson": "{\u0022name\u0022:\u0022ars\u0022,\u0022shipColor\u0022:\u0022#facc15\u0022,\u0022crystals\u0022:{\u0022programming\u0022:6,\u0022medicine\u0022:0,\u0022geology\u0022:0,\u0022it\u0022:0,\u0022bio\u0022:0,\u0022math\u0022:0,\u0022eco\u0022:0,\u0022design\u0022:0,\u0022med\u0022:0,\u0022neuro\u0022:0,\u0022physics\u0022:0},\u0022discoveredPlanets\u0022:[],\u0022appliedUpgrades\u0022:[],\u0022shipStats\u0022:{\u0022speedBonus\u0022:0,\u0022shieldBonus\u0022:0,\u0022scanRange\u0022:1,\u0022capacity\u0022:50},\u0022stats\u0022:{\u0022scans\u0022:0,\u0022miniGamesPlayed\u0022:0,\u0022totalCrystalsEarned\u0022:6},\u0022badges\u0022:[]}",
+    "playerName": "ars",
+    "shipColor": "#facc15",
+    "createdAtUtc": "2026-04-19T12:10:44.2924715Z",
+    "updatedAtUtc": "2026-04-19T12:30:40.9737837Z"
+  }
+]

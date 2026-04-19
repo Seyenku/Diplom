@@ -8,7 +8,7 @@
  * Состояния: READY → PLAYING → ENDED
  */
 
-import { getStore, dispatch, transition, Screen } from '../stateManager.js';
+import { getStore, dispatch, transition, Screen, goBack } from '../stateManager.js';
 import { GameStore, MiniGameRewardDto, CrystalType } from '../types.js';
 
 // ── Конфигурация ────────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ window._miniGame = {
         _isPaused = !_isPaused;
     },
     returnToPlanet() {
-        window._spa?.goBack();
+        goBack();
     },
     retry() {
         _reset();

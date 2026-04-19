@@ -1,4 +1,5 @@
 @page
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @{
     ViewData["Title"] = "Админ-панель";
     Layout = "_AdminLayout";
@@ -9,18 +10,18 @@
     <p style="color: var(--color-text-muted);">Вы находитесь в панели управления проектом KosmosCore. Выберите нужный раздел в левом меню.</p>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+<div class="admin-actions-grid">
     <div class="admin-card">
         <h3 class="admin-card-title">Статистика системы</h3>
-        <ul style="list-style: none; padding: 0; margin: 0; line-height: 2;">
-            <li><strong>Всего профессий:</strong> <span style="float: right; color: var(--color-text-muted);">--</span></li>
-            <li><strong>Активных пользователей:</strong> <span style="float: right; color: var(--color-text-muted);">--</span></li>
-            <li><strong>Пройдено тестов:</strong> <span style="float: right; color: var(--color-text-muted);">--</span></li>
+        <ul class="admin-stats-list">
+            <li><strong>Всего профессий:</strong> <span>--</span></li>
+            <li><strong>Активных пользователей:</strong> <span>--</span></li>
+            <li><strong>Пройдено тестов:</strong> <span>--</span></li>
         </ul>
     </div>
     <div class="admin-card">
         <h3 class="admin-card-title">Быстрые действия</h3>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="admin-actions-col">
             <button class="site-nav__btn site-nav__btn--accent" style="width: 100%;">Добавить профессию</button>
             <button class="site-nav__btn site-nav__btn--ghost" style="width: 100%;">Посмотреть логи</button>
         </div>

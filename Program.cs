@@ -1,6 +1,5 @@
 using KosmosCore.Data.Repositories.Interfaces;
 using KosmosCore.Data.Repositories.Implementations;
-using KosmosCore.Business.DTOs.Requests;
 using KosmosCore.Business.Services.Interfaces;
 using KosmosCore.Business.Services.Implementations;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -21,12 +20,10 @@ builder.Services.AddMemoryCache();
 // --- Repository DI (Scoped) ---
 builder.Services.AddScoped<IUserRepository,        UserRepository>();
 builder.Services.AddScoped<IPlanetRepository,      PlanetRepository>();
-builder.Services.AddSingleton<IPlayerSaveStore,    FilePlayerSaveStore>();
 
 // --- Services ---
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();
 builder.Services.AddScoped<IMiniGameService, MiniGameService>();
-builder.Services.AddScoped<IPlanetCatalogService, PlanetCatalogService>();
 
 // --- Authentication (Cookie-based) ---
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -72,58 +69,5 @@ app.UseAuthorization();
 app.UseSession();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
-
-var playerSaveApi = app.MapGroup("/api/player-save");
-
-playerSaveApi.MapPost("/sync", async (PlayerSaveSyncRequestDto payload, IPlayerSaveStore store, CancellationToken ct) =>
-{
-    if (string.IsNullOrWhiteSpace(payload.DeviceId))
-        return Results.BadRequest(new { error = "deviceId is required" });
-
-    if (string.IsNullOrWhiteSpace(payload.SaveJson))
-        return Results.BadRequest(new { error = "saveJson is required" });
-
-    var item = await store.UpsertAsync(payload.DeviceId, payload.SaveJson, ct);
-    return Results.Ok(new
-    {
-        ok = true,
-        item.DeviceId,
-        item.PlayerName,
-        item.ShipColor,
-        item.CreatedAtUtc,
-        item.UpdatedAtUtc,
-    });
-});
-
-playerSaveApi.MapGet("/{deviceId}", async (string deviceId, IPlayerSaveStore store, CancellationToken ct) =>
-{
-    if (string.IsNullOrWhiteSpace(deviceId))
-        return Results.BadRequest(new { error = "deviceId is required" });
-
-    var item = await store.GetByDeviceIdAsync(deviceId, ct);
-    if (item is null) return Results.NotFound(new { error = "save not found" });
-
-    return Results.Ok(new
-    {
-        item.DeviceId,
-        item.SaveJson,
-        item.PlayerName,
-        item.ShipColor,
-        item.CreatedAtUtc,
-        item.UpdatedAtUtc,
-    });
-});
-
-playerSaveApi.MapGet("/stats", async (IPlayerSaveStore store, CancellationToken ct) =>
-{
-    var stats = await store.GetStatsAsync(ct);
-    return Results.Ok(stats);
-});
-
-playerSaveApi.MapGet("/export", async (int? take, bool? includePayload, IPlayerSaveStore store, CancellationToken ct) =>
-{
-    var items = await store.GetRecentAsync(take ?? 200, includePayload ?? false, ct);
-    return Results.Ok(items);
-});
 
 app.Run();

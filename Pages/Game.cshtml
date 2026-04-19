@@ -1,5 +1,5 @@
 @page "/game"
-@model KosmosCore.Pages.ProjModel
+@model KosmosCore.Pages.GameModel
 @{
     ViewData["Title"] = "Stellar Vocation";
     // Сериализованные данные Bootstrap передаются через ViewData
@@ -11,7 +11,7 @@
     @Html.Raw(@"<script type=""importmap"">
     {
         ""imports"": {
-            ""three"": ""/js/three.module.min.js"",
+            ""three"": ""https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.js"",
             ""three/addons/"": ""https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/""
         }
     }

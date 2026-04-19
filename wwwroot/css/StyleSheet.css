@@ -210,10 +210,16 @@ main {
     }
 }
 
-/* О проекте - Главная */
 .hero-wrapper {
     position: relative;
     width: 100%;
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-top: -64px; /* Compensate for the sticky nav */
+    padding-top: 64px;
     margin-bottom: 40px;
 }
 
@@ -224,6 +230,49 @@ main {
     top: 0;
     left: 0;
     z-index: 0;
+    background-color: var(--color-bg-primary);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 800px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+    animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+@keyframes slideUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hero-title {
+    font-family: var(--font-heading);
+    font-size: clamp(40px, 6vw, 64px);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--color-accent) 0%, #0ea5e9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 24px;
+    line-height: 1.1;
+}
+
+.hero-subtitle {
+    font-size: clamp(16px, 2vw, 20px);
+    color: var(--color-text-muted);
+    margin: 0 auto 40px;
+    line-height: 1.6;
 }
 
 .proekt {
@@ -526,4 +575,60 @@ main {
     border-radius: 100px;
     font-weight: 600;
     font-size: 16px;
+}
+
+/* Error Page */
+.error-page-container {
+    text-align: center;
+    margin-top: 100px;
+}
+
+.error-icon {
+    color: #ef4444;
+    margin-bottom: 30px;
+}
+
+.error-icon svg {
+    animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.error-title {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 40px;
+    color: var(--color-text-primary);
+    margin-bottom: 20px;
+}
+
+.error-text {
+    font-size: 18px;
+    color: var(--color-text-muted);
+    margin-bottom: 40px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.error-request-id {
+    background: var(--color-bg-primary);
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.05);
+    margin-bottom: 40px;
+}
+
+.dev-alert {
+    margin-top: 60px;
+    text-align: left;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 16px;
+    padding: 24px;
 }
