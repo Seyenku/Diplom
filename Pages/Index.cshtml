@@ -5,6 +5,21 @@
 }
 
 @section Head {
+    <style>
+        /* Для главной страницы убираем ограничение bootstrap container,
+           чтобы hero-анимация занимала всю ширину экрана */
+        main.container {
+            max-width: 100% !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        .hero-wrapper {
+            width: 100vw;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+        }
+    </style>
 }
 
 <div class="hero-wrapper">

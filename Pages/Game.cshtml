@@ -18,24 +18,26 @@
     </script>")
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&display=swap" />
     <link rel="stylesheet" href="~/css/game.css" asp-append-version="true" />
     <style>
         /* Переопределяем глобальный layout для полноэкранной игры */
+        html { font-size: clamp(16px, 0.18vw + 0.35vh + 10px, 22px); }
         body { margin: 0; padding: 0; overflow: hidden; background-color: #020710 !important; }
         .site-header, .site-footer { display: none !important; }
         main.container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; height: 100vh; }
         .game-page-container { height: 100vh; width: 100vw; display: flex; flex-direction: column; background: #020710; }
-        .game-header { position: absolute; z-index: 100; top: 15px; left: 15px; right: 15px; gap: 10px; pointer-events: none; }
+        .game-header { position: absolute; z-index: 100; top: max(0.75rem, env(safe-area-inset-top)); right: max(0.75rem, env(safe-area-inset-right)); left: auto; gap: 0.55rem; pointer-events: none; }
         .game-header h2 { display: none; }
-        .btn-game-sys { pointer-events: auto; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(99, 102, 241, 0.3); color: #fff; padding: 8px 16px; border-radius: 8px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: 'Inter', sans-serif; font-size: 14px; }
+        .btn-game-sys { pointer-events: auto; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(99, 102, 241, 0.3); color: #fff; padding: 0.55rem 1rem; border-radius: 0.5rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; font-family: 'Tektur', sans-serif; font-size: clamp(0.82rem, 0.25vw + 0.7rem, 1rem); }
         .btn-game-sys:hover { background: rgba(15, 23, 42, 0.9); border-color: #4fc3f7; color: #4fc3f7; }
         #game-root { height: 100vh !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; flex-grow: 1; }
     </style>
 }
 
 <div class="game-page-container">
-    <div class="game-header d-flex justify-content-between align-items-center">
+    <div class="game-header d-flex justify-content-end align-items-center">
         <a href="~/" class="btn-game-sys">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
               <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>

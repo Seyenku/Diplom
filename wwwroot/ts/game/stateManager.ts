@@ -129,6 +129,12 @@ on('SCREEN_CHANGED', () => {
         const isActive = btn.dataset.screen === _store.currentScreen;
         btn.classList.toggle('nav-btn--active', isActive);
     });
+
+    const gameNavbar = document.getElementById('game-navbar');
+    if (gameNavbar) {
+        const hideOnScreen = _store.currentScreen === Screen.MAIN_MENU;
+        gameNavbar.classList.toggle('hidden', hideOnScreen);
+    }
 });
 
 const ScreenModules: Record<string, ScreenModule> = {};

@@ -482,22 +482,24 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         const radius = 0.8 + Math.min(planet.unlockCost ?? 5, 10) * 0.08;
         const profile = getProfile();
         const geo = new THREE.SphereGeometry(radius, profile.planetSegments[0], profile.planetSegments[1]);
+        const visibleColor = discovered ? baseColor.clone().lerp(new THREE.Color(0xffffff), 0.22) : new THREE.Color(0x46506f);
+        const baseEmissiveIntensity = discovered ? 0.72 : 0.2;
         const mat = new THREE.MeshStandardMaterial({
-            color: discovered ? baseColor : 0x333344,
+            color: visibleColor,
             emissive: discovered ? baseColor : new THREE.Color(0x111122),
-            emissiveIntensity: discovered ? 0.35 : 0.05,
-            roughness: 0.55,
-            metalness: 0.3,
+            emissiveIntensity: baseEmissiveIntensity,
+            roughness: 0.3,
+            metalness: 0.22,
             transparent: !discovered,
-            opacity: discovered ? 1.0 : 0.4,
+            opacity: discovered ? 1.0 : 0.62,
         });
 
         const mesh = new THREE.Mesh(geo, mat);
 
         // Расположение вокруг центра туманности
-        const angle = (i / clusterPlanets.length) * Math.PI * 2 + Math.random() * 0.3;
-        const orbitR = 5 + (i % 3) * 3.5;
-        const yOffset = (Math.random() - 0.5) * 4;
+        const angle = (i / clusterPlanets.length) * Math.PI * 2 + Math.random() * 0.18;
+        const orbitR = 8 + (i % 4) * 4.8 + Math.floor(i / 4) * 2.2;
+        const yOffset = (Math.random() - 0.5) * 3;
 
         mesh.position.set(
             center.x + Math.cos(angle) * orbitR,
@@ -511,6 +513,7 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
             clusterId,
             discovered,
             unlockCost: planet.unlockCost,
+            baseEmissiveIntensity,
             type: 'planet',
         };
 
@@ -528,6 +531,32 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
             ring.rotation.x = Math.PI / 2;
             mesh.add(ring);
         }
+
+        // Темный контур вокруг планеты, чтобы она не сливалась с космическим фоном.
+        const outline = new THREE.Mesh(
+            new THREE.SphereGeometry(radius * 1.1, 16, 12),
+            new THREE.MeshBasicMaterial({
+                color: discovered ? 0xb8c2d8 : 0x9aa3b5,
+                side: THREE.BackSide,
+                transparent: true,
+                opacity: discovered ? 0.26 : 0.2,
+                depthWrite: false,
+            })
+        );
+        mesh.add(outline);
+
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: _createGlowTexture(128, meta.colorHex, 0.4),
+            color: discovered
+                ? new THREE.Color(meta.color).lerp(new THREE.Color(0xffffff), 0.2)
+                : new THREE.Color(meta.color).lerp(new THREE.Color(0x111827), 0.35),
+            transparent: true,
+            opacity: discovered ? 0.42 : 0.24,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        }));
+        halo.scale.set(radius * 4.8, radius * 4.8, 1);
+        mesh.add(halo);
 
         _mapScene!.add(mesh);
         _planetMeshes.push(mesh);
@@ -634,8 +663,11 @@ function _hover(obj: THREE.Object3D): void {
         if (_mapRenderer) _mapRenderer.domElement.style.cursor = 'pointer';
     } else if (userData?.type === 'planet') {
         const mesh = obj as THREE.Mesh;
-        mesh.scale.setScalar(1.3);
-        if (mesh.material) (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.8;
+        mesh.scale.setScalar(1.22);
+        if (mesh.material) {
+            const baseIntensity = Number(userData.baseEmissiveIntensity ?? 0.35);
+            (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = baseIntensity + 0.35;
+        }
         _showTooltip(
             userData.planetName as string,
             userData.discovered ? 'ЛКМ — открыть' : `🔒 ${userData.unlockCost} 💎`
@@ -651,8 +683,8 @@ function _unhover(): void {
         const mesh = _hoveredObj as THREE.Mesh;
         mesh.scale.setScalar(1.0);
         if (mesh.material) {
-            const disc = userData.discovered as boolean;
-            (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = disc ? 0.35 : 0.05;
+            const baseIntensity = Number(userData.baseEmissiveIntensity ?? 0.35);
+            (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = baseIntensity;
         }
     }
     _hoveredObj = null;
@@ -687,7 +719,7 @@ function _onMapClick(): void {
         _cameraState = 'focused';
         _focusedCluster = clusterId;
         _targetDest!.set(meta.position.x, meta.position.y, meta.position.z);
-        _spherical.radius = 30;
+        _spherical.radius = 36;
         _updateZoomUI();
         _showBackButton(true);
 
