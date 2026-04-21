@@ -1,98 +1,74 @@
 /**
- * screenMiniGame.ts — Мини-игра «Пробная посадка на планету»
+ * screenMiniGame.ts — 3D мини-игра «Пробная посадка»
  *
- * Геймплей: игрок управляет модулем посадки (WASD / стрелки / мышь),
- * уклоняясь от помех и собирая бонусные маркеры.
- * Canvas 2D overlaid поверх Three.js.
+ * Игрок управляет посадочным модулем и уклоняется от астероидов,
+ * пока идёт сближение с планетой.
  *
- * Состояния: READY → PLAYING → ENDED
+ * Условия:
+ * - 30 секунд и здоровье > 0 => успешная посадка
+ * - здоровье <= 0 => провал
  */
 
-import { getStore, dispatch, transition, Screen, goBack } from '../stateManager.js';
-import { GameStore, MiniGameRewardDto, CrystalType } from '../types.js';
+import * as THREE from 'three';
+import { dispatch, goBack } from '../stateManager.js';
+import { GameStore, MiniGameRewardDto } from '../types.js';
+import { loadModel } from '../gltfLoader.js';
 
-// ── Конфигурация ────────────────────────────────────────────────────────────
+const APPROACH_RAMP_S = 30;
+const HEALTH_MAX = 100;
+const SHIP_SPEED = 12;
+const SHIP_BOUNDS_X = 7;
+const SHIP_BOUNDS_Y = 4;
+const SHIP_COLLISION_R = 0.9;
 
-const DURATION_S = 30;     // длительность раунда
-const LANDER_SIZE = 28;    // размер модуля посадки
-const OBSTACLE_MIN_R = 8;  // мин. радиус помехи
-const OBSTACLE_MAX_R = 22; // макс. радиус помехи
-const BONUS_SIZE = 14;     // размер бонусного маркера
-const SPAWN_INTERVAL = 0.6;// сек между спавнами
-const OBJ_SPEED_BASE = 120;// базовая скорость объектов px/s
-const SCORE_PER_BONUS = 50;
-const SCORE_TIME_MULT = 10;// очки за каждую оставшуюся секунду
-
-interface Colors {
-    bg: string;
-    lander: string;
-    landerGlow: string;
-    obstacle: string;
-    bonus: string;
-    bonusGlow: string;
-    text: string;
-    muted: string;
-    primary: string;
-    grid: string;
-}
-
-const COLORS: Colors = {
-    bg: '#020710',
-    lander: '#4fc3f7',
-    landerGlow: 'rgba(79,195,247,0.15)',
-    obstacle: '#f87171',
-    bonus: '#4ade80',
-    bonusGlow: 'rgba(74,222,128,0.2)',
-    text: '#e2e8f0',
-    muted: '#64748b',
-    primary: '#4fc3f7',
-    grid: 'rgba(79,195,247,0.04)',
-};
-
-// ── Состояние ───────────────────────────────────────────────────────────────
+const PLANET_RADIUS = 18;
+const PLANET_START_Z = -80;
+const APPROACH_BASE_SPEED = 3.0;
+const APPROACH_ACCEL = 1.2;
+const ASTEROID_SPAWN_INTERVAL = 0.42;
+const ASTEROID_MIN_R = 0.45;
+const ASTEROID_MAX_R = 1.15;
+const ASTEROID_BASE_SPEED = 22;
+const ASTEROID_DAMAGE = 25;
 
 type MiniGameState = 'idle' | 'playing' | 'ended';
 
-interface GameObject {
-    x: number;
-    y: number;
-}
-
-interface Obstacle extends GameObject {
-    r: number;
-    speed: number;
-    angle: number;
-    vertices: number[]; // fixed radii for polygon shape
-}
-
-interface Bonus extends GameObject {
-    speed: number;
-    pulse: number;
+interface Asteroid {
+    mesh: THREE.Mesh;
+    radius: number;
+    spinAxis: THREE.Vector3;
+    spinSpeed: number;
 }
 
 let _state: MiniGameState = 'idle';
-let _canvas: HTMLCanvasElement | null = null;
-let _ctx: CanvasRenderingContext2D | null = null;
-let _animId: number | null = null;
-let _lastTime = 0;
-let _elapsed = 0;
-let _score = 0;
-let _spawnAcc = 0;
 let _planetId: string | null = null;
 
-// Объекты
-let _lander: GameObject = { x: 0, y: 0 };
-let _obstacles: Obstacle[] = [];
-let _bonuses: Bonus[] = [];
+let _canvas: HTMLCanvasElement | null = null;
+let _renderer: THREE.WebGLRenderer | null = null;
+let _scene: THREE.Scene | null = null;
+let _camera: THREE.PerspectiveCamera | null = null;
 
-// Ввод
-let _keys: Record<string, boolean> = {};
-let _mousePos: GameObject | null = null;
-let _isPaused = false;
+let _ship: THREE.Group | null = null;
+let _planet: THREE.Mesh | null = null;
+let _planetGlow: THREE.Mesh | null = null;
+let _asteroids: Asteroid[] = [];
+let _stars: THREE.Points | null = null;
 
 let _resizeObs: ResizeObserver | null = null;
+let _animId: number | null = null;
 
-// ── Глобальный API ──────────────────────────────────────────────────────────
+let _lastTime = 0;
+let _elapsed = 0;
+let _spawnAcc = 0;
+let _health = HEALTH_MAX;
+let _dodged = 0;
+let _score = 0;
+let _hitFlash = 0;
+let _isPaused = false;
+
+let _keys: Record<string, boolean> = {};
+let _pointerTarget: THREE.Vector2 | null = null;
+let _shipColor = '#4fc3f7';
 
 window._miniGame = {
     pause() {
@@ -102,40 +78,19 @@ window._miniGame = {
         goBack();
     },
     retry() {
-        _reset();
         _startGame();
     }
 };
 
-// ── Lifecycle ───────────────────────────────────────────────────────────────
-
 export async function init(store: Readonly<GameStore>): Promise<void> {
     _planetId = store.sessionData?.planetId ?? null;
+    _shipColor = store.player?.shipColor ?? '#4fc3f7';
 
     _canvas = document.getElementById('minigame-canvas') as HTMLCanvasElement | null;
     if (!_canvas) return;
 
-    // Размер canvas под контейнер
-    const parent = _canvas.parentElement!;
-    _canvas.width = parent.clientWidth;
-    _canvas.height = parent.clientHeight;
-    _ctx = _canvas.getContext('2d');
-
-    // Слушатели
-    document.addEventListener('keydown', _onKeyDown);
-    document.addEventListener('keyup', _onKeyUp);
-    _canvas.addEventListener('mousemove', _onMouseMove);
-    _canvas.addEventListener('touchmove', _onTouchMove, { passive: false });
-
-    // ResizeObserver
-    _resizeObs = new ResizeObserver(() => {
-        if (!_canvas) return;
-        const p = _canvas.parentElement!;
-        _canvas.width = p.clientWidth;
-        _canvas.height = p.clientHeight;
-    });
-    _resizeObs.observe(parent);
-
+    _bindInput();
+    await _initScene();
     _startGame();
 }
 
@@ -143,281 +98,329 @@ export function destroy(): void {
     _cleanup();
 }
 
-// ── Game Flow ───────────────────────────────────────────────────────────────
+async function _initScene(): Promise<void> {
+    if (!_canvas) return;
 
-function _reset(): void {
+    _renderer = new THREE.WebGLRenderer({ canvas: _canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+    _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    _renderer.setClearColor(0x020710, 1);
+
+    const parent = _canvas.parentElement!;
+    _renderer.setSize(parent.clientWidth, parent.clientHeight, false);
+
+    _scene = new THREE.Scene();
+    _scene.fog = new THREE.FogExp2(0x020710, 0.03);
+
+    _camera = new THREE.PerspectiveCamera(62, parent.clientWidth / parent.clientHeight, 0.1, 600);
+    _camera.position.set(0, 1.6, 14);
+    _camera.lookAt(0, 0, -30);
+
+    _scene.add(new THREE.AmbientLight(0x32435f, 0.7));
+    const key = new THREE.DirectionalLight(0xaad6ff, 1.0);
+    key.position.set(6, 9, 12);
+    _scene.add(key);
+
+    const rim = new THREE.PointLight(0x4fc3f7, 2.2, 120);
+    rim.position.set(0, 2, -20);
+    _scene.add(rim);
+
+    _buildStars();
+    await _buildShip();
+    _buildPlanet();
+
+    _resizeObs = new ResizeObserver(() => {
+        if (!_renderer || !_camera || !_canvas) return;
+        const p = _canvas.parentElement!;
+        const w = p.clientWidth;
+        const h = p.clientHeight;
+        if (w === 0 || h === 0) return;
+        _camera.aspect = w / h;
+        _camera.updateProjectionMatrix();
+        _renderer.setSize(w, h, false);
+    });
+    _resizeObs.observe(parent);
+}
+
+function _buildStars(): void {
+    const geo = new THREE.BufferGeometry();
+    const count = 1500;
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * 140;
+        pos[i * 3 + 1] = (Math.random() - 0.5) * 70;
+        pos[i * 3 + 2] = -Math.random() * 300;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ color: 0xdbeafe, size: 0.12, transparent: true, opacity: 0.82 });
+    _stars = new THREE.Points(geo, mat);
+    _scene!.add(_stars);
+}
+
+async function _buildShip(): Promise<void> {
+    const ship = new THREE.Group();
+    ship.position.set(0, -0.3, 4);
+
+    try {
+        const mesh = await loadModel('/models/ship.glb');
+        mesh.scale.set(0.5, 0.5, 0.5);
+        mesh.rotation.y = -Math.PI / 2;
+        ship.add(mesh);
+    } catch (e) {
+        console.warn('[MiniGame3D] ship.glb not loaded, using fallback', e);
+        const fallback = _createFallbackShip();
+        ship.add(fallback);
+    }
+
+    _applyShipColor(ship, _shipColor);
+    _ship = ship;
+    _scene!.add(ship);
+}
+
+function _buildPlanet(): void {
+    const coreMat = new THREE.MeshStandardMaterial({
+        color: 0x1d4ed8,
+        emissive: 0x1e3a8a,
+        emissiveIntensity: 0.5,
+        roughness: 0.68,
+        metalness: 0.08
+    });
+    const planet = new THREE.Mesh(
+        new THREE.SphereGeometry(PLANET_RADIUS, 64, 48),
+        coreMat
+    );
+    planet.position.set(0, 0, PLANET_START_Z);
+
+    const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(PLANET_RADIUS + 2.6, 48, 36),
+        new THREE.MeshBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.24, side: THREE.BackSide })
+    );
+    glow.position.copy(planet.position);
+
+    _planet = planet;
+    _planetGlow = glow;
+
+    _scene!.add(planet);
+    _scene!.add(glow);
+}
+
+function _startGame(): void {
+    _state = 'playing';
     _elapsed = 0;
-    _score = 0;
     _spawnAcc = 0;
-    _obstacles = [];
-    _bonuses = [];
-    _keys = {};
-    _mousePos = null;
+    _health = HEALTH_MAX;
+    _dodged = 0;
+    _score = 0;
+    _hitFlash = 0;
     _isPaused = false;
-    _state = 'idle';
+
+    _clearAsteroids();
+
+    if (_ship) _ship.position.set(0, -0.3, 4);
+    if (_planet) _planet.position.set(0, 0, PLANET_START_Z);
+    if (_planetGlow) {
+        _planetGlow.position.set(0, 0, PLANET_START_Z);
+        _planetGlow.scale.setScalar(1);
+    }
 
     const overlay = document.getElementById('mg-result-overlay');
     if (overlay) overlay.classList.add('hidden');
 
-    _setText('mg-score', '0');
-    _setText('mg-timer', String(DURATION_S));
-}
-
-function _startGame(): void {
-    _reset();
-    _state = 'playing';
-
-    // Центрируем lander
-    _lander.x = _canvas!.width / 2;
-    _lander.y = _canvas!.height * 0.75;
+    _updateHud(_getLandingEtaSeconds());
 
     _lastTime = performance.now();
-    _animId = requestAnimationFrame(_gameLoop);
+    if (_animId) cancelAnimationFrame(_animId);
+    _animId = requestAnimationFrame(_loop);
 }
 
-function _gameLoop(now: number): void {
+function _loop(now: number): void {
     if (_state !== 'playing') return;
     if (_isPaused) {
-        _animId = requestAnimationFrame(_gameLoop);
+        _animId = requestAnimationFrame(_loop);
         return;
     }
 
-    const dt = Math.min((now - _lastTime) / 1000, 0.1);
+    const dt = Math.min((now - _lastTime) / 1000, 0.06);
     _lastTime = now;
+
     _elapsed += dt;
-
-    const remaining = Math.max(0, DURATION_S - _elapsed);
-    _setText('mg-timer', String(Math.ceil(remaining)));
-
-    if (remaining <= 0) {
-        _endGame(true);
+    _updateShip(dt);
+    _updatePlanet(dt);
+    if (_hasReachedPlanetSurface()) {
+        _finish(true);
         return;
     }
-
-    // Спавн
     _spawnAcc += dt;
-    if (_spawnAcc >= SPAWN_INTERVAL) {
-        _spawnAcc -= SPAWN_INTERVAL;
-        _spawnObjects();
+    if (_spawnAcc >= ASTEROID_SPAWN_INTERVAL) {
+        _spawnAcc -= ASTEROID_SPAWN_INTERVAL;
+        _spawnAsteroid();
     }
+    _updateAsteroids(dt);
 
-    // Движение игрока
-    _moveLander(dt);
+    if (_hitFlash > 0) _hitFlash -= dt;
+    _updateHud(_getLandingEtaSeconds());
 
-    // Движение объектов
-    _moveObjects(dt);
-
-    // Столкновения
-    _checkCollisions();
-
-    // Рендер
-    _render();
-
-    // HUD
-    _setText('mg-score', String(_score));
-
-    _animId = requestAnimationFrame(_gameLoop);
+    _renderer!.render(_scene!, _camera!);
+    _animId = requestAnimationFrame(_loop);
 }
 
-// ── Lander Movement ─────────────────────────────────────────────────────────
+function _updateShip(dt: number): void {
+    if (!_ship) return;
 
-function _moveLander(dt: number): void {
-    const speed = 280 * dt;
+    const move = new THREE.Vector2(0, 0);
+    if (_keys['KeyA'] || _keys['ArrowLeft']) move.x -= 1;
+    if (_keys['KeyD'] || _keys['ArrowRight']) move.x += 1;
+    if (_keys['KeyW'] || _keys['ArrowUp']) move.y += 1;
+    if (_keys['KeyS'] || _keys['ArrowDown']) move.y -= 1;
 
-    if (_mousePos) {
-        // Плавное следование за мышью
-        const dx = _mousePos.x - _lander.x;
-        const dy = _mousePos.y - _lander.y;
-        _lander.x += dx * 0.12;
-        _lander.y += dy * 0.12;
-    } else {
-        if (_keys['KeyA'] || _keys['ArrowLeft']) _lander.x -= speed;
-        if (_keys['KeyD'] || _keys['ArrowRight']) _lander.x += speed;
-        if (_keys['KeyW'] || _keys['ArrowUp']) _lander.y -= speed;
-        if (_keys['KeyS'] || _keys['ArrowDown']) _lander.y += speed;
+    if (_pointerTarget) {
+        const to = _pointerTarget.clone().sub(new THREE.Vector2(_ship.position.x, _ship.position.y));
+        _ship.position.x += to.x * Math.min(1, dt * 6);
+        _ship.position.y += to.y * Math.min(1, dt * 6);
+    } else if (move.lengthSq() > 0) {
+        move.normalize();
+        _ship.position.x += move.x * SHIP_SPEED * dt;
+        _ship.position.y += move.y * SHIP_SPEED * dt;
     }
 
-    // Границы
-    _lander.x = Math.max(LANDER_SIZE, Math.min(_canvas!.width - LANDER_SIZE, _lander.x));
-    _lander.y = Math.max(LANDER_SIZE, Math.min(_canvas!.height - LANDER_SIZE, _lander.y));
+    _ship.position.x = THREE.MathUtils.clamp(_ship.position.x, -SHIP_BOUNDS_X, SHIP_BOUNDS_X);
+    _ship.position.y = THREE.MathUtils.clamp(_ship.position.y, -SHIP_BOUNDS_Y, SHIP_BOUNDS_Y);
+
+    _ship.rotation.z = -_ship.position.x * 0.05;
+    _ship.rotation.x = _ship.position.y * 0.05;
 }
 
-// ── Objects ─────────────────────────────────────────────────────────────────
+function _updatePlanet(dt: number): void {
+    if (!_planet || !_planetGlow) return;
 
-function _spawnObjects(): void {
-    const w = _canvas!.width;
+    const t = Math.min(1, _elapsed / APPROACH_RAMP_S);
+    const approachSpeed = APPROACH_BASE_SPEED + t * APPROACH_ACCEL;
+    _planet.position.z += approachSpeed * dt;
+    _planetGlow.position.z = _planet.position.z;
+    _planetGlow.scale.setScalar(1 + t * 0.1);
 
-    // Помеха (всегда)
-    const r = OBSTACLE_MIN_R + Math.random() * (OBSTACLE_MAX_R - OBSTACLE_MIN_R);
-    // Pre-generate polygon vertices to avoid per-frame Math.random() jitter
-    const vertices: number[] = [];
-    for (let i = 0; i < 6; i++) vertices.push(r * (0.7 + Math.random() * 0.3));
-    _obstacles.push({
-        x: Math.random() * w,
-        y: -r * 2,
-        r,
-        speed: OBJ_SPEED_BASE + Math.random() * 80 + _elapsed * 2,
-        angle: 0,
-        vertices,
-    });
+    _planet.rotation.y += dt * 0.12;
+    _planet.rotation.x += dt * 0.03;
+    _planetGlow.rotation.y = _planet.rotation.y;
 
-    // Бонус (50% шанс)
-    if (Math.random() < 0.5) {
-        _bonuses.push({
-            x: Math.random() * w,
-            y: -BONUS_SIZE * 2,
-            speed: OBJ_SPEED_BASE * 0.8 + Math.random() * 40,
-            pulse: 0,
-        });
+    if (_camera) {
+        const targetZ = -34 + t * 18;
+        _camera.lookAt(0, 0, targetZ);
     }
 }
 
-function _moveObjects(dt: number): void {
-    const h = _canvas!.height;
-
-    _obstacles.forEach(o => {
-        o.y += o.speed * dt;
-        o.angle += dt * 2;
-    });
-    _obstacles = _obstacles.filter(o => o.y < h + 50);
-
-    _bonuses.forEach(b => {
-        b.y += b.speed * dt;
-        b.pulse += dt * 4;
-    });
-    _bonuses = _bonuses.filter(b => b.y < h + 50);
+function _hasReachedPlanetSurface(): boolean {
+    if (!_ship || !_planet) return false;
+    const landingPlaneZ = _ship.position.z - PLANET_RADIUS - 0.6;
+    return _planet.position.z >= landingPlaneZ;
 }
 
-function _checkCollisions(): void {
-    const lx = _lander.x, ly = _lander.y;
-    const lr = LANDER_SIZE * 0.6;
+function _getLandingEtaSeconds(): number {
+    if (!_ship || !_planet) return 0;
 
-    // Помехи → проигрыш
-    for (const o of _obstacles) {
-        const dist = Math.hypot(o.x - lx, o.y - ly);
-        if (dist < lr + o.r) {
-            _endGame(false);
-            return;
+    const landingPlaneZ = _ship.position.z - PLANET_RADIUS - 0.6;
+    const remainingDist = landingPlaneZ - _planet.position.z;
+    if (remainingDist <= 0) return 0;
+
+    const b = APPROACH_BASE_SPEED;
+    const a = APPROACH_ACCEL;
+    const rampLeft = Math.max(0, APPROACH_RAMP_S - _elapsed);
+
+    if (rampLeft <= 0) {
+        return remainingDist / Math.max(0.001, b + a);
+    }
+
+    const v0 = b + a * (_elapsed / APPROACH_RAMP_S);
+    const k = a / (2 * APPROACH_RAMP_S);
+    const rampReach = v0 * rampLeft + k * rampLeft * rampLeft;
+
+    if (remainingDist <= rampReach) {
+        if (Math.abs(k) < 1e-6) return remainingDist / Math.max(0.001, v0);
+        const disc = Math.max(0, v0 * v0 + 4 * k * remainingDist);
+        const u = (-v0 + Math.sqrt(disc)) / (2 * k);
+        return Math.max(0, u);
+    }
+
+    const afterRampDist = remainingDist - rampReach;
+    const cruiseSpeed = b + a;
+    return rampLeft + afterRampDist / Math.max(0.001, cruiseSpeed);
+}
+
+function _spawnAsteroid(): void {
+    const r = ASTEROID_MIN_R + Math.random() * (ASTEROID_MAX_R - ASTEROID_MIN_R);
+    const geo = new THREE.IcosahedronGeometry(r, 0);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x7c8a9e, roughness: 0.9, metalness: 0.1 });
+    const mesh = new THREE.Mesh(geo, mat);
+
+    mesh.position.set(
+        THREE.MathUtils.randFloatSpread(SHIP_BOUNDS_X * 3.2),
+        THREE.MathUtils.randFloatSpread(SHIP_BOUNDS_Y * 3.2),
+        -120 - Math.random() * 25
+    );
+
+    const asteroid: Asteroid = {
+        mesh,
+        radius: r,
+        spinAxis: new THREE.Vector3(Math.random(), Math.random(), Math.random()).normalize(),
+        spinSpeed: THREE.MathUtils.randFloat(0.8, 2.4)
+    };
+
+    _asteroids.push(asteroid);
+    _scene!.add(mesh);
+}
+
+function _updateAsteroids(dt: number): void {
+    if (!_ship) return;
+
+    const shipPos = _ship.position;
+    const speed = ASTEROID_BASE_SPEED + _elapsed * 0.35;
+
+    for (let i = _asteroids.length - 1; i >= 0; i--) {
+        const a = _asteroids[i];
+        a.mesh.position.z += speed * dt;
+        a.mesh.rotateOnAxis(a.spinAxis, a.spinSpeed * dt);
+
+        const dist = a.mesh.position.distanceTo(shipPos);
+        if (dist <= a.radius + SHIP_COLLISION_R) {
+            _hitAsteroid(i);
+            continue;
+        }
+
+        if (a.mesh.position.z > _camera!.position.z + 8) {
+            _scene!.remove(a.mesh);
+            a.mesh.geometry.dispose();
+            (a.mesh.material as THREE.Material).dispose();
+            _asteroids.splice(i, 1);
+            _dodged += 1;
+            _score += 8;
         }
     }
-
-    // Бонусы → очки
-    _bonuses = _bonuses.filter(b => {
-        const dist = Math.hypot(b.x - lx, b.y - ly);
-        if (dist < lr + BONUS_SIZE) {
-            _score += SCORE_PER_BONUS;
-            return false;
-        }
-        return true;
-    });
 }
 
-// ── Рендеринг (Canvas 2D) ──────────────────────────────────────────────────
+function _hitAsteroid(index: number): void {
+    const a = _asteroids[index];
+    _scene!.remove(a.mesh);
+    a.mesh.geometry.dispose();
+    (a.mesh.material as THREE.Material).dispose();
+    _asteroids.splice(index, 1);
 
-function _render(): void {
-    const w = _canvas!.width, h = _canvas!.height;
+    _health = Math.max(0, _health - ASTEROID_DAMAGE);
+    _hitFlash = 0.25;
 
-    // Фон
-    _ctx!.fillStyle = COLORS.bg;
-    _ctx!.fillRect(0, 0, w, h);
-
-    // Сетка
-    _ctx!.strokeStyle = COLORS.grid;
-    _ctx!.lineWidth = 1;
-    const gridSize = 40;
-    const offset = (_elapsed * 30) % gridSize;
-    for (let y = offset; y < h; y += gridSize) {
-        _ctx!.beginPath(); _ctx!.moveTo(0, y); _ctx!.lineTo(w, y); _ctx!.stroke();
+    if (_health <= 0) {
+        _finish(false);
     }
-    for (let x = 0; x < w; x += gridSize) {
-        _ctx!.beginPath(); _ctx!.moveTo(x, 0); _ctx!.lineTo(x, h); _ctx!.stroke();
-    }
-
-    // Помехи
-    _obstacles.forEach(o => {
-        _ctx!.save();
-        _ctx!.translate(o.x, o.y);
-        _ctx!.rotate(o.angle);
-        _ctx!.fillStyle = COLORS.obstacle;
-        _ctx!.beginPath();
-        // Use pre-generated vertex radii (no per-frame jitter)
-        for (let i = 0; i < 6; i++) {
-            const a = (i / 6) * Math.PI * 2;
-            const r2 = o.vertices[i];
-            const px = Math.cos(a) * r2;
-            const py = Math.sin(a) * r2;
-            i === 0 ? _ctx!.moveTo(px, py) : _ctx!.lineTo(px, py);
-        }
-        _ctx!.closePath();
-        _ctx!.fill();
-        _ctx!.restore();
-    });
-
-    // Бонусы
-    _bonuses.forEach(b => {
-        const pulseFactor = 1 + Math.sin(b.pulse) * 0.15;
-        const r = BONUS_SIZE * pulseFactor;
-
-        // Свечение
-        _ctx!.beginPath();
-        _ctx!.arc(b.x, b.y, r * 1.8, 0, Math.PI * 2);
-        _ctx!.fillStyle = COLORS.bonusGlow;
-        _ctx!.fill();
-
-        // Ромбик
-        _ctx!.beginPath();
-        _ctx!.moveTo(b.x, b.y - r);
-        _ctx!.lineTo(b.x + r * 0.6, b.y);
-        _ctx!.lineTo(b.x, b.y + r);
-        _ctx!.lineTo(b.x - r * 0.6, b.y);
-        _ctx!.closePath();
-        _ctx!.fillStyle = COLORS.bonus;
-        _ctx!.fill();
-    });
-
-    // Lander
-    // Свечение
-    _ctx!.beginPath();
-    _ctx!.arc(_lander.x, _lander.y, LANDER_SIZE * 1.5, 0, Math.PI * 2);
-    _ctx!.fillStyle = COLORS.landerGlow;
-    _ctx!.fill();
-
-    // Треугольник (модуль посадки)
-    _ctx!.beginPath();
-    _ctx!.moveTo(_lander.x, _lander.y - LANDER_SIZE);
-    _ctx!.lineTo(_lander.x + LANDER_SIZE * 0.7, _lander.y + LANDER_SIZE * 0.5);
-    _ctx!.lineTo(_lander.x - LANDER_SIZE * 0.7, _lander.y + LANDER_SIZE * 0.5);
-    _ctx!.closePath();
-    _ctx!.fillStyle = COLORS.lander;
-    _ctx!.fill();
-
-    // «Пламя» двигателя
-    const flameH = 8 + Math.random() * 6;
-    _ctx!.beginPath();
-    _ctx!.moveTo(_lander.x - 6, _lander.y + LANDER_SIZE * 0.5);
-    _ctx!.lineTo(_lander.x + 6, _lander.y + LANDER_SIZE * 0.5);
-    _ctx!.lineTo(_lander.x, _lander.y + LANDER_SIZE * 0.5 + flameH);
-    _ctx!.closePath();
-    _ctx!.fillStyle = '#fbbf24';
-    _ctx!.fill();
 }
 
-// ── End Game ────────────────────────────────────────────────────────────────
-
-async function _endGame(survived: boolean): Promise<void> {
+async function _finish(survived: boolean): Promise<void> {
     _state = 'ended';
-    if (_animId) cancelAnimationFrame(_animId);
-    _animId = null;
-
-    // Бонус за выживание
-    if (survived) {
-        const timeBonus = Math.ceil(DURATION_S - _elapsed) * SCORE_TIME_MULT;
-        _score += timeBonus;
+    if (_animId) {
+        cancelAnimationFrame(_animId);
+        _animId = null;
     }
 
-    const passed = survived && _score >= 100;
+    const passed = survived && _health > 0;
+    _score += Math.round(_health * 2 + _dodged * 12);
 
-    // Отправляем результат на сервер
     let reward: MiniGameRewardDto | null = null;
     try {
         const resp = await fetch('/game?handler=MiniGameResult', {
@@ -436,21 +439,17 @@ async function _endGame(survived: boolean): Promise<void> {
         });
         if (resp.ok) reward = await resp.json() as MiniGameRewardDto;
     } catch (e) {
-        console.warn('[MiniGame] server submit failed:', e);
+        console.warn('[MiniGame3D] submit failed:', e);
     }
 
-    // Зачисляем награды в store
     if (reward?.valid && reward.crystals) {
         dispatch('EARN_CRYSTALS', { earned: reward.crystals });
     }
     if (reward?.badges?.length) {
         reward.badges.forEach(b => dispatch('ADD_BADGE', { badge: b }));
     }
-
-    // Обновляем статистику
     dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
 
-    // Показываем оверлей результатов
     _showResults(passed, reward);
 }
 
@@ -459,14 +458,10 @@ function _showResults(passed: boolean, reward: MiniGameRewardDto | null): void {
     if (!overlay) return;
     overlay.classList.remove('hidden');
 
-    _setText('mg-result-icon', passed ? '🎉' : '💥');
+    _setText('mg-result-icon', passed ? '🛬' : '💥');
     _setText('mg-result-title', passed ? 'Посадка выполнена!' : 'Посадка провалена!');
+    _setText('mg-result-text', `Здоровье: ${_health}%  •  Уклонений: ${_dodged}  •  Счёт: ${_score}`);
 
-    const textParts = [`Счёт: ${_score}`];
-    if (passed) textParts.push(`⏱ Время: ${(_elapsed).toFixed(1)}с`);
-    _setText('mg-result-text', textParts.join('  •  '));
-
-    // Бейджи наград
     const badgesEl = document.getElementById('mg-reward-badges');
     if (badgesEl && reward?.valid) {
         const crystalBadges = Object.entries(reward.crystals ?? {})
@@ -483,37 +478,146 @@ function _showResults(passed: boolean, reward: MiniGameRewardDto | null): void {
     }
 }
 
-// ── Ввод ────────────────────────────────────────────────────────────────────
+function _updateHud(landingEtaSeconds: number): void {
+    _setText('mg-timer', String(Math.ceil(Math.max(0, landingEtaSeconds))));
 
-function _onKeyDown(e: KeyboardEvent): void { _keys[e.code] = true; _mousePos = null; }
-function _onKeyUp(e: KeyboardEvent): void { _keys[e.code] = false; }
+    const healthText = `${Math.max(0, Math.round(_health))}%`;
+    _setText('mg-health', healthText);
+    const healthEl = document.getElementById('mg-health');
+    if (healthEl) {
+        healthEl.style.color = _health > 60 ? '#4ade80' : _health > 30 ? '#facc15' : '#f87171';
+        healthEl.style.textShadow = _hitFlash > 0 ? '0 0 14px rgba(248,113,113,0.9)' : 'none';
+    }
+}
+
+function _bindInput(): void {
+    document.addEventListener('keydown', _onKeyDown);
+    document.addEventListener('keyup', _onKeyUp);
+    _canvas?.addEventListener('mousemove', _onMouseMove);
+    _canvas?.addEventListener('touchmove', _onTouchMove, { passive: false });
+}
+
+function _onKeyDown(e: KeyboardEvent): void {
+    _keys[e.code] = true;
+    _pointerTarget = null;
+}
+
+function _onKeyUp(e: KeyboardEvent): void {
+    _keys[e.code] = false;
+}
 
 function _onMouseMove(e: MouseEvent): void {
-    const rect = _canvas!.getBoundingClientRect();
-    _mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    if (!_canvas || !_ship) return;
+    const rect = _canvas.getBoundingClientRect();
+    const nx = (e.clientX - rect.left) / rect.width;
+    const ny = (e.clientY - rect.top) / rect.height;
+    _pointerTarget = new THREE.Vector2(
+        THREE.MathUtils.lerp(-SHIP_BOUNDS_X, SHIP_BOUNDS_X, nx),
+        THREE.MathUtils.lerp(SHIP_BOUNDS_Y, -SHIP_BOUNDS_Y, ny)
+    );
 }
 
 function _onTouchMove(e: TouchEvent): void {
+    if (!_canvas) return;
     e.preventDefault();
     if (!e.touches.length) return;
-    const rect = _canvas!.getBoundingClientRect();
     const t = e.touches[0];
-    _mousePos = { x: t.clientX - rect.left, y: t.clientY - rect.top };
+    _onMouseMove(new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY }));
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function _setText(id: string, v: string): void {
+function _setText(id: string, value: string): void {
     const el = document.getElementById(id);
-    if (el) el.textContent = v;
+    if (el) el.textContent = value;
+}
+
+function _clearAsteroids(): void {
+    for (const a of _asteroids) {
+        _scene?.remove(a.mesh);
+        a.mesh.geometry.dispose();
+        (a.mesh.material as THREE.Material).dispose();
+    }
+    _asteroids = [];
+}
+
+function _applyShipColor(root: THREE.Object3D, hexColor: string): void {
+    let bodyFound = false;
+    let firstPaintable: THREE.Material | null = null;
+
+    root.traverse(obj => {
+        const mesh = obj as THREE.Mesh;
+        if (!mesh.isMesh || !mesh.material) return;
+
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mats.forEach(mat => {
+            if (!firstPaintable && 'color' in (mat as unknown as Record<string, unknown>)) {
+                firstPaintable = mat;
+            }
+
+            if (mat.name === 'ship_body' && 'color' in (mat as unknown as Record<string, unknown>)) {
+                (mat as THREE.Material & { color: THREE.Color }).color.set(hexColor);
+                mat.needsUpdate = true;
+                bodyFound = true;
+            }
+        });
+    });
+
+    if (!bodyFound && firstPaintable && 'color' in (firstPaintable as unknown as Record<string, unknown>)) {
+        const paintable = firstPaintable as THREE.Material & { color: THREE.Color };
+        paintable.color.set(hexColor);
+        paintable.needsUpdate = true;
+    }
+}
+
+function _createFallbackShip(): THREE.Group {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(
+        new THREE.ConeGeometry(0.4, 1.5, 6),
+        new THREE.MeshStandardMaterial({ color: 0x4fc3f7, metalness: 0.7, roughness: 0.3 })
+    );
+    body.rotation.x = Math.PI / 2;
+    group.add(body);
+
+    const wing = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.05, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x818cf8, metalness: 0.5, roughness: 0.4 })
+    );
+    wing.position.z = 0.3;
+    group.add(wing);
+    return group;
+}
+
+function _disposeScene(): void {
+    _clearAsteroids();
+
+    if (_scene) {
+        _scene.traverse(obj => {
+            const mesh = obj as THREE.Mesh;
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach(m => m.dispose());
+            }
+        });
+    }
+
+    _ship = null;
+    _planet = null;
+    _planetGlow = null;
+    _stars = null;
+    _scene = null;
+    _camera = null;
+
+    if (_renderer) {
+        _renderer.dispose();
+        _renderer = null;
+    }
 }
 
 function _cleanup(): void {
-    if (_animId) cancelAnimationFrame(_animId);
-    _animId = null;
-    _state = 'idle';
-
-    if (_resizeObs) { _resizeObs.disconnect(); _resizeObs = null; }
+    if (_animId) {
+        cancelAnimationFrame(_animId);
+        _animId = null;
+    }
 
     document.removeEventListener('keydown', _onKeyDown);
     document.removeEventListener('keyup', _onKeyUp);
@@ -521,4 +625,12 @@ function _cleanup(): void {
         _canvas.removeEventListener('mousemove', _onMouseMove);
         _canvas.removeEventListener('touchmove', _onTouchMove);
     }
+
+    if (_resizeObs) {
+        _resizeObs.disconnect();
+        _resizeObs = null;
+    }
+
+    _disposeScene();
+    _state = 'idle';
 }

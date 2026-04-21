@@ -1,25 +1,18 @@
 <!-- _ScreenGalaxyMap.cshtml — Звёздная карта: 3 туманности -->
-<div class="screen" id="screen-galaxy-map"
-     style="width:100%;height:100%;display:grid;grid-template-rows:auto 1fr;overflow:hidden;">
+<div class="screen galaxy-map-screen" id="screen-galaxy-map">
 
     <!-- ═══ Шапка ═══ -->
     <header class="galaxy-header">
-        <h1 class="game-title" style="font-size:1.15rem;">🌌 Карта Галактики</h1>
-
-        <!-- Кнопки навигации -->
         <div class="galaxy-actions">
-            <button id="btn-galaxy-back" class="btn-game btn-secondary hidden" onclick="window._galaxyMap?.backToOverview()" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
+            <button id="btn-galaxy-back" class="btn-game btn-secondary galaxy-small-btn hidden" onclick="window._galaxyMap?.backToOverview()">
                 ← Назад
-            </button>
-            <button class="btn-game btn-secondary" data-spa="goto" data-screen="achievements" style="padding:0.375rem 0.875rem;font-size:0.78rem;">
-                📊 Прогресс
             </button>
         </div>
     </header>
 
     <!-- ═══ Контент: 3D Вид ═══ -->
-    <div id="galaxy-3d-container" class="galaxy-content-panel" style="position:relative;">
-        <div id="galaxy-3d-canvas-wrap" style="width:100%;height:100%;position:relative;">
+    <div id="galaxy-3d-container" class="galaxy-content-panel galaxy-3d-container">
+        <div id="galaxy-3d-canvas-wrap" class="galaxy-3d-canvas-wrap">
 
             <!-- Тултип при наведении -->
             <div id="galaxy-tooltip" class="galaxy-tooltip hidden">
@@ -29,9 +22,9 @@
             </div>
 
             <!-- Индикатор масштабирования камеры -->
-            <div class="galaxy-zoom-control" style="position:absolute;top:0.625rem;right:0.625rem;background:var(--color-surface-trans);backdrop-filter:blur(8px);border:1px solid var(--color-border);border-radius:var(--radius);padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.625rem;z-index:5;">
-                <span style="font-size:0.8rem;color:var(--color-text-muted);">Масштаб: <strong id="galaxy-zoom-percent" style="color:var(--color-text);">61%</strong></span>
-                <button type="button" class="btn-game btn-secondary" onclick="event.stopPropagation(); window._galaxyMap?.resetCamera()" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Сброс</button>
+            <div class="galaxy-zoom-control">
+                <span class="galaxy-zoom-text">Масштаб: <strong id="galaxy-zoom-percent" class="galaxy-zoom-value">61%</strong></span>
+                <button type="button" class="btn-game btn-secondary galaxy-zoom-reset-btn" onclick="event.stopPropagation(); window._galaxyMap?.resetCamera()">Сброс</button>
             </div>
 
             <!-- Панель выбранного региона / туманности -->
@@ -47,7 +40,7 @@
                     <span id="nebula-info-crystal" class="nebula-info-stat">💎 Кристаллы: —</span>
                     <span id="nebula-info-planets" class="nebula-info-stat">🪐 Планет: —</span>
                 </div>
-                <button id="btn-nebula-fly" class="btn-game btn-primary" onclick="window._galaxyMap?.flyToRegion()" style="width:100%;margin-top:0.5rem;">
+                <button id="btn-nebula-fly" class="btn-game btn-primary nebula-fly-btn" onclick="window._galaxyMap?.flyToRegion()">
                     🚀 Полёт
                 </button>
                 <!-- Сетка планет региона -->
@@ -55,7 +48,7 @@
             </div>
 
             <!-- Подсказка по навигации -->
-            <div class="galaxy-nav-hint" style="position:absolute;bottom:0.625rem;right:0.625rem;background:rgba(0,0,0,0.5);padding:0.25rem 0.625rem;border-radius:0.25rem;font-size:0.75rem;color:#8892b0;pointer-events:none;white-space:nowrap;user-select:none;">
+            <div class="galaxy-nav-hint">
                 🖱 ЛКМ — выбор | Зажать ПКМ / Свайп — вращение | Скролл / Щипок — зум
             </div>
         </div>

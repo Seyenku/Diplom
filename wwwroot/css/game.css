@@ -211,8 +211,10 @@
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: transform var(--transition-ui), box-shadow var(--transition-ui), background var(--transition-ui);
+    transition: transform var(--transition-ui), box-shadow var(--transition-ui), background var(--transition-ui), border-color var(--transition-ui);
     white-space: nowrap;
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-game:hover {
@@ -226,37 +228,41 @@
 .btn-primary {
     background: linear-gradient(135deg, #4fc3f7, #818cf8);
     color: #050a1a;
-    box-shadow: 0 4px 20px rgba(79, 195, 247, 0.35);
+    box-shadow: 0 10px 24px rgba(79, 195, 247, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .btn-primary:hover {
-    box-shadow: 0 8px 32px rgba(79, 195, 247, 0.55);
+    box-shadow: 0 14px 32px rgba(79, 195, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .btn-secondary {
-    background: transparent;
+    background: linear-gradient(180deg, rgba(26, 36, 64, 0.78), rgba(15, 23, 42, 0.78));
     color: var(--color-primary);
     border: 1px solid var(--color-primary);
-    box-shadow: 0 0 12px rgba(79, 195, 247, 0.15);
+    box-shadow: 0 8px 18px rgba(4, 10, 25, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .btn-secondary:hover {
-    background: rgba(79, 195, 247, 0.08);
+    background: linear-gradient(180deg, rgba(37, 51, 84, 0.84), rgba(20, 32, 58, 0.84));
 }
 
 /* ── Карточки ──────────────────────────────────── */
 .game-card {
-    background: var(--color-surface);
+    background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 45%),
+        linear-gradient(180deg, rgba(16, 26, 50, 0.92), rgba(8, 15, 30, 0.9));
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     backdrop-filter: blur(12px);
     padding: clamp(1rem, 1.5vw, 1.6rem);
-    transition: border-color var(--transition-ui), box-shadow var(--transition-ui);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    transition: border-color var(--transition-ui), box-shadow var(--transition-ui), transform var(--transition-ui);
 }
 
 .game-card:hover {
     border-color: rgba(99, 102, 241, 0.6);
-    box-shadow: 0 0 24px rgba(99, 102, 241, 0.12);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(99, 102, 241, 0.14);
+    transform: translateY(-2px);
 }
 
 /* ── Кристаллы (индикаторы ресурсов) ──────────── */
@@ -346,13 +352,15 @@
     justify-content: center;
     gap: 0.65rem;
     padding: 0.65rem 1.1rem;
-    background: rgba(5, 10, 26, 0.85);
+    background:
+        linear-gradient(180deg, rgba(10, 20, 42, 0.92), rgba(5, 10, 26, 0.88));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(120, 147, 255, 0.25);
     position: sticky;
     top: 0;
     z-index: 50;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
 .nav-btn {
@@ -362,7 +370,7 @@
     padding: 0.6rem 1rem;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    background: rgba(15, 23, 42, 0.6);
+    background: linear-gradient(180deg, rgba(28, 39, 67, 0.78), rgba(15, 23, 42, 0.75));
     color: var(--color-text-muted);
     font-family: var(--font-display);
     font-size: clamp(0.95rem, 0.18vw + 0.88rem, 1.08rem);
@@ -370,19 +378,21 @@
     cursor: pointer;
     transition: all 0.25s ease;
     text-transform: uppercase;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
 .nav-btn:hover {
-    background: rgba(79, 195, 247, 0.08);
+    background: linear-gradient(180deg, rgba(40, 60, 100, 0.82), rgba(20, 34, 62, 0.8));
     border-color: var(--color-primary);
     color: var(--color-text);
+    transform: translateY(-1px);
 }
 
 .nav-btn--active {
-    background: rgba(79, 195, 247, 0.12);
+    background: linear-gradient(180deg, rgba(67, 104, 181, 0.35), rgba(43, 74, 138, 0.28));
     border-color: var(--color-primary);
     color: var(--color-primary);
-    box-shadow: 0 0 12px rgba(79, 195, 247, 0.2),
+    box-shadow: 0 0 16px rgba(79, 195, 247, 0.26),
                 inset 0 0 8px rgba(79, 195, 247, 0.06);
 }
 
@@ -587,6 +597,58 @@
     to   { opacity: 1; }
 }
 
+/* Main menu layout */
+.main-menu-screen {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.2rem;
+    padding: 2.2rem;
+    position: relative;
+}
+
+.main-menu-heading {
+    text-align: center;
+}
+
+.main-menu-subtitle {
+    margin-bottom: 0.6rem;
+    font-size: clamp(0.82rem, 0.4vw, 1.02rem);
+    letter-spacing: 0.26em;
+}
+
+.main-menu-title {
+    font-size: clamp(2.4rem, 5.3vw, 5rem);
+    line-height: 1.05;
+}
+
+.main-menu-description {
+    color: var(--color-text-muted);
+    margin-top: 1rem;
+    max-width: 680px;
+    font-size: clamp(1rem, 0.5vw, 1.22rem);
+    line-height: 1.65;
+}
+
+.main-menu-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: min(420px, 92vw);
+}
+
+.main-menu-version {
+    position: absolute;
+    bottom: 1.5rem;
+    color: var(--color-text-muted);
+    font-size: clamp(0.8rem, 0.25vw, 0.95rem);
+    opacity: 0.5;
+}
+
 /* ═══════════════════════════════════════════════════
    Lore Cards (Main Menu)
    ═══════════════════════════════════════════════════ */
@@ -665,9 +727,27 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 0.65rem;
-    padding: 0.75rem 1rem;
-    background: rgba(5, 10, 26, 0.7);
-    border-bottom: 1px solid var(--color-border);
+    justify-content: flex-end;
+    padding: 0.6rem 0.9rem;
+    background: linear-gradient(180deg, rgba(8, 16, 34, 0.84), rgba(5, 10, 26, 0.7));
+    border-bottom: 1px solid rgba(120, 147, 255, 0.2);
+}
+
+.galaxy-map-screen {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+}
+
+.galaxy-map-title {
+    font-size: 1.15rem;
+}
+
+.galaxy-small-btn {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.78rem;
 }
 
 .galaxy-actions {
@@ -679,6 +759,45 @@
 .galaxy-content-panel {
     overflow: hidden;
     min-height: 0;
+}
+
+.galaxy-3d-container {
+    position: relative;
+}
+
+.galaxy-3d-canvas-wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.galaxy-zoom-control {
+    position: absolute;
+    top: 0.625rem;
+    right: 0.625rem;
+    background: rgba(5, 10, 26, 0.72);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    z-index: 5;
+}
+
+.galaxy-zoom-text {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.galaxy-zoom-value {
+    color: var(--color-text);
+}
+
+.galaxy-zoom-reset-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
 }
 
 /* 3D tooltip */
@@ -777,6 +896,28 @@
     white-space: nowrap;
 }
 
+.nebula-fly-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+    min-height: 44px;
+    flex-shrink: 0;
+    line-height: 1.2;
+}
+
+.galaxy-nav-hint {
+    position: absolute;
+    bottom: 0.625rem;
+    right: 0.625rem;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: #8892b0;
+    pointer-events: none;
+    white-space: nowrap;
+    user-select: none;
+}
+
 /* Planet mini-cards inside the nebula panel */
 .nebula-planet-grid {
     display: flex;
@@ -868,6 +1009,26 @@
     gap: clamp(1rem, 1.8vh, 2rem);
     background:
         linear-gradient(180deg, rgba(2, 8, 20, 0.78) 0%, rgba(2, 8, 20, 0.24) 22%, rgba(2, 8, 20, 0.22) 78%, rgba(2, 8, 20, 0.75) 100%);
+}
+
+.planet-player-crystals {
+    position: absolute;
+    top: clamp(0.7rem, 1.1vw, 1rem);
+    left: clamp(0.7rem, 1.1vw, 1rem);
+    z-index: 25;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: clamp(0.78rem, 0.12vw + 0.74rem, 0.9rem);
+    letter-spacing: 0.04em;
+    color: var(--color-text);
+    background: rgba(7, 14, 28, 0.72);
+    border: 1px solid rgba(120, 147, 255, 0.28);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
 }
 
 /* Заголовок вверху */
@@ -1053,8 +1214,10 @@
 /* Действия / Кнопки */
 .planet-detail-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     justify-content: center;
+    align-items: stretch;
     width: 100%;
     margin-top: clamp(0.3rem, 1vh, 1rem);
     padding-bottom: calc(0.35rem + env(safe-area-inset-bottom));
@@ -1063,12 +1226,19 @@
 }
 
 .btn-action {
-    flex: 0 1 200px;
-    height: 48px;
-    font-size: clamp(1rem, 0.22vw + 0.92rem, 1.2rem);
+    flex: 1 1 240px;
+    min-height: 48px;
+    max-width: min(100%, 420px);
+    font-size: clamp(0.92rem, 0.2vw + 0.86rem, 1.08rem);
     border-radius: 2rem;
     backdrop-filter: blur(4px);
     box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    white-space: normal;
+    text-transform: none;
+    letter-spacing: 0.03em;
+    line-height: 1.25;
+    text-align: center;
+    padding: 0.7rem 1rem;
 }
 
 /* ── Galaxy / Planet mobile ───────── */
@@ -1098,6 +1268,13 @@
         gap: clamp(0.75rem, 1.2vh, 1.2rem);
     }
 
+    .planet-player-crystals {
+        top: 0.6rem;
+        left: 0.6rem;
+        font-size: 0.76rem;
+        padding: 0.35rem 0.6rem;
+    }
+
     .planet-detail-content {
         display: flex;
         flex-direction: column;
@@ -1117,7 +1294,8 @@
 
     .btn-action {
         width: 100%;
-        flex: 1;
+        max-width: 100%;
+        flex: 1 1 auto;
     }
 }
 

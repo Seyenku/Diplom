@@ -77,6 +77,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _set('planet-category', planet.clusterName?.toUpperCase() ?? '');
     _set('planet-name', planet.name);
     _set('planet-description', planet.description);
+    _renderPlayerCrystals(planet, store);
 
     // Навыки
     _renderList('hard-skills-list', planet.hardSkills ?? [], '🔧');
@@ -276,12 +277,22 @@ function _updateUnlockButton(planet: PlanetDto, player: NonNullable<Parameters<t
         btn.disabled = false;
         btn.style.opacity = '1';
         btn.title = '';
-        btn.textContent = `🔓 Открыть за ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
+        btn.textContent = `🔓 Открыть планету — ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
         btn.onclick = () => window._planetDetail?.unlockPlanet(planet.id);
     } else {
         btn.disabled = true;
         btn.style.opacity = '0.5';
         btn.title = `Нужно ещё ${cost - playerCrystals} кристаллов`;
-        btn.textContent = `🔒 Нужно ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')} (есть ${playerCrystals})`;
+        btn.textContent = `🔒 Открыть планету — ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
     }
+}
+
+function _renderPlayerCrystals(planet: PlanetDto, store: Readonly<GameStore>): void {
+    const el = document.getElementById('planet-player-crystals');
+    if (!el) return;
+
+    const crystalType = planet.crystalType as CrystalType;
+    const meta = CLUSTER_META[crystalType] ?? { emoji: '💎' };
+    const amount = ((store.player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
+    el.textContent = `${meta.emoji} Кристаллы: ${amount}`;
 }

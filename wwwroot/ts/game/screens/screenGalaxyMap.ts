@@ -118,7 +118,11 @@ window._galaxyMap = {
     },
 
     openPlanet(planetId: string) {
-        transition(Screen.PLANET_DETAIL as ScreenId, { planetId } as Parameters<typeof dispatch<'SET_SESSION'>>[1]);
+        transition(Screen.PLANET_DETAIL as ScreenId, {
+            planetId,
+            regionId: _focusedCluster ?? undefined,
+            crystalType: _focusedCluster ?? undefined,
+        } as Parameters<typeof dispatch<'SET_SESSION'>>[1]);
     },
 };
 
@@ -142,6 +146,11 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _cameraState = 'overview';
     _focusedCluster = null;
     _init3DMap();
+
+    const returnCluster = store.sessionData?.regionId as ClusterType | undefined;
+    if (returnCluster && (returnCluster in CLUSTER_META)) {
+        _focusCluster(returnCluster);
+    }
 
     // Подписка на изменение качества графики (полная переинициализация карты)
     _isGalaxyMapActive = true;
@@ -713,31 +722,31 @@ function _onMapClick(): void {
     if (userData?.type === 'nebula-hitbox') {
         // Фокусировка на туманность
         const clusterId = userData.clusterId as ClusterType;
-        const meta = CLUSTER_META[clusterId];
-        if (!meta) return;
-
-        _cameraState = 'focused';
-        _focusedCluster = clusterId;
-        _targetDest!.set(meta.position.x, meta.position.y, meta.position.z);
-        _spherical.radius = 36;
-        _updateZoomUI();
-        _showBackButton(true);
-
-        // Снижаем pixel ratio при приближении для производительности
-        if (_mapRenderer) {
-            _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-        }
-
-        // Строим планеты
-        _buildPlanetsForCluster(clusterId);
-
-        // Показываем панель
-        _showNebulaPanel(clusterId);
+        _focusCluster(clusterId);
     } else if (userData?.type === 'planet') {
         // Переход на планету
         const planetId = userData.planetId as string;
         window._galaxyMap.openPlanet(planetId);
     }
+}
+
+function _focusCluster(clusterId: ClusterType): void {
+    const meta = CLUSTER_META[clusterId];
+    if (!meta) return;
+
+    _cameraState = 'focused';
+    _focusedCluster = clusterId;
+    _targetDest!.set(meta.position.x, meta.position.y, meta.position.z);
+    _spherical.radius = 36;
+    _updateZoomUI();
+    _showBackButton(true);
+
+    if (_mapRenderer) {
+        _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    }
+
+    _buildPlanetsForCluster(clusterId);
+    _showNebulaPanel(clusterId);
 }
 
 // ── Панель информации о туманности ──────────────────────────────────────────
