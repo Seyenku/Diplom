@@ -188,6 +188,10 @@ function _addNebulaFog(scene) {
 function _startRenderLoop() {
     if (!_renderer || !_currentScene)
         return;
+    // Galaxy Map uses its own dedicated WebGLRenderer and render loop.
+    // Running this background loop simultaneously wastes GPU time for an invisible canvas.
+    if (_lastSceneName === 'galaxy-map')
+        return;
     function render() {
         _animFrameId = requestAnimationFrame(render);
         // Лёгкое вращение звёздного поля для атмосферности

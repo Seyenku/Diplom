@@ -54,6 +54,10 @@ let _planetGlow: THREE.Mesh | null = null;
 let _asteroids: Asteroid[] = [];
 let _stars: THREE.Points | null = null;
 
+// Shared GPU resources for asteroids (created once, reused for all spawns)
+let _asteroidGeo: THREE.IcosahedronGeometry | null = null;
+let _asteroidMat: THREE.MeshStandardMaterial | null = null;
+
 let _resizeObs: ResizeObserver | null = null;
 let _animId: number | null = null;
 
@@ -346,10 +350,13 @@ function _getLandingEtaSeconds(): number {
 }
 
 function _spawnAsteroid(): void {
+    // Lazily create shared resources (1 allocation for entire game session)
+    if (!_asteroidGeo) _asteroidGeo = new THREE.IcosahedronGeometry(1, 0);
+    if (!_asteroidMat) _asteroidMat = new THREE.MeshStandardMaterial({ color: 0x7c8a9e, roughness: 0.9, metalness: 0.1 });
+
     const r = ASTEROID_MIN_R + Math.random() * (ASTEROID_MAX_R - ASTEROID_MIN_R);
-    const geo = new THREE.IcosahedronGeometry(r, 0);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x7c8a9e, roughness: 0.9, metalness: 0.1 });
-    const mesh = new THREE.Mesh(geo, mat);
+    const mesh = new THREE.Mesh(_asteroidGeo, _asteroidMat);
+    mesh.scale.setScalar(r);
 
     mesh.position.set(
         THREE.MathUtils.randFloatSpread(SHIP_BOUNDS_X * 3.2),
@@ -387,8 +394,6 @@ function _updateAsteroids(dt: number): void {
 
         if (a.mesh.position.z > _camera!.position.z + 8) {
             _scene!.remove(a.mesh);
-            a.mesh.geometry.dispose();
-            (a.mesh.material as THREE.Material).dispose();
             _asteroids.splice(i, 1);
             _dodged += 1;
             _score += 8;
@@ -399,8 +404,6 @@ function _updateAsteroids(dt: number): void {
 function _hitAsteroid(index: number): void {
     const a = _asteroids[index];
     _scene!.remove(a.mesh);
-    a.mesh.geometry.dispose();
-    (a.mesh.material as THREE.Material).dispose();
     _asteroids.splice(index, 1);
 
     _health = Math.max(0, _health - ASTEROID_DAMAGE);
@@ -533,8 +536,6 @@ function _setText(id: string, value: string): void {
 function _clearAsteroids(): void {
     for (const a of _asteroids) {
         _scene?.remove(a.mesh);
-        a.mesh.geometry.dispose();
-        (a.mesh.material as THREE.Material).dispose();
     }
     _asteroids = [];
 }
@@ -606,6 +607,10 @@ function _disposeScene(): void {
     _stars = null;
     _scene = null;
     _camera = null;
+
+    // Dispose shared asteroid resources
+    _asteroidGeo?.dispose(); _asteroidGeo = null;
+    _asteroidMat?.dispose(); _asteroidMat = null;
 
     if (_renderer) {
         _renderer.dispose();

@@ -66,6 +66,7 @@ let _isTouchDown = false;
 let _lastInteractX = 0;
 let _lastInteractY = 0;
 let _spherical = { radius: 120, theta: 0, phi: 1.1 };
+let _targetRadius = 120;  // target radius for smooth camera interpolation
 let _targetCenter: THREE.Vector3 | null = null;
 let _targetDest: THREE.Vector3 | null = null;
 let _lastPinchDist = 0;
@@ -78,6 +79,14 @@ let _tooltipNameEl: HTMLElement | null = null;
 let _tooltipCatEl: HTMLElement | null = null;
 const _textureCache = new Map<string, THREE.CanvasTexture>();
 let _isGalaxyMapActive = false;
+
+// Shared GPU geometries (created once, reused for all planets)
+let _sharedPlanetGeo: THREE.SphereGeometry | null = null;
+let _sharedOutlineGeo: THREE.SphereGeometry | null = null;
+let _sharedRingGeo: THREE.RingGeometry | null = null;
+
+// Named handler for contextmenu (so it can be removed in cleanup)
+function _onContextMenu(e: Event): void { e.preventDefault(); }
 
 interface SphericalState {
     radius: number;
@@ -95,12 +104,8 @@ window._galaxyMap = {
         _hideNebulaPanel();
         _showBackButton(false);
         _targetDest!.set(0, 0, 0);
-        _spherical.radius = 120;
+        _targetRadius = 120;
         _updateZoomUI();
-        // Восстанавливаем качество
-        if (_mapRenderer) {
-            _mapRenderer.setPixelRatio(getProfile().pixelRatio);
-        }
     },
 
     resetCamera() {
@@ -290,7 +295,7 @@ function _init3DMap(): void {
     canvas.addEventListener('mousedown', _onMapMouseDown);
     canvas.addEventListener('mouseup', _onMapMouseUp);
     canvas.addEventListener('mouseleave', _onMapMouseUp);
-    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('contextmenu', _onContextMenu);
     canvas.addEventListener('click', _onMapClick);
     canvas.addEventListener('wheel', _onMapWheel, { passive: false });
     canvas.addEventListener('touchstart', _onMapTouchStart, { passive: true });
@@ -473,10 +478,23 @@ function _getSparksColor(clusterId: ClusterType): string {
 
 // ── Планеты внутри фокусированной туманности ────────────────────────────────
 
+/** Lazily creates shared geometries for all planet meshes (1 allocation instead of N) */
+function _ensureSharedGeos(): void {
+    if (_sharedPlanetGeo) return;
+    const p = getProfile();
+    // Unit-radius sphere; actual size is controlled via mesh.scale
+    _sharedPlanetGeo = new THREE.SphereGeometry(1, p.planetSegments[0], p.planetSegments[1]);
+    // Outline sphere (slightly larger)
+    _sharedOutlineGeo = new THREE.SphereGeometry(1, 16, 12);
+    // Ring (unit-size, scaled per planet)
+    _sharedRingGeo = new THREE.RingGeometry(1.3, 1.45, p.planetRingSegments);
+}
+
 function _buildPlanetsForCluster(clusterId: ClusterType): void {
     if (!_mapScene) return;
 
     _clearPlanetMeshes();
+    _ensureSharedGeos();
 
     const clusterPlanets = _allPlanets.filter(p => p.clusterId === clusterId);
     const meta = CLUSTER_META[clusterId];
@@ -489,8 +507,6 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         const baseColor = new THREE.Color(meta.color);
 
         const radius = 0.8 + Math.min(planet.unlockCost ?? 5, 10) * 0.08;
-        const profile = getProfile();
-        const geo = new THREE.SphereGeometry(radius, profile.planetSegments[0], profile.planetSegments[1]);
         const visibleColor = discovered ? baseColor.clone().lerp(new THREE.Color(0xffffff), 0.22) : new THREE.Color(0x46506f);
         const baseEmissiveIntensity = discovered ? 0.72 : 0.2;
         const mat = new THREE.MeshStandardMaterial({
@@ -503,7 +519,9 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
             opacity: discovered ? 1.0 : 0.62,
         });
 
-        const mesh = new THREE.Mesh(geo, mat);
+        // Reuse shared geometry, control size via scale
+        const mesh = new THREE.Mesh(_sharedPlanetGeo!, mat);
+        mesh.scale.setScalar(radius);
 
         // Расположение вокруг центра туманности
         const angle = (i / clusterPlanets.length) * Math.PI * 2 + Math.random() * 0.18;
@@ -526,24 +544,25 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
             type: 'planet',
         };
 
-        // Кольцо для открытых планет
+        // Кольцо для открытых планет (shared ring geo, unique material)
         if (discovered) {
-            const p = getProfile();
-            const ringGeo = new THREE.RingGeometry(radius + 0.3, radius + 0.45, p.planetRingSegments);
             const ringMat = new THREE.MeshBasicMaterial({
                 color: meta.color,
                 side: THREE.DoubleSide,
                 transparent: true,
                 opacity: 0.25,
             });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
+            const ring = new THREE.Mesh(_sharedRingGeo!, ringMat);
             ring.rotation.x = Math.PI / 2;
+            // Scale ring relative to planet radius (undo parent scale then apply ring size)
+            const ringScale = (radius + 0.3) / radius;
+            ring.scale.setScalar(ringScale);
             mesh.add(ring);
         }
 
-        // Темный контур вокруг планеты, чтобы она не сливалась с космическим фоном.
+        // Темный контур вокруг планеты (shared outline geo, unique material)
         const outline = new THREE.Mesh(
-            new THREE.SphereGeometry(radius * 1.1, 16, 12),
+            _sharedOutlineGeo!,
             new THREE.MeshBasicMaterial({
                 color: discovered ? 0xb8c2d8 : 0x9aa3b5,
                 side: THREE.BackSide,
@@ -552,6 +571,8 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
                 depthWrite: false,
             })
         );
+        // Outline is slightly larger than planet (1.1x)
+        outline.scale.setScalar(1.1);
         mesh.add(outline);
 
         const halo = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -564,7 +585,7 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
             blending: THREE.AdditiveBlending,
             depthWrite: false,
         }));
-        halo.scale.set(radius * 4.8, radius * 4.8, 1);
+        halo.scale.set(4.8, 4.8, 1);
         mesh.add(halo);
 
         _mapScene!.add(mesh);
@@ -575,8 +596,20 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
 function _clearPlanetMeshes(): void {
     _planetMeshes.forEach(m => {
         _mapScene?.remove(m);
-        m.geometry?.dispose();
-        (m.material as THREE.Material)?.dispose();
+        // Recursively dispose all materials and textures (but NOT shared geometries)
+        m.traverse(child => {
+            const c = child as THREE.Mesh;
+            if (c.material) {
+                const mats = Array.isArray(c.material) ? c.material : [c.material];
+                mats.forEach(mat => {
+                    for (const key of Object.keys(mat)) {
+                        const val = (mat as unknown as Record<string, unknown>)[key];
+                        if (val instanceof THREE.Texture) val.dispose();
+                    }
+                    mat.dispose();
+                });
+            }
+        });
     });
     _planetMeshes = [];
     _hoveredObj = null;
@@ -590,6 +623,7 @@ function _mapRenderLoop(): void {
     // Плавное перемещение камеры
     if (_targetDest && _targetCenter) {
         _targetCenter.lerp(_targetDest, 0.05);
+        _spherical.radius += (_targetRadius - _spherical.radius) * 0.05;
 
         _mapCamera.position.x = _targetCenter.x + _spherical.radius * Math.sin(_spherical.phi) * Math.sin(_spherical.theta);
         _mapCamera.position.y = _targetCenter.y + _spherical.radius * Math.cos(_spherical.phi);
@@ -737,13 +771,9 @@ function _focusCluster(clusterId: ClusterType): void {
     _cameraState = 'focused';
     _focusedCluster = clusterId;
     _targetDest!.set(meta.position.x, meta.position.y, meta.position.z);
-    _spherical.radius = 36;
+    _targetRadius = 36;
     _updateZoomUI();
     _showBackButton(true);
-
-    if (_mapRenderer) {
-        _mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    }
 
     _buildPlanetsForCluster(clusterId);
     _showNebulaPanel(clusterId);
@@ -820,6 +850,8 @@ function _onMapMouseUp(e: MouseEvent): void {
 }
 
 function _onMapMouseMove(e: MouseEvent): void {
+    if (!_mapRenderer || !_mouse) return;
+
     if (_isRightMouseDown) {
         const deltaX = e.clientX - _lastInteractX;
         const deltaY = e.clientY - _lastInteractY;
@@ -830,9 +862,9 @@ function _onMapMouseMove(e: MouseEvent): void {
         _lastInteractY = e.clientY;
     }
 
-    const rect = _mapRenderer!.domElement.getBoundingClientRect();
-    _mouse!.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    _mouse!.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    const rect = _mapRenderer.domElement.getBoundingClientRect();
+    _mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    _mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     _mouseMovedSinceLastRaycast = true;
 
     // Тултип следует за мышью
@@ -849,6 +881,7 @@ function _onMapWheel(e: WheelEvent): void {
     const minR = _cameraState === 'focused' ? 12 : 40;
     const maxR = _cameraState === 'focused' ? 80 : 200;
     _spherical.radius = Math.max(minR, Math.min(maxR, _spherical.radius));
+    _targetRadius = _spherical.radius;  // sync target to prevent lerp fighting wheel input
     _updateZoomUI();
 }
 
@@ -857,7 +890,7 @@ function _updateZoomUI(): void {
     if (el) {
         const maxR = _cameraState === 'focused' ? 80 : 200;
         const minR = _cameraState === 'focused' ? 12 : 40;
-        const pct = Math.round(((maxR - _spherical.radius) / (maxR - minR)) * 100);
+        const pct = Math.round(((maxR - _targetRadius) / (maxR - minR)) * 100);
         el.textContent = `${pct}%`;
     }
 }
@@ -901,6 +934,7 @@ function _onMapTouchMove(e: TouchEvent): void {
         const minR = _cameraState === 'focused' ? 12 : 40;
         const maxR = _cameraState === 'focused' ? 80 : 200;
         _spherical.radius = Math.max(minR, Math.min(maxR, _spherical.radius));
+        _targetRadius = _spherical.radius;  // sync target to prevent lerp fighting pinch input
         _updateZoomUI();
         _lastPinchDist = dist;
     }
@@ -941,12 +975,40 @@ function _cleanup3D(): void {
 
     if (_mapResizeObs) { _mapResizeObs.disconnect(); _mapResizeObs = null; }
 
+    // Recursively free all GPU resources of the entire scene (nebulae, stars, lights, etc.)
+    if (_mapScene) {
+        _mapScene.traverse(obj => {
+            const mesh = obj as THREE.Mesh;
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach(mat => {
+                    for (const key of Object.keys(mat)) {
+                        const val = (mat as unknown as Record<string, unknown>)[key];
+                        if (val instanceof THREE.Texture) val.dispose();
+                    }
+                    mat.dispose();
+                });
+            }
+        });
+    }
+
+    // Dispose shared planet geometries
+    _sharedPlanetGeo?.dispose(); _sharedPlanetGeo = null;
+    _sharedOutlineGeo?.dispose(); _sharedOutlineGeo = null;
+    _sharedRingGeo?.dispose(); _sharedRingGeo = null;
+
+    // Dispose texture cache (CanvasTextures stay in VRAM until disposed)
+    _textureCache.forEach(tex => tex.dispose());
+    _textureCache.clear();
+
     if (_mapRenderer) {
         const canvas = _mapRenderer.domElement;
         canvas.removeEventListener('mousemove', _onMapMouseMove);
         canvas.removeEventListener('mousedown', _onMapMouseDown);
         canvas.removeEventListener('mouseup', _onMapMouseUp);
         canvas.removeEventListener('mouseleave', _onMapMouseUp);
+        canvas.removeEventListener('contextmenu', _onContextMenu);
         canvas.removeEventListener('click', _onMapClick);
         canvas.removeEventListener('wheel', _onMapWheel);
         canvas.removeEventListener('touchstart', _onMapTouchStart);

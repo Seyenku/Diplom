@@ -212,8 +212,27 @@ function _cleanup3D(): void {
 
     if (_resizeObs) { _resizeObs.disconnect(); _resizeObs = null; }
 
+    // Recursively free all GPU resources (geometries, materials, textures)
+    if (_planetScene) {
+        _planetScene.traverse(obj => {
+            const mesh = obj as THREE.Mesh;
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach(mat => {
+                    for (const key of Object.keys(mat)) {
+                        const val = (mat as unknown as Record<string, unknown>)[key];
+                        if (val instanceof THREE.Texture) val.dispose();
+                    }
+                    mat.dispose();
+                });
+            }
+        });
+    }
+
     if (_planetRenderer) {
         _planetRenderer.domElement.parentNode?.removeChild(_planetRenderer.domElement);
+        _planetRenderer.forceContextLoss();
         _planetRenderer.dispose();
         _planetRenderer = null;
     }
