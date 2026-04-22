@@ -141,6 +141,30 @@
     pointer-events: all;
 }
 
+/* ── Planet Zoom Transition Overlay (слой 25) ──── */
+#planet-zoom-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    pointer-events: none;
+    opacity: 0;
+    will-change: opacity;
+}
+
+#planet-zoom-overlay.fade-in {
+    opacity: 1;
+    transition: opacity 500ms ease-in;
+}
+
+#planet-zoom-overlay.covering {
+    opacity: 1;
+}
+
+#planet-zoom-overlay.fading {
+    opacity: 0;
+    transition: opacity 400ms ease-out;
+}
+
 /* ── HUD (слой 30) ─────────────────────────────── */
 .hud-overlay {
     position: absolute;
@@ -951,9 +975,28 @@
     opacity: 0.55;
 }
 
+.nebula-planet-card--can-unlock {
+    border-left: 3px solid var(--accent, var(--color-primary));
+    opacity: 1;
+    animation: card-pulse-glow 2s ease-in-out infinite;
+}
+
+.nebula-planet-card--can-unlock .nebula-planet-cost {
+    color: var(--accent, var(--color-primary));
+    font-weight: 600;
+}
+
+@keyframes card-pulse-glow {
+    0%, 100% { box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.05); }
+    50%      { box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.12), 0 0 8px var(--accent, rgba(79, 195, 247, 0.3)); }
+}
+
 .nebula-planet-name {
     font-size: 0.82rem;
     color: var(--color-text);
+    flex: 1;
+    text-align: left;
+    margin-right: 0.5rem;
 }
 
 .nebula-planet-cost {

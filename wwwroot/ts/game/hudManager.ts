@@ -9,6 +9,7 @@
 import { getStore, on } from './stateManager.js';
 import { PlayerState, UpgradeDto, CrystalType } from './types.js';
 import { addMessage } from './guideManager.js';
+import { CRYSTAL_ICONS } from './clusterConfig.js';
 
 let _updateInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -39,6 +40,7 @@ export async function initHud(): Promise<void> {
     // Также обновляем немедленно при действиях над кристаллами/апгрейдами
     on('ADD_CRYSTALS',    () => _tick());
     on('SPEND_CRYSTALS',  () => _tick());
+    on('EARN_CRYSTALS',   () => _tick());
     on('APPLY_UPGRADE',   () => _tick());
     on('SET_PLAYER',      () => _tick());
 }
@@ -101,15 +103,9 @@ function _updateCrystals(crystals: Partial<Record<CrystalType, number>>): void {
     const container = document.getElementById('hud-crystals');
     if (!container) return;
 
-    const DIR_ICONS: Record<string, string> = {
-        it: '💻', bio: '🧬', math: '📐', eco: '🌿',
-        design: '🎨', med: '⚕', neuro: '🧠', physics: '⚛',
-        programming: '💎', medicine: '❤️', geology: '🌿',
-    };
-
     const html = Object.entries(crystals)
         .filter(([, n]) => (n as number) > 0)
-        .map(([dir, n]) => `<span class="crystal-badge" style="font-size:0.72rem;">${DIR_ICONS[dir] ?? '💎'} ${n}</span>`)
+        .map(([dir, n]) => `<span class="crystal-badge" style="font-size:0.72rem;">${CRYSTAL_ICONS[dir] ?? '💎'} ${n}</span>`)
         .join('')
         || `<span style="color:rgba(255,255,255,0.3);font-size:0.75rem;">Нет кристаллов</span>`;
 

@@ -1,29 +1,12 @@
 /**
  * screenAchievements.ts — Достижения, Radar Chart и аналитика прогресса
+ *
+ * Перестроено на 3-кластерную систему (programming / medicine / geology).
  */
 
 import { getStore } from '../stateManager.js';
 import { GameStore, CrystalType } from '../types.js';
-
-// ── Определения направлений ─────────────────────────────────────────────────
-
-interface DirInfo {
-    key: string;
-    label: string;
-    color: string;
-    emoji: string;
-}
-
-const DIRS: DirInfo[] = [
-    { key: 'it',      label: 'IT',          color: '#4fc3f7', emoji: '💻' },
-    { key: 'bio',     label: 'Биотех',      color: '#4ade80', emoji: '🧬' },
-    { key: 'math',    label: 'Математика',  color: '#fbbf24', emoji: '📐' },
-    { key: 'design',  label: 'Дизайн',      color: '#f472b6', emoji: '🎨' },
-    { key: 'eco',     label: 'Экология',    color: '#34d399', emoji: '🌿' },
-    { key: 'med',     label: 'Медицина',    color: '#f87171', emoji: '⚕' },
-    { key: 'physics', label: 'Физика',      color: '#a78bfa', emoji: '⚛' },
-    { key: 'neuro',   label: 'Нейронауки',  color: '#c084fc', emoji: '🧠' },
-];
+import { CLUSTERS } from '../clusterConfig.js';
 
 // ── Определения достижений ──────────────────────────────────────────────────
 
@@ -41,7 +24,7 @@ const ACHIEVEMENTS_DEF: AchievementDef[] = [
     { id: 'crystals-100',     icon: '💎', title: 'Коллекционер',       desc: 'Собрал 100 кристаллов суммарно.' },
     { id: 'perfect-run',      icon: '⭐', title: 'Идеальная посадка',  desc: 'Набрал максимум очков в мини-игре.' },
     { id: 'speed-master',     icon: '⚡', title: 'Мастер скорости',    desc: 'Прошёл мини-игру быстро с высоким счётом.' },
-    { id: 'all-cats',         icon: '🌌', title: 'Ренессансный ум',    desc: 'Собирал кристаллы во всех 8 направлениях.' },
+    { id: 'all-clusters',     icon: '🌌', title: 'Космический учёный', desc: 'Собирал кристаллы во всех 3 туманностях.' },
     { id: 'upgrade-1',        icon: '🚀', title: 'Прокачка',           desc: 'Установил первый апгрейд корабля.' },
     { id: 'flight-10',        icon: '🛸', title: 'Пилот-ас',           desc: 'Совершил 10 полётов.' },
     { id: 'explorer-5',       icon: '🗺', title: 'Исследователь',      desc: 'Открыл 5 планет.' },
@@ -100,30 +83,32 @@ function _autoCheckAchievements(
     const crystals = player!.crystals ?? {};
     const planets = (player!.discoveredPlanets ?? []).length;
     const totalCr = Object.values(crystals).reduce((a, b) => a + (b as number), 0);
-    const catsWithCrystals = Object.keys(crystals).filter(k => (crystals[k as keyof typeof crystals] as number) > 0).length;
+    const clustersWithCrystals = CLUSTERS.filter(c =>
+        (crystals[c.crystalType as keyof typeof crystals] as number) > 0
+    ).length;
 
     if ((stats as Record<string, number>).scans > 0)           badges.add('first-scan');
     if (planets > 0)               badges.add('first-planet');
     if (planets >= 5)              badges.add('explorer-5');
     if (((stats as Record<string, number>).miniGamesPlayed ?? 0) >= 3) badges.add('minigame-3');
     if (totalCr >= 100)            badges.add('crystals-100');
-    if (catsWithCrystals >= 8)     badges.add('all-cats');
+    if (clustersWithCrystals >= CLUSTERS.length) badges.add('all-clusters');
     if (((stats as Record<string, number>).flights ?? 0) >= 10) badges.add('flight-10');
     if ((player!.appliedUpgrades ?? []).length > 0) badges.add('upgrade-1');
 }
 
-// ── Radar Chart (SVG) ───────────────────────────────────────────────────────
+// ── Radar Chart (SVG) — 3 кластера ──────────────────────────────────────────
 
 function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void {
     const svg = document.getElementById('radar-chart');
     if (!svg) return;
 
     const cx = 200, cy = 200, maxR = 150;
-    const n = DIRS.length;
+    const n = CLUSTERS.length;
     const angleStep = (Math.PI * 2) / n;
 
     // Максимальное значение для нормализации
-    const values = DIRS.map(d => (crystals as Record<string, number>)[d.key] ?? 0);
+    const values = CLUSTERS.map(c => (crystals as Record<string, number>)[c.crystalType] ?? 0);
     const max = Math.max(...values, 1);
 
     let html = '';
@@ -147,10 +132,10 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
         html += `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="rgba(79,195,247,0.1)" stroke-width="1"/>`;
 
         // Подписи
-        const lx = cx + Math.cos(angle) * (maxR + 22);
-        const ly = cy + Math.sin(angle) * (maxR + 22);
+        const lx = cx + Math.cos(angle) * (maxR + 28);
+        const ly = cy + Math.sin(angle) * (maxR + 28);
         html += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle"
-                       font-size="11" fill="${DIRS[i].color}" font-family="var(--font-display)">${DIRS[i].emoji} ${DIRS[i].label}</text>`;
+                       font-size="12" fill="${CLUSTERS[i].colorHex}" font-family="var(--font-display)">${CLUSTERS[i].icon} ${CLUSTERS[i].shortLabel}</text>`;
     }
 
     // Полигон данных
@@ -179,44 +164,47 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
         const r = v * maxR;
         const px = cx + Math.cos(angle) * r;
         const py = cy + Math.sin(angle) * r;
-        html += `<circle cx="${px}" cy="${py}" r="4" fill="${DIRS[i].color}" stroke="#020612" stroke-width="2"/>`;
+        html += `<circle cx="${px}" cy="${py}" r="5" fill="${CLUSTERS[i].colorHex}" stroke="#020612" stroke-width="2"/>`;
 
         // Значения
         if (values[i] > 0) {
-            const vx = cx + Math.cos(angle) * (r + 14);
-            const vy = cy + Math.sin(angle) * (r + 14);
+            const vx = cx + Math.cos(angle) * (r + 16);
+            const vy = cy + Math.sin(angle) * (r + 16);
             html += `<text x="${vx}" y="${vy}" text-anchor="middle" dominant-baseline="middle"
-                           font-size="10" fill="#94a3b8" font-family="var(--font-display)">${values[i]}</text>`;
+                           font-size="11" fill="#94a3b8" font-family="var(--font-display)">${values[i]}</text>`;
         }
     }
 
     svg.innerHTML = html;
 }
 
-// ── Bar Chart ───────────────────────────────────────────────────────────────
+// ── Bar Chart — 3 кластера ──────────────────────────────────────────────────
 
 function _renderActivityChart(crystals: Partial<Record<CrystalType, number>>): void {
     const svg = document.getElementById('activity-chart');
     if (!svg) return;
 
-    const entries = DIRS.map(d => ({ ...d, value: (crystals as Record<string, number>)[d.key] ?? 0 }));
+    const entries = CLUSTERS.map(c => ({
+        ...c,
+        value: (crystals as Record<string, number>)[c.crystalType] ?? 0,
+    }));
     const max = Math.max(...entries.map(e => e.value), 1);
-    const w = 600, h = 140, padding = 12;
-    const barW = Math.floor((w - padding * 2) / entries.length) - 6;
+    const w = 600, h = 140, padding = 24;
+    const barW = Math.floor((w - padding * 2) / entries.length) - 12;
 
     let html = '';
 
     entries.forEach((e, i) => {
         const barH = Math.max(4, Math.round(((h - 40 - padding) * e.value) / max));
-        const x = padding + i * (barW + 6);
+        const x = padding + i * (barW + 12);
         const y = h - 28 - barH;
 
-        // Бар с градиентом
-        html += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="3" fill="${e.color}" opacity="0.8"/>`;
-        // Подпись направления
-        html += `<text x="${x + barW / 2}" y="${h - 10}" text-anchor="middle" font-size="10" fill="#64748b" font-family="var(--font-body)">${e.emoji}</text>`;
+        // Бар с цветом кластера
+        html += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${e.colorHex}" opacity="0.85"/>`;
+        // Подпись кластера
+        html += `<text x="${x + barW / 2}" y="${h - 8}" text-anchor="middle" font-size="11" fill="#64748b" font-family="var(--font-body)">${e.icon} ${e.shortLabel}</text>`;
         // Значение
-        html += `<text x="${x + barW / 2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="var(--font-display)">${e.value}</text>`;
+        html += `<text x="${x + barW / 2}" y="${y - 6}" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="var(--font-display)">${e.value}</text>`;
     });
 
     svg.innerHTML = html;

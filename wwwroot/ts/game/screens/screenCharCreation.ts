@@ -1,4 +1,4 @@
-﻿/**
+/**
  * screenCharCreation.ts - step-by-step character creation module
  */
 
@@ -7,6 +7,8 @@ import { clearSave, dispatch, savePlayerNow, transition, Screen } from '../state
 import { switchScene } from '../threeScene.js';
 import { loadModel } from '../gltfLoader.js';
 import { CrystalType, GameStore } from '../types.js';
+import { applyShipColor, createFallbackShip } from '../shipUtils.js';
+import { disposeSceneGraph } from '../threeUtils.js';
 
 let _step: 1 | 2 = 1;
 let _selectedShipColor: string | null = null;
@@ -29,14 +31,6 @@ const EMPTY_CRYSTALS: Record<CrystalType, number> = {
     programming: 0,
     medicine: 0,
     geology: 0,
-    it: 0,
-    bio: 0,
-    math: 0,
-    eco: 0,
-    design: 0,
-    med: 0,
-    neuro: 0,
-    physics: 0,
 };
 
 window._charCreation = {
@@ -68,7 +62,7 @@ window._charCreation = {
         if (colorError) colorError.textContent = '';
 
         if (_selectedShipColor) {
-            _applyShipColorToPreview(_selectedShipColor);
+            applyShipColor(_previewShipRoot!, _selectedShipColor);
         }
     },
 
@@ -209,7 +203,7 @@ async function _ensurePreview(): Promise<void> {
             ship.scale.set(0.8, 0.8, 0.8);
             ship.rotation.y = -Math.PI / 2;
         } catch {
-            ship = _createFallbackPreviewShip();
+            ship = createFallbackShip();
         }
 
         _previewRenderer = renderer;
@@ -227,7 +221,7 @@ async function _ensurePreview(): Promise<void> {
         window.addEventListener('resize', _onPreviewResize);
         _bindPreviewControls();
 
-        _applyShipColorToPreview(_selectedShipColor ?? '#4fc3f7');
+        applyShipColor(_previewShipRoot!, _selectedShipColor ?? '#4fc3f7');
         _startPreviewLoop();
     })().finally(() => {
         _previewInitPromise = null;
@@ -258,42 +252,7 @@ function _startPreviewLoop(): void {
     tick();
 }
 
-function _applyShipColorToPreview(hexColor: string): void {
-    if (!_previewShipRoot) return;
-
-    let bodyFound = false;
-    let firstPaintable: THREE.Material | null = null;
-
-    _previewShipRoot.traverse(obj => {
-        const mesh = obj as THREE.Mesh;
-        if (!mesh.isMesh || !mesh.material) return;
-
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        mats.forEach(mat => {
-            if (!firstPaintable && _isColorMaterial(mat)) {
-                firstPaintable = mat;
-            }
-            if (mat.name === 'ship_body') {
-                _paintMaterial(mat, hexColor);
-                bodyFound = true;
-            }
-        });
-    });
-
-    if (!bodyFound && firstPaintable) {
-        _paintMaterial(firstPaintable, hexColor);
-    }
-}
-
-function _isColorMaterial(mat: THREE.Material): mat is THREE.Material & { color: THREE.Color } {
-    return 'color' in (mat as unknown as Record<string, unknown>);
-}
-
-function _paintMaterial(mat: THREE.Material, hexColor: string): void {
-    if (!_isColorMaterial(mat)) return;
-    mat.color.set(hexColor);
-    mat.needsUpdate = true;
-}
+// _applyShipColorToPreview вынесена в shipUtils.ts как applyShipColor
 
 function _resizePreview(): void {
     if (!_previewRenderer || !_previewCamera) return;
@@ -382,25 +341,7 @@ function _onPreviewPointerUp(e: PointerEvent): void {
     }
 }
 
-function _createFallbackPreviewShip(): THREE.Group {
-    const group = new THREE.Group();
-
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, metalness: 0.75, roughness: 0.3 });
-    bodyMat.name = 'ship_body';
-
-    const body = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.45, 8), bodyMat);
-    body.rotation.x = Math.PI / 2;
-    group.add(body);
-
-    const wing = new THREE.Mesh(
-        new THREE.BoxGeometry(1.8, 0.06, 0.55),
-        new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.45, roughness: 0.45 })
-    );
-    wing.position.z = 0.22;
-    group.add(wing);
-
-    return group;
-}
+// _createFallbackPreviewShip вынесена в shipUtils.ts как createFallbackShip
 
 function _disposePreview(): void {
     if (_previewAnimId) {
@@ -413,16 +354,7 @@ function _disposePreview(): void {
     _unbindPreviewControls();
 
     if (_previewShipRoot) {
-        _previewShipRoot.traverse(obj => {
-            const mesh = obj as THREE.Mesh;
-            if (!mesh.isMesh) return;
-
-            if (mesh.geometry) mesh.geometry.dispose();
-            if (mesh.material) {
-                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                mats.forEach(m => m.dispose());
-            }
-        });
+        disposeSceneGraph(_previewShipRoot);
         _previewShipRoot = null;
     }
 

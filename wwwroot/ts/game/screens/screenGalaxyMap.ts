@@ -9,47 +9,27 @@
  */
 
 import * as THREE from 'three';
-import { getStore, dispatch, transition, Screen, ScreenId } from '../stateManager.js';
+import { getStore, dispatch, transition, Screen, ScreenId, on, off } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
-import { GameStore, PlanetDto, ClusterDto, ClusterType, CrystalType, ClusterMeta } from '../types.js';
+import { GameStore, PlanetDto, ClusterDto, ClusterType, CrystalType, ClusterMeta, ActionType } from '../types.js';
 import { getProfile, onQualityChange, offQualityChange } from '../qualityPresets.js';
+import { disposeSceneGraph } from '../threeUtils.js';
+import { CLUSTER_META } from '../clusterConfig.js';
 
-// ── Мета-данные кластеров ───────────────────────────────────────────────────
-
-const CLUSTER_META: Record<ClusterType, ClusterMeta> = {
-    programming: {
-        label: 'Туманность Кибернетики',
-        icon: '💻',
-        color: 0x4fc3f7,
-        colorHex: '#4fc3f7',
-        crystalEmoji: '💎',
-        position: { x: -40, y: 5, z: -10 },
-    },
-    medicine: {
-        label: 'Туманность Целителей',
-        icon: '⚕',
-        color: 0xf87171,
-        colorHex: '#f87171',
-        crystalEmoji: '❤️',
-        position: { x: 35, y: 15, z: -15 },
-    },
-    geology: {
-        label: 'Туманность Геодезистов',
-        icon: '🌍',
-        color: 0x34d399,
-        colorHex: '#34d399',
-        crystalEmoji: '🌿',
-        position: { x: 10, y: -20, z: 30 },
-    },
-};
+// CLUSTER_META импортирован из clusterConfig.ts
 
 // ── Внутреннее состояние ────────────────────────────────────────────────────
 
 let _allPlanets: PlanetDto[] = [];
 let _clusters: ClusterDto[] = [];
 let _discoveredIds = new Set<string>();
-let _cameraState: 'overview' | 'focused' = 'overview';
+let _cameraState: 'overview' | 'focused' | 'zooming-to-planet' = 'overview';
 let _focusedCluster: ClusterType | null = null;
+
+// Planet zoom transition state
+let _zoomingPlanetId: string | null = null;
+let _zoomStartTime = 0;
+const PLANET_ZOOM_DURATION = 500; // ms — camera fly + overlay fade-in duration
 
 // Three.js
 let _mapRenderer: THREE.WebGLRenderer | null = null;
@@ -84,6 +64,8 @@ let _isGalaxyMapActive = false;
 let _sharedPlanetGeo: THREE.SphereGeometry | null = null;
 let _sharedOutlineGeo: THREE.SphereGeometry | null = null;
 let _sharedRingGeo: THREE.RingGeometry | null = null;
+let _sharedOrbitGeo: THREE.BufferGeometry | null = null;
+const _orbitMap = new Map<string, THREE.LineLoop>();
 
 // Named handler for contextmenu (so it can be removed in cleanup)
 function _onContextMenu(e: Event): void { e.preventDefault(); }
@@ -123,11 +105,38 @@ window._galaxyMap = {
     },
 
     openPlanet(planetId: string) {
-        transition(Screen.PLANET_DETAIL as ScreenId, {
-            planetId,
-            regionId: _focusedCluster ?? undefined,
-            crystalType: _focusedCluster ?? undefined,
-        } as Parameters<typeof dispatch<'SET_SESSION'>>[1]);
+        if (_cameraState === 'zooming-to-planet') return; // block double-click
+
+        // Find the planet mesh for fly-to animation
+        const planetMesh = _planetMeshes.find(m => m.userData.planetId === planetId);
+        if (!planetMesh) {
+            // Fallback: instant transition if mesh not found
+            transition(Screen.PLANET_DETAIL as ScreenId, {
+                planetId,
+                regionId: _focusedCluster ?? undefined,
+                crystalType: _focusedCluster ?? undefined,
+            } as Parameters<typeof dispatch<'SET_SESSION'>>[1]);
+            return;
+        }
+
+        _cameraState = 'zooming-to-planet';
+        _zoomingPlanetId = planetId;
+        _zoomStartTime = performance.now();
+
+        // Fly camera toward the planet
+        _targetDest!.copy(planetMesh.position);
+        _targetRadius = 3;
+
+        // Start fullscreen overlay fade-in (symmetric with zoom-out fade)
+        const overlay = document.getElementById('planet-zoom-overlay');
+        if (overlay) {
+            const meta = _focusedCluster ? CLUSTER_META[_focusedCluster] : null;
+            const color = meta?.colorHex ?? '#4fc3f7';
+            overlay.style.background = `radial-gradient(circle, ${color}dd 0%, #020710 70%)`;
+            overlay.className = '';
+            void overlay.offsetWidth; // force reflow
+            overlay.classList.add('fade-in');
+        }
     },
 };
 
@@ -143,28 +152,79 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     // Если каталог пуст, загружаем
     if (_allPlanets.length === 0) {
         try {
-            const resp = await fetch('/proj?handler=Catalog');
+            const resp = await fetch('/game?handler=Catalog');
             if (resp.ok) _allPlanets = await resp.json() as PlanetDto[];
         } catch { /* офлайн */ }
     }
 
     _cameraState = 'overview';
     _focusedCluster = null;
+    // Always reset camera orbit to safe defaults (fixes stale radius=3 from zoom-in)
+    _spherical = { radius: 120, theta: 0, phi: 1.1 };
+    _targetRadius = 120;
     _init3DMap();
 
     const returnCluster = store.sessionData?.regionId as ClusterType | undefined;
+    const returnPlanetId = store.sessionData?.planetId as string | undefined;
+    const prevScreen = store.previousScreen;
+
     if (returnCluster && (returnCluster in CLUSTER_META)) {
+        const meta = CLUSTER_META[returnCluster];
+
+        // Build nebula content (planets, panel, etc.)
         _focusCluster(returnCluster);
+
+        // Instantly teleport camera center to the nebula (no drift from 0,0,0)
+        if (_targetCenter) _targetCenter.set(meta.position.x, meta.position.y, meta.position.z);
+        _spherical.radius = 36;
+        _targetRadius = 36;
+
+        // Reverse cinematic: if returning from Planet Detail, start camera at the planet
+        if (prevScreen === Screen.PLANET_DETAIL && returnPlanetId) {
+            const planetMesh = _planetMeshes.find(m => m.userData.planetId === returnPlanetId);
+            if (planetMesh) {
+                // Spawn camera right next to the planet
+                if (_targetCenter) _targetCenter.copy(planetMesh.position);
+                _spherical.radius = 3;
+
+                // Target: fly back to nebula overview
+                _targetDest!.set(meta.position.x, meta.position.y, meta.position.z);
+                _targetRadius = 36;
+
+                // Show covering overlay, then fade it out to reveal the pullback
+                const overlay = document.getElementById('planet-zoom-overlay');
+                if (overlay) {
+                    overlay.style.cssText = '';
+                    overlay.style.background = `radial-gradient(circle, ${meta.colorHex}dd 0%, #020710 70%)`;
+                    overlay.className = 'covering';
+                    // Next frame: start fading to reveal camera pulling back
+                    requestAnimationFrame(() => {
+                        overlay.className = 'fading';
+                        setTimeout(() => { overlay.className = ''; }, 450);
+                    });
+                }
+            }
+        }
     }
 
     // Подписка на изменение качества графики (полная переинициализация карты)
     _isGalaxyMapActive = true;
     onQualityChange(_onQualityChanged);
+
+    // Подписка на изменение баланса кристаллов (обновляет панель + сетку планет)
+    on('EARN_CRYSTALS',   _refreshNebulaPanel);
+    on('ADD_CRYSTALS',    _refreshNebulaPanel);
+    on('SPEND_CRYSTALS',  _refreshNebulaPanel);
+    on('DISCOVER_PLANET', _refreshNebulaPanel);
 }
 
 export function destroy(): void {
     _isGalaxyMapActive = false;
     offQualityChange(_onQualityChanged);
+    off('EARN_CRYSTALS',   _refreshNebulaPanel);
+    off('ADD_CRYSTALS',    _refreshNebulaPanel);
+    off('SPEND_CRYSTALS',  _refreshNebulaPanel);
+    off('DISCOVER_PLANET', _refreshNebulaPanel);
     _cleanup3D();
 }
 
@@ -488,6 +548,10 @@ function _ensureSharedGeos(): void {
     _sharedOutlineGeo = new THREE.SphereGeometry(1, 16, 12);
     // Ring (unit-size, scaled per planet)
     _sharedRingGeo = new THREE.RingGeometry(1.3, 1.45, p.planetRingSegments);
+    // Orbit line (unit-radius circle)
+    _sharedOrbitGeo = new THREE.BufferGeometry().setFromPoints(
+        new THREE.Path().absarc(0, 0, 1, 0, Math.PI * 2, false).getPoints(64)
+    );
 }
 
 function _buildPlanetsForCluster(clusterId: ClusterType): void {
@@ -575,6 +639,23 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         outline.scale.setScalar(1.1);
         mesh.add(outline);
 
+        // Тонкая линия орбиты для открытой планеты (shared orbit geo, unique material)
+        if (discovered) {
+            const orbitMat = new THREE.LineBasicMaterial({
+                color: meta.color,
+                transparent: true,
+                opacity: 0.25,
+                depthWrite: false,
+            });
+            const orbitLine = new THREE.LineLoop(_sharedOrbitGeo!, orbitMat);
+            orbitLine.scale.setScalar(orbitR);
+            orbitLine.rotation.x = Math.PI / 2;
+            orbitLine.position.set(center.x, center.y + yOffset, center.z);
+            orbitLine.userData = { planetId: planet.id, type: 'orbit' };
+            _mapScene!.add(orbitLine);
+            _orbitMap.set(planet.id, orbitLine);
+        }
+
         const halo = new THREE.Sprite(new THREE.SpriteMaterial({
             map: _createGlowTexture(128, meta.colorHex, 0.4),
             color: discovered
@@ -613,6 +694,12 @@ function _clearPlanetMeshes(): void {
     });
     _planetMeshes = [];
     _hoveredObj = null;
+
+    _orbitMap.forEach(line => {
+        _mapScene?.remove(line);
+        if (line.material) (line.material as THREE.Material).dispose();
+    });
+    _orbitMap.clear();
 }
 
 // ── Render loop ─────────────────────────────────────────────────────────────
@@ -630,6 +717,36 @@ function _mapRenderLoop(): void {
         _mapCamera.position.z = _targetCenter.z + _spherical.radius * Math.sin(_spherical.phi) * Math.cos(_spherical.theta);
 
         _mapCamera.lookAt(_targetCenter);
+    }
+
+    // Check if planet zoom animation has completed
+    if (_cameraState === 'zooming-to-planet' && _zoomingPlanetId) {
+        const elapsed = performance.now() - _zoomStartTime;
+        if (elapsed >= PLANET_ZOOM_DURATION) {
+            // Overlay now covers the screen — swap screens underneath
+            const overlay = document.getElementById('planet-zoom-overlay');
+            if (overlay) overlay.className = 'covering';
+
+            const planetId = _zoomingPlanetId;
+            _zoomingPlanetId = null;
+            _cameraState = 'focused'; // reset before destroy
+
+            // Run real transition hidden behind the overlay
+            transition(Screen.PLANET_DETAIL as ScreenId, {
+                planetId,
+                regionId: _focusedCluster ?? undefined,
+                crystalType: _focusedCluster ?? undefined,
+            } as Parameters<typeof dispatch<'SET_SESSION'>>[1]).then(() => {
+                // Planet Detail is ready — fade out the overlay to reveal it
+                if (overlay) {
+                    overlay.className = 'fading';
+                    setTimeout(() => { overlay.className = ''; }, 450);
+                }
+            });
+
+            // transition() вызовет destroy(), обнуляя _mapRenderer — выходим сразу
+            return;
+        }
     }
 
     // Вращение и пульсация туманности
@@ -711,6 +828,10 @@ function _hover(obj: THREE.Object3D): void {
             const baseIntensity = Number(userData.baseEmissiveIntensity ?? 0.35);
             (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = baseIntensity + 0.35;
         }
+        const orbitLine = _orbitMap.get(userData.planetId as string);
+        if (orbitLine && orbitLine.material) {
+            (orbitLine.material as THREE.LineBasicMaterial).opacity = 0.65;
+        }
         _showTooltip(
             userData.planetName as string,
             userData.discovered ? 'ЛКМ — открыть' : `🔒 ${userData.unlockCost} 💎`
@@ -728,6 +849,10 @@ function _unhover(): void {
         if (mesh.material) {
             const baseIntensity = Number(userData.baseEmissiveIntensity ?? 0.35);
             (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = baseIntensity;
+        }
+        const orbitLine = _orbitMap.get(userData.planetId as string);
+        if (orbitLine && orbitLine.material) {
+            (orbitLine.material as THREE.LineBasicMaterial).opacity = 0.25;
         }
     }
     _hoveredObj = null;
@@ -750,6 +875,7 @@ function _hideTooltip(): void {
 // ── Обработка кликов ────────────────────────────────────────────────────────
 
 function _onMapClick(): void {
+    if (_cameraState === 'zooming-to-planet') return; // block clicks during fly animation
     if (!_hoveredObj) return;
 
     const userData = _hoveredObj.userData as Record<string, unknown>;
@@ -810,20 +936,50 @@ function _hideNebulaPanel(): void {
     if (panel) panel.classList.add('hidden');
 }
 
+/** Реактивно обновляет текст кристаллов и сетку планет при изменении баланса */
+function _refreshNebulaPanel(): void {
+    if (!_focusedCluster) return;
+    const meta = CLUSTER_META[_focusedCluster];
+    if (!meta) return;
+    const store = getStore();
+    const playerCrystals = ((store.player?.crystals ?? {}) as Record<string, number>)[_focusedCluster] ?? 0;
+    const el = document.getElementById('nebula-info-crystal');
+    if (el) el.textContent = `${meta.crystalEmoji} Кристаллы: ${playerCrystals}`;
+    // Обновляем также discoveredIds на случай если DISCOVER_PLANET сработал
+    _discoveredIds = new Set(store.player?.discoveredPlanets ?? []);
+    _renderPlanetGrid(_focusedCluster);
+}
+
 function _renderPlanetGrid(clusterId: ClusterType): void {
     const grid = document.getElementById('nebula-planet-grid');
     if (!grid) return;
 
     const planets = _allPlanets.filter(p => p.clusterId === clusterId);
     const meta = CLUSTER_META[clusterId];
+    const store = getStore();
+    const playerCrystals = ((store.player?.crystals ?? {}) as Record<string, number>)[clusterId] ?? 0;
 
     grid.innerHTML = planets.map(p => {
         const discovered = _discoveredIds.has(p.id) || p.isStarterVisible;
-        return `<div class="nebula-planet-card ${discovered ? 'nebula-planet-card--open' : 'nebula-planet-card--locked'}"
+        const canUnlock = !discovered && playerCrystals >= (p.unlockCost ?? 0);
+
+        const stateClass = discovered
+            ? 'nebula-planet-card--open'
+            : canUnlock
+                ? 'nebula-planet-card--can-unlock'
+                : 'nebula-planet-card--locked';
+
+        const statusText = discovered
+            ? '✅'
+            : canUnlock
+                ? `🔓 ${p.unlockCost} ${meta.crystalEmoji}`
+                : `🔒 ${p.unlockCost} ${meta.crystalEmoji}`;
+
+        return `<div class="nebula-planet-card ${stateClass}"
                      style="--accent:${meta.colorHex};"
                      onclick="window._galaxyMap?.openPlanet('${p.id}')">
-            <span class="nebula-planet-name">${discovered ? p.name : '???'}</span>
-            <span class="nebula-planet-cost">${discovered ? '✅' : `🔒 ${p.unlockCost} ${meta.crystalEmoji}`}</span>
+            <span class="nebula-planet-name">${p.name}</span>
+            <span class="nebula-planet-cost">${statusText}</span>
         </div>`;
     }).join('');
 }
@@ -977,20 +1133,7 @@ function _cleanup3D(): void {
 
     // Recursively free all GPU resources of the entire scene (nebulae, stars, lights, etc.)
     if (_mapScene) {
-        _mapScene.traverse(obj => {
-            const mesh = obj as THREE.Mesh;
-            if (mesh.geometry) mesh.geometry.dispose();
-            if (mesh.material) {
-                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                mats.forEach(mat => {
-                    for (const key of Object.keys(mat)) {
-                        const val = (mat as unknown as Record<string, unknown>)[key];
-                        if (val instanceof THREE.Texture) val.dispose();
-                    }
-                    mat.dispose();
-                });
-            }
-        });
+        disposeSceneGraph(_mapScene);
     }
 
     // Dispose shared planet geometries

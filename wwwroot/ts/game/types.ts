@@ -74,10 +74,7 @@ export interface MiniGameRewardDto {
 
 // в”Ђв”Ђ РўРёРїС‹ РєСЂРёСЃС‚Р°Р»Р»РѕРІ в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
-export type CrystalType =
-    | 'programming' | 'medicine' | 'geology'
-    | 'it' | 'bio' | 'math' | 'eco'
-    | 'design' | 'med' | 'neuro' | 'physics';
+export type CrystalType = 'programming' | 'medicine' | 'geology';
 
 export type ClusterType = 'programming' | 'medicine' | 'geology';
 

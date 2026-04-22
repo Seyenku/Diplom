@@ -15,14 +15,10 @@ import { switchScene, renderer as globalRenderer } from '../threeScene.js';
 import { loadModel } from '../gltfLoader.js';
 import { GameStore, CrystalType, ClusterType } from '../types.js';
 import { getProfile, onQualityChange, offQualityChange } from '../qualityPresets.js';
+import { applyShipColor, createFallbackShip } from '../shipUtils.js';
+import { CRYSTAL_COLORS } from '../clusterConfig.js';
 
 const FLIGHT_DURATION_S = 60;
-
-const CRYSTAL_COLORS: Record<string, { color: number; emoji: string; label: string }> = {
-    programming: { color: 0x4fc3f7, emoji: '💎', label: 'Программирование' },
-    medicine:    { color: 0xf87171, emoji: '❤️', label: 'Медицина' },
-    geology:     { color: 0x34d399, emoji: '🌿', label: 'Геология' },
-};
 
 // ── внутреннее состояние ────────────────────────
 type FlightState = 'idle' | 'countdown' | 'playing' | 'results';
@@ -55,7 +51,22 @@ const BOOST_MULT = 2.2;
 // ── Публичный API (onclick из CSHTML) ───────────
 window._flightScreen = {
     restart() {
-        _cleanup();
+        if (_animId) cancelAnimationFrame(_animId);
+        _animId = null;
+        _keys = {};
+        
+        const scene = window.__threeScene;
+        if (scene) {
+            [..._asteroids, ..._crystals].forEach(obj => scene.remove(obj));
+        }
+        _asteroids = [];
+        _crystals = [];
+        
+        if (_shipModel) {
+            _shipModel.position.set(0, 0, 0);
+            _shipModel.rotation.set(0, 0, 0);
+        }
+        
         _startCountdown();
     }
 };
@@ -92,10 +103,10 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
         _shipModel.add(mesh);
     } catch (e) {
         console.warn('[Flight] ship.glb not loaded, using fallback');
-        const fallback = _createFallbackShip();
+        const fallback = createFallbackShip();
         if (fallback) _shipModel.add(fallback);
     }
-    _applyShipColor(_shipModel, selectedShipColor);
+    applyShipColor(_shipModel, selectedShipColor);
 
     if (window.__threeScene) {
         window.__threeScene.add(_shipModel);
@@ -374,52 +385,7 @@ function _setText(id: string, v: string): void {
     if (el) el.textContent = v;
 }
 
-function _applyShipColor(root: THREE.Object3D, hexColor: string): void {
-    let bodyFound = false;
-    let firstPaintable: THREE.Material | null = null;
-
-    root.traverse(obj => {
-        const mesh = obj as THREE.Mesh;
-        if (!mesh.isMesh || !mesh.material) return;
-
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        mats.forEach(mat => {
-            if (!firstPaintable && 'color' in (mat as unknown as Record<string, unknown>)) {
-                firstPaintable = mat;
-            }
-
-            if (mat.name === 'ship_body' && 'color' in (mat as unknown as Record<string, unknown>)) {
-                (mat as THREE.Material & { color: THREE.Color }).color.set(hexColor);
-                mat.needsUpdate = true;
-                bodyFound = true;
-            }
-        });
-    });
-
-    if (!bodyFound && firstPaintable && 'color' in (firstPaintable as unknown as Record<string, unknown>)) {
-        const paintable = firstPaintable as THREE.Material & { color: THREE.Color };
-        paintable.color.set(hexColor);
-        paintable.needsUpdate = true;
-    }
-}
-
-function _createFallbackShip(): THREE.Group | null {
-    const group = new THREE.Group();
-    const body = new THREE.Mesh(
-        new THREE.ConeGeometry(0.4, 1.5, 6),
-        new THREE.MeshStandardMaterial({ color: 0x4fc3f7, metalness: 0.7, roughness: 0.3 })
-    );
-    body.rotation.x = Math.PI / 2;
-    group.add(body);
-
-    const wing = new THREE.Mesh(
-        new THREE.BoxGeometry(2, 0.05, 0.6),
-        new THREE.MeshStandardMaterial({ color: 0x818cf8, metalness: 0.5, roughness: 0.4 })
-    );
-    wing.position.z = 0.3;
-    group.add(wing);
-    return group;
-}
+// _applyShipColor и _createFallbackShip вынесены в shipUtils.ts
 
 function _onKeyDown(e: KeyboardEvent): void { _keys[e.code] = true; }
 function _onKeyUp(e: KeyboardEvent): void { _keys[e.code] = false; }

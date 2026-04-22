@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { getProfile, onQualityChange } from './qualityPresets.js';
+import { disposeSceneGraph } from './threeUtils.js';
 
 type SceneName = 'starfield' | 'asteroid-belt' | 'flight' | 'galaxy-map' | 'planet' | 'none';
 
@@ -98,21 +99,7 @@ export function recreateRenderer(): void {
 /** Рекурсивно освобождает GPU-ресурсы текущей сцены */
 function _disposeCurrentScene(): void {
     if (!_currentScene) return;
-    _currentScene.scene.traverse(obj => {
-        const mesh = obj as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) {
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            materials.forEach(mat => {
-                // Dispose текстур материала
-                for (const key of Object.keys(mat)) {
-                    const val = (mat as unknown as Record<string, unknown>)[key];
-                    if (val instanceof THREE.Texture) val.dispose();
-                }
-                mat.dispose();
-            });
-        }
-    });
+    disposeSceneGraph(_currentScene.scene);
     _starfieldPoints = null;
     _currentScene = null;
 }

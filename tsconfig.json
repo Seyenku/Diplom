@@ -3,12 +3,14 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "outDir": "./wwwroot/js/game",
     "rootDir": "./wwwroot/ts/game",
     "sourceMap": true,
-
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -16,17 +18,16 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-
     "resolveJsonModule": true,
     "declaration": false,
     "declarationMap": false,
-
-    "types": ["three"]
+    "types": [
+      "three"
+    ]
   },
   "include": [
     "wwwroot/ts/**/*.ts"

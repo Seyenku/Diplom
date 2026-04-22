@@ -7,17 +7,22 @@
  */
 
 import * as THREE from 'three';
-import { getStore, transition, Screen, dispatch } from '../stateManager.js';
+import { getStore, transition, Screen, dispatch, on, off } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
-import { GameStore, PlanetDto, CrystalType, ClusterType } from '../types.js';
+import { GameStore, PlanetDto, CrystalType, ClusterType, ActionType } from '../types.js';
+import { disposeSceneGraph } from '../threeUtils.js';
+import { CLUSTER_MAP } from '../clusterConfig.js';
 
-// ── Цветовая схема кластеров ────────────────────────────────────────────────
+// ── Цветовая схема кластеров (из clusterConfig.ts) ──────────────────────────────
 
-const CLUSTER_META: Record<string, { label: string; color: number; emoji: string }> = {
-    programming: { label: '💻 Программирование', color: 0x4fc3f7, emoji: '💎' },
-    medicine:    { label: '❤️ Медицина',         color: 0xf87171, emoji: '❤️' },
-    geology:     { label: '🌍 Геология',         color: 0x34d399, emoji: '🌿' },
-};
+const CLUSTER_META: Record<string, { label: string; color: number; emoji: string }> =
+    Object.fromEntries(
+        Object.entries(CLUSTER_MAP).map(([k, c]) => [k, {
+            label: `${c.icon} ${c.shortLabel}`,
+            color: c.color,
+            emoji: c.crystalEmoji,
+        }])
+    );
 
 // ── Внутреннее состояние ────────────────────────────────────────────────────
 
@@ -27,6 +32,26 @@ let _planetCamera: THREE.PerspectiveCamera | null = null;
 let _planetAnimId: number | null = null;
 let _planetMesh: THREE.Mesh | null = null;
 let _resizeObs: ResizeObserver | null = null;
+let _currentPlanet: PlanetDto | null = null;
+
+// ── Реактивное обновление UI при изменении баланса кристаллов ────────────────
+
+function _refreshUI(): void {
+    const store = getStore();
+    if (!store.player || !_currentPlanet) return;
+    _updateUnlockButton(_currentPlanet, store.player);
+    _renderPlayerCrystals(_currentPlanet, store);
+}
+
+const _REACTIVE_ACTIONS: ActionType[] = ['EARN_CRYSTALS', 'ADD_CRYSTALS', 'SPEND_CRYSTALS', 'DISCOVER_PLANET'];
+
+function _subscribeToStoreChanges(): void {
+    for (const action of _REACTIVE_ACTIONS) on(action, _refreshUI);
+}
+
+function _unsubscribeFromStoreChanges(): void {
+    for (const action of _REACTIVE_ACTIONS) off(action, _refreshUI);
+}
 
 window._planetDetail = {
     startMiniGame() {
@@ -90,11 +115,17 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     // Кнопка открытия / мини-игры
     _updateUnlockButton(planet, store.player!);
 
+    // Запоминаем текущую планету и подписываемся на изменения баланса
+    _currentPlanet = planet;
+    _subscribeToStoreChanges();
+
     // 3D-модель планеты
     _init3DPlanet(planet, clusterMeta);
 }
 
 export function destroy(): void {
+    _unsubscribeFromStoreChanges();
+    _currentPlanet = null;
     _cleanup3D();
 }
 
@@ -214,20 +245,7 @@ function _cleanup3D(): void {
 
     // Recursively free all GPU resources (geometries, materials, textures)
     if (_planetScene) {
-        _planetScene.traverse(obj => {
-            const mesh = obj as THREE.Mesh;
-            if (mesh.geometry) mesh.geometry.dispose();
-            if (mesh.material) {
-                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                mats.forEach(mat => {
-                    for (const key of Object.keys(mat)) {
-                        const val = (mat as unknown as Record<string, unknown>)[key];
-                        if (val instanceof THREE.Texture) val.dispose();
-                    }
-                    mat.dispose();
-                });
-            }
-        });
+        disposeSceneGraph(_planetScene);
     }
 
     if (_planetRenderer) {
@@ -299,10 +317,15 @@ function _updateUnlockButton(planet: PlanetDto, player: NonNullable<Parameters<t
         btn.textContent = `🔓 Открыть планету — ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
         btn.onclick = () => window._planetDetail?.unlockPlanet(planet.id);
     } else {
-        btn.disabled = true;
+        btn.disabled = false;
         btn.style.opacity = '0.5';
         btn.title = `Нужно ещё ${cost - playerCrystals} кристаллов`;
         btn.textContent = `🔒 Открыть планету — ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
+        btn.onclick = () => {
+            const meta = CLUSTER_META[crystalType];
+            const label = meta?.label?.split(' ').slice(1).join(' ') ?? 'этого типа';
+            alert(`Недостаточно кристаллов ${label}!\nНужно: ${cost}, есть: ${playerCrystals}.\nСоберите кристаллы в полёте через карту галактики.`);
+        };
     }
 }
 

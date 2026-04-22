@@ -9,6 +9,7 @@
  */
 import * as THREE from 'three';
 import { getProfile, onQualityChange } from './qualityPresets.js';
+import { disposeSceneGraph } from './threeUtils.js';
 let _renderer = null;
 let _currentScene = null;
 let _animFrameId = null;
@@ -83,23 +84,7 @@ export function recreateRenderer() {
 function _disposeCurrentScene() {
     if (!_currentScene)
         return;
-    _currentScene.scene.traverse(obj => {
-        const mesh = obj;
-        if (mesh.geometry)
-            mesh.geometry.dispose();
-        if (mesh.material) {
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            materials.forEach(mat => {
-                // Dispose текстур материала
-                for (const key of Object.keys(mat)) {
-                    const val = mat[key];
-                    if (val instanceof THREE.Texture)
-                        val.dispose();
-                }
-                mat.dispose();
-            });
-        }
-    });
+    disposeSceneGraph(_currentScene.scene);
     _starfieldPoints = null;
     _currentScene = null;
 }

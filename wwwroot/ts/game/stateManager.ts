@@ -34,6 +34,14 @@ export function on<T extends ActionType>(
     _handlers.get(action)!.add(handler as (store: GameStore, payload: unknown) => void);
 }
 
+export function off<T extends ActionType>(
+    action: T,
+    handler: (store: GameStore, payload: ActionPayload[T]) => void
+): void {
+    const handlers = _handlers.get(action);
+    if (handlers) handlers.delete(handler as (store: GameStore, payload: unknown) => void);
+}
+
 const _PLAYER_ACTIONS: ReadonlySet<ActionType> = new Set<ActionType>([
     'SET_PLAYER', 'ADD_CRYSTALS', 'SPEND_CRYSTALS', 'EARN_CRYSTALS',
     'DISCOVER_PLANET', 'APPLY_UPGRADE', 'INCREMENT_STAT', 'ADD_BADGE',
