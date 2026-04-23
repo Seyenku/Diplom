@@ -18,6 +18,7 @@ import {
     registerScreen,
     getStore,
     on,
+    loadSavedSettings,
 } from './stateManager.js';
 
 import { initThreeScene } from './threeScene.js';
@@ -26,6 +27,7 @@ import { initHud }        from './hudManager.js';
 import { telemetry }      from './telemetryCollector.js';
 import { initQuality, QualityLevel } from './qualityPresets.js';
 import { ClusterDto, PlanetDto, GameSettingsDto } from './types.js';
+import { initAudio, playSfx } from './audioManager.js';
 
 // ── Модули экранов ───────────────────────────────────────────────────────────
 import * as MainMenu      from './screens/screenMainMenu.js';
@@ -100,6 +102,9 @@ import * as OfflineError  from './screens/screenOfflineError.js';
         dispatch('SET_SETTINGS', (initData.defaultSettings ?? {}) as Parameters<typeof dispatch<'SET_SETTINGS'>>[1]);
     }
 
+    // Загружаем настройки из localStorage перед инициализацией подсистем
+    loadSavedSettings();
+
     // 2. Инициализация качества графики ДО создания рендерера
     const savedQuality = (getStore().settings?.graphicsQuality ?? 'medium') as QualityLevel;
     initQuality(savedQuality);
@@ -149,6 +154,14 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     const startScreen: ScreenId = hashScreen ?? Screen.MAIN_MENU;
 
     await transition(startScreen);
+
+    // 9. Аудио (Lazy init)
+    document.addEventListener('pointerdown', () => {
+        initAudio();
+    }, { once: true, passive: true });
+    document.addEventListener('keydown', () => {
+        initAudio();
+    }, { once: true, passive: true });
 })();
 
 // ── Глобальный обработчик кликов для SPA-навигации ───────────────────────────
@@ -156,6 +169,8 @@ document.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest('[data-spa]') as HTMLElement;
     if (!btn) return;
     const action = btn.dataset.spa;
+
+    playSfx('ui_click');
 
     if (action === 'goto') {
         const target = btn.dataset.screen as ScreenId;

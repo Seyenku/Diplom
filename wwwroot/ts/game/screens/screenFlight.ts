@@ -17,6 +17,7 @@ import { GameStore, CrystalType, ClusterType } from '../types.js';
 import { getProfile, onQualityChange, offQualityChange } from '../qualityPresets.js';
 import { applyShipColor, createFallbackShip } from '../shipUtils.js';
 import { CRYSTAL_COLORS } from '../clusterConfig.js';
+import { playSfx, playMusic } from '../audioManager.js';
 
 const FLIGHT_DURATION_S = 60;
 
@@ -129,6 +130,8 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
     // Подписка на смену качества (только pixelRatio, чтобы не сбрасывать прогресс)
     onQualityChange(_onFlightQualityChanged);
+
+    playMusic('ambient_flight');
 }
 
 export function destroy(): void {
@@ -160,14 +163,17 @@ function _startCountdown(): void {
 
     let count = 3;
     if (numberEl) numberEl.textContent = String(count);
+    playSfx('countdown_tick');
 
     const interval = setInterval(() => {
         count--;
         if (count > 0) {
             if (numberEl) numberEl.textContent = String(count);
+            playSfx('countdown_tick');
         } else {
             clearInterval(interval);
             if (numberEl) numberEl.textContent = 'СТАРТ!';
+            playSfx('countdown_go');
             setTimeout(() => {
                 if (overlay) overlay.classList.add('hidden');
                 _startPlaying();
@@ -278,6 +284,7 @@ function _checkCollisions(): void {
         if (dist2 < crystalThresholdSq) {
             _collected++;
             _updateHud();
+            playSfx('crystal_collect');
             const scene = window.__threeScene;
             if (scene) scene.remove(c);
             return false;
@@ -291,6 +298,10 @@ function _checkCollisions(): void {
             (a as THREE.Object3D & { userData: { _hit?: boolean } }).userData._hit = true;
             _shield = Math.max(0, _shield - 20);
             _updateShieldBar();
+            playSfx('asteroid_hit');
+            if (_shield <= 30 && _shield > 0) {
+                playSfx('shield_warning');
+            }
         }
     });
 }
@@ -342,6 +353,9 @@ function _endFlight(): void {
     // Записываем собранные кристаллы (одного типа)
     if (_collected > 0) {
         dispatch('EARN_CRYSTALS', { earned: { [_crystalType]: _collected } as Record<CrystalType, number> });
+        playSfx('flight_end_success');
+    } else {
+        playSfx('flight_end_fail');
     }
 
     // Рендерим результаты

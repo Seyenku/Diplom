@@ -15,6 +15,7 @@ import { GameStore, MiniGameRewardDto } from '../types.js';
 import { loadModel } from '../gltfLoader.js';
 import { applyShipColor, createFallbackShip } from '../shipUtils.js';
 import { disposeSceneGraph } from '../threeUtils.js';
+import { playSfx, playMusic } from '../audioManager.js';
 
 const APPROACH_RAMP_S = 30;
 const HEALTH_MAX = 100;
@@ -97,6 +98,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
     _bindInput();
     await _initScene();
+    playMusic('ambient_minigame');
     _startGame();
 }
 
@@ -399,6 +401,7 @@ function _updateAsteroids(dt: number): void {
             _asteroids.splice(i, 1);
             _dodged += 1;
             _score += 8;
+            playSfx('minigame_dodge');
         }
     }
 }
@@ -410,6 +413,7 @@ function _hitAsteroid(index: number): void {
 
     _health = Math.max(0, _health - ASTEROID_DAMAGE);
     _hitFlash = 0.25;
+    playSfx('asteroid_hit');
 
     if (_health <= 0) {
         _finish(false);
@@ -425,6 +429,9 @@ async function _finish(survived: boolean): Promise<void> {
 
     const passed = survived && _health > 0;
     _score += Math.round(_health * 2 + _dodged * 12);
+    
+    if (passed) playSfx('minigame_land');
+    else playSfx('minigame_crash');
 
     let reward: MiniGameRewardDto | null = null;
     try {

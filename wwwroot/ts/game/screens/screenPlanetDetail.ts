@@ -12,6 +12,7 @@ import { switchScene } from '../threeScene.js';
 import { GameStore, PlanetDto, CrystalType, ClusterType, ActionType } from '../types.js';
 import { disposeSceneGraph } from '../threeUtils.js';
 import { CLUSTER_MAP } from '../clusterConfig.js';
+import { playSfx } from '../audioManager.js';
 
 // ── Цветовая схема кластеров (из clusterConfig.ts) ──────────────────────────────
 
@@ -68,6 +69,7 @@ window._planetDetail = {
         const playerCrystals = ((store.player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
 
         if (playerCrystals < cost) {
+            playSfx('ui_error');
             alert(`Недостаточно кристаллов. Нужно: ${cost}, есть: ${playerCrystals}.`);
             return;
         }
@@ -79,6 +81,7 @@ window._planetDetail = {
 
         // Обновляем UI
         _updateUnlockButton(planet, getStore().player!);
+        playSfx('planet_unlock');
     }
 };
 

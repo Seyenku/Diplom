@@ -10,6 +10,7 @@
 
 import { getStore, dispatch } from '../stateManager.js';
 import { GameStore, CrystalType, UpgradeDto } from '../types.js';
+import { playSfx } from '../audioManager.js';
 
 const CRYSTAL_META: Record<string, { emoji: string; label: string; color: string }> = {
     programming: { emoji: '💎', label: 'Программирование', color: '#4fc3f7' },
@@ -39,6 +40,7 @@ window._shipUpgrade = {
             const have = (crystals as Record<string, number>)[type] ?? 0;
             if (have < (needed as number)) {
                 const meta = CRYSTAL_META[type];
+                playSfx('ui_error');
                 alert(`Недостаточно кристаллов ${meta?.label ?? type}. Нужно: ${needed}, есть: ${have}.`);
                 return;
             }
@@ -56,6 +58,7 @@ window._shipUpgrade = {
             btn.style.opacity = '0.5';
         }
 
+        playSfx('upgrade_buy');
         _updateStats();
     }
 };

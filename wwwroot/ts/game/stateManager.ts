@@ -5,6 +5,7 @@ import {
     ScreenModule, PlanetDto, UpgradeDto,
     GameSettingsDto, SessionData, PlayerState,
 } from './types.js';
+import { playSfx } from './audioManager.js';
 
 export { Screen, ScreenId };
 
@@ -13,6 +14,7 @@ export { Screen, ScreenId };
 const _store: GameStore = {
     currentScreen:  null,
     previousScreen: null,
+    history: [],
     player: null,
     catalog: [],
     upgrades: [],
@@ -104,6 +106,7 @@ on('EARN_CRYSTALS', (s, { earned }) => {
     s.player.stats ??= {} as typeof s.player.stats;
     s.player.stats.totalCrystalsEarned = (s.player.stats.totalCrystalsEarned ?? 0)
         + Object.values(earned).reduce((a, b) => a + (b as number), 0);
+    playSfx('crystal_collect');
 });
 
 on('SET_SESSION', (s, p) => {
@@ -143,6 +146,11 @@ on('SCREEN_CHANGED', () => {
         const hideOnScreen = _store.currentScreen === Screen.MAIN_MENU;
         gameNavbar.classList.toggle('hidden', hideOnScreen);
     }
+    
+    // Звук перехода (кроме первой загрузки)
+    if (_store.previousScreen) {
+        playSfx('screen_transition');
+    }
 });
 
 const ScreenModules: Record<string, ScreenModule> = {};
@@ -153,19 +161,29 @@ export function registerScreen(screenId: ScreenId, module: ScreenModule): void {
 
 let _activeModule: ScreenModule | null = null;
 
-export async function transition(screenId: ScreenId, payload: Partial<SessionData> = {}, skipPushState = false): Promise<void> {
+export async function transition(screenId: ScreenId, payload: Partial<SessionData> = {}, skipPushState = false, isBack = false): Promise<void> {
     if (screenId === _store.currentScreen && Object.keys(payload).length === 0) return;
 
-    // РЈРЅРёС‡С‚РѕР¶Р°РµРј С‚РµРєСѓС‰РёР№ РјРѕРґСѓР»СЊ
+    // Уничтожаем текущий модуль
     try { _activeModule?.destroy?.(); } catch (e) { console.error(e); }
     _activeModule = null;
 
-    // РђРЅРёРјР°С†РёСЏ РїРµСЂРµС…РѕРґР°
+    // Анимация перехода
     const overlay = document.getElementById('screen-transition-overlay');
     overlay?.classList.add('fade-out');
 
+    // Управление стеком истории
+    if (!isBack && _store.currentScreen) {
+        _store.history.push(_store.currentScreen);
+    }
+
+    // Корневые экраны сбрасывают стек
+    if (screenId === Screen.MAIN_MENU || screenId === Screen.CHAR_CREATION) {
+        _store.history = [];
+    }
+
     _store.previousScreen = _store.currentScreen;
-    _store.currentScreen  = screenId;
+    _store.currentScreen = screenId;
     if (Object.keys(payload).length) dispatch('SET_SESSION', payload as ActionPayload['SET_SESSION']);
 
     if (!skipPushState) {
@@ -185,17 +203,17 @@ export async function transition(screenId: ScreenId, payload: Partial<SessionDat
             container.focus();
         }
 
-        // HUD РІРёРґРёРј С‚РѕР»СЊРєРѕ РІРѕ РІСЂРµРјСЏ РёРіСЂС‹
+        // HUD видим только во время игры
         _updateHudVisibility(screenId);
 
-        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РјРѕРґСѓР»СЊ СЌРєСЂР°РЅР°
+        // Инициализируем модуль экрана
         const mod = ScreenModules[screenId];
         if (mod) {
             _activeModule = mod;
             await mod.init?.(getStore());
         }
 
-        // РЈРІРµРґРѕРјР»СЏРµРј РїРѕРґРїРёСЃС‡РёРєРѕРІ Рѕ СЃРјРµРЅРµ СЌРєСЂР°РЅР°
+        // Уведомляем подписчиков о смене экрана
         dispatch('SCREEN_CHANGED', { screenId, previousScreen: _store.previousScreen });
     } catch (err) {
         console.error('[StateManager] transition error:', err);
@@ -208,8 +226,8 @@ export async function transition(screenId: ScreenId, payload: Partial<SessionDat
 
 
 export function goBack(): void {
-    const prev = _store.previousScreen;
-    if (prev) transition(prev);
+    const prev = _store.history.pop();
+    if (prev) transition(prev, {}, false, true);
 }
 
 async function _fetchPartial(screenId: string): Promise<string> {
@@ -258,6 +276,27 @@ export function savePlayerNow(): boolean {
     _persistPlayer();
     return _store.player !== null;
 }
+
+const SETTINGS_SAVE_KEY = 'stellar_vocation_settings';
+
+export function saveSettingsNow(): void {
+    if (_store.settings) {
+        try {
+            localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify(_store.settings));
+        } catch { }
+    }
+}
+
+export function loadSavedSettings(): boolean {
+    try {
+        const raw = localStorage.getItem(SETTINGS_SAVE_KEY);
+        if (raw) {
+            _store.settings = JSON.parse(raw) as import('./types.js').GameSettingsDto;
+            return true;
+        }
+    } catch { }
+    return false;
+}
 export function loadSavedPlayer(): boolean {
     try {
         const raw = localStorage.getItem(SAVE_KEY);
@@ -279,7 +318,7 @@ export function clearSave(): void {
 
 window.addEventListener('popstate', (e: PopStateEvent) => {
     const screenId: ScreenId = e.state?.screen ?? Screen.MAIN_MENU;
-    transition(screenId, {}, true);
+    transition(screenId, {}, true, true);
 });
 
 window.addEventListener('beforeunload', () => {

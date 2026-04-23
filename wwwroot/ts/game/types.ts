@@ -135,6 +135,7 @@ export interface SessionData {
 export interface GameStore {
     currentScreen: ScreenId | null;
     previousScreen: ScreenId | null;
+    history: ScreenId[];
     player: PlayerState | null;
     catalog: PlanetDto[];
     upgrades: UpgradeDto[];
@@ -259,6 +260,20 @@ declare global {
         };
     }
 }
+
+// ── Audio Types ─────────────────────────────────────────────────────────────
+
+export type SfxName =
+    | 'ui_click' | 'ui_hover' | 'ui_error' | 'ui_success'
+    | 'screen_transition'
+    | 'crystal_collect' | 'asteroid_hit' | 'shield_warning'
+    | 'countdown_tick' | 'countdown_go'
+    | 'flight_end_success' | 'flight_end_fail'
+    | 'minigame_land' | 'minigame_crash' | 'minigame_dodge'
+    | 'planet_unlock' | 'upgrade_buy' | 'achievement' | 'scan_pulse';
+
+export type MusicName =
+    | 'ambient_menu' | 'ambient_map' | 'ambient_flight' | 'ambient_minigame' | 'none';
 
 export {};
 

@@ -15,6 +15,7 @@ import { GameStore, PlanetDto, ClusterDto, ClusterType, CrystalType, ClusterMeta
 import { getProfile, onQualityChange, offQualityChange } from '../qualityPresets.js';
 import { disposeSceneGraph } from '../threeUtils.js';
 import { CLUSTER_META } from '../clusterConfig.js';
+import { playMusic } from '../audioManager.js';
 
 // CLUSTER_META импортирован из clusterConfig.ts
 
@@ -143,6 +144,7 @@ window._galaxyMap = {
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
 export async function init(store: Readonly<GameStore>): Promise<void> {
+    playMusic('ambient_map');
     await switchScene('galaxy-map');
 
     _clusters = (store.sessionData?.clusters ?? []) as ClusterDto[];
@@ -591,6 +593,8 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         const angle = (i / clusterPlanets.length) * Math.PI * 2 + Math.random() * 0.18;
         const orbitR = 8 + (i % 4) * 4.8 + Math.floor(i / 4) * 2.2;
         const yOffset = (Math.random() - 0.5) * 3;
+        // Угловая скорость: чем дальше орбита, тем медленнее (закон Кеплера, упрощённо)
+        const orbitSpeed = discovered ? (0.15 / Math.sqrt(orbitR)) : 0;
 
         mesh.position.set(
             center.x + Math.cos(angle) * orbitR,
@@ -606,6 +610,14 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
             unlockCost: planet.unlockCost,
             baseEmissiveIntensity,
             type: 'planet',
+            // Orbital animation data
+            orbitAngle: angle,
+            orbitRadius: orbitR,
+            orbitCenterX: center.x,
+            orbitCenterY: center.y,
+            orbitCenterZ: center.z,
+            orbitYOffset: yOffset,
+            orbitSpeed,
         };
 
         // Кольцо для открытых планет (shared ring geo, unique material)
@@ -770,9 +782,17 @@ function _mapRenderLoop(): void {
         }
     }
 
-    // Вращение планет
+    // Вращение и орбитальное движение планет
     _planetMeshes.forEach(mesh => {
         mesh.rotation.y += 0.005;
+
+        const ud = mesh.userData as Record<string, number>;
+        const speed = ud.orbitSpeed;
+        if (speed) {
+            ud.orbitAngle += speed * 0.016; // ~60fps dt
+            mesh.position.x = ud.orbitCenterX + Math.cos(ud.orbitAngle) * ud.orbitRadius;
+            mesh.position.z = ud.orbitCenterZ + Math.sin(ud.orbitAngle) * ud.orbitRadius;
+        }
     });
 
     // Raycasting (only if mouse moved)

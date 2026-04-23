@@ -2,9 +2,10 @@
  * screenSettings.ts — Настройки и доступность
  */
 
-import { getStore, dispatch } from '../stateManager.js';
+import { getStore, dispatch, saveSettingsNow } from '../stateManager.js';
 import { GameStore } from '../types.js';
 import { setQuality, QualityLevel } from '../qualityPresets.js';
+import { setSfxVolume, setMusicVolume, playSfx } from '../audioManager.js';
 
 window._settings = {
     update(key: string, value: string | number) {
@@ -12,6 +13,11 @@ window._settings = {
         // Мгновенное применение качества графики
         if (key === 'graphicsQuality') {
             setQuality(value as QualityLevel);
+        } else if (key === 'soundVolume') {
+            setSfxVolume(parseFloat(String(value)) / 100);
+            playSfx('ui_hover'); // звук для проверки громкости
+        } else if (key === 'musicVolume') {
+            setMusicVolume(parseFloat(String(value)) / 100);
         }
     },
     saveAndApply() {
@@ -21,6 +27,9 @@ window._settings = {
         document.documentElement.style.setProperty('--user-ui-scale', String(s.uiScale ?? 1.0));
         // Применяем качество графики
         if (s.graphicsQuality) setQuality(s.graphicsQuality as QualityLevel);
+        
+        saveSettingsNow(); // Сохраняем в localStorage
+        playSfx('ui_success');
         alert('Настройки сохранены.');
     }
 };
