@@ -20,6 +20,7 @@ builder.Services.AddMemoryCache();
 // --- Repository DI (Scoped) ---
 builder.Services.AddScoped<IUserRepository,        UserRepository>();
 builder.Services.AddScoped<IPlanetRepository,      PlanetRepository>();
+builder.Services.AddScoped<ISpecRepository,        SpecRepository>();
 
 // --- Services ---
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();

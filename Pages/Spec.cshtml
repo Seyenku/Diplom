@@ -1,0 +1,140 @@
+@page
+@model KosmosCore.Pages.SpecModel
+@{
+    ViewData["Title"] = "Направления подготовки";
+}
+
+<div class="spec-page">
+    <div class="spec-header">
+        <h1 class="spec-title">Направления подготовки</h1>
+        <p class="spec-subtitle">Перечень образовательных программ СГУ им. Питирима Сорокина, связанных с профессиями будущего</p>
+    </div>
+
+    @if (Model.Directions.Count == 0)
+    {
+        <div class="spec-empty">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14,2 14,8 20,8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10,9 9,9 8,9"/>
+            </svg>
+            <p>Данные о направлениях пока не добавлены.</p>
+        </div>
+    }
+    else
+    {
+        <div class="spec-grid">
+            @foreach (var dir in Model.Directions)
+            {
+                <article class="spec-card" id="spec-card-@dir.ProgramId">
+                    <div class="spec-card__header">
+                        <span class="spec-card__code">@dir.Code</span>
+                        <h2 class="spec-card__title">@dir.Title</h2>
+                    </div>
+
+                    <div class="spec-card__body">
+                        <div class="spec-card__meta">
+                            <div class="spec-meta-item">
+                                <span class="spec-meta-label">Форма обучения</span>
+                                <span class="spec-meta-value">@dir.EduForm</span>
+                            </div>
+                            <div class="spec-meta-item">
+                                <span class="spec-meta-label">Срок обучения</span>
+                                <span class="spec-meta-value">@dir.YearsEduc г.</span>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(dir.Description))
+                        {
+                            <div class="spec-card__section">
+                                <h3 class="spec-section-title">Описание</h3>
+                                <p class="spec-section-text">@dir.Description</p>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(dir.Disciplines))
+                        {
+                            <div class="spec-card__section">
+                                <h3 class="spec-section-title">Читаемые дисциплины</h3>
+                                <p class="spec-section-text">@dir.Disciplines</p>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(dir.Exams))
+                        {
+                            <div class="spec-card__section">
+                                <h3 class="spec-section-title">Вступительные испытания</h3>
+                                <div class="spec-tags">
+                                    @foreach (var exam in dir.Exams.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                                    {
+                                        <span class="spec-tag spec-tag--exam">@exam</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(dir.Spheres))
+                        {
+                            <div class="spec-card__section">
+                                <h3 class="spec-section-title">Сферы трудоустройства</h3>
+                                <p class="spec-section-text">@dir.Spheres</p>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(dir.Professions))
+                        {
+                            <div class="spec-card__section">
+                                <h3 class="spec-section-title">Профессии будущего</h3>
+                                <div class="spec-tags">
+                                    @foreach (var prof in dir.Professions.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                                    {
+                                        <span class="spec-tag spec-tag--profession">@prof</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (dir.AdmissionHistory.Count > 0)
+                        {
+                            <details class="spec-card__details">
+                                <summary class="spec-details-toggle">
+                                    <span>Статистика приёма</span>
+                                    <svg class="spec-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="6,9 12,15 18,9"/>
+                                    </svg>
+                                </summary>
+                                <div class="spec-stats-table-wrap">
+                                    <table class="spec-stats-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Год</th>
+                                                <th>Стоимость</th>
+                                                <th>Бюджетные места</th>
+                                                <th>Проходной балл</th>
+                                                <th>Средний балл ЕГЭ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var stat in dir.AdmissionHistory)
+                                            {
+                                                <tr>
+                                                    <td>@stat.Year</td>
+                                                    <td>@stat.Price.ToString("N0") ₽</td>
+                                                    <td>@stat.BudgetPlaces</td>
+                                                    <td>@stat.MinPassingScore</td>
+                                                    <td>@(stat.AvgEgeScore.HasValue ? stat.AvgEgeScore.Value.ToString("F1") : "—")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>

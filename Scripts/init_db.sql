@@ -137,6 +137,8 @@ CREATE TABLE Programs (
     FormId INT NOT NULL,
     YearsEduc FLOAT NOT NULL,
     Description NVARCHAR(MAX),
+    Disciplines NVARCHAR(MAX),          -- Читаемые дисциплины
+    Spheres NVARCHAR(MAX),              -- Сферы трудоустройства
     CONSTRAINT FK_Programs_BaseSpec FOREIGN KEY (SpecCode) REFERENCES BaseSpecializations(Code) ON DELETE CASCADE,
     CONSTRAINT FK_Programs_EduForms FOREIGN KEY (FormId) REFERENCES EduForms(Id)
 );
@@ -167,6 +169,7 @@ CREATE TABLE AdmissionStats (
     Price DECIMAL(10,2) NOT NULL DEFAULT 0,
     BudgetPlaces INT NOT NULL DEFAULT 0,
     MinPassingScore INT NOT NULL DEFAULT 0,
+    AvgEgeScore FLOAT NULL,             -- Средний балл ЕГЭ
     PRIMARY KEY (ProgramId, Year),
     CONSTRAINT FK_Stats_Program FOREIGN KEY (ProgramId) REFERENCES Programs(Id) ON DELETE CASCADE
 );

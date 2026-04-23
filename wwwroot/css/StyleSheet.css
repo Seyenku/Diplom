@@ -632,3 +632,299 @@ main {
     border-radius: 16px;
     padding: 24px;
 }
+
+/* ===================================================================
+   СТРАНИЦА «НАПРАВЛЕНИЯ» (Spec)
+   =================================================================== */
+
+.spec-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+}
+
+.spec-header {
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+.spec-title {
+    font-family: var(--font-heading);
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--color-accent) 0%, #0ea5e9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0 0 16px;
+    line-height: 1.15;
+}
+
+.spec-subtitle {
+    font-size: clamp(15px, 2vw, 18px);
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* --- Empty state --- */
+.spec-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--color-text-muted);
+}
+
+.spec-empty svg {
+    margin-bottom: 20px;
+    opacity: 0.4;
+}
+
+.spec-empty p {
+    font-size: 18px;
+}
+
+/* --- Grid --- */
+.spec-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+}
+
+/* --- Card --- */
+.spec-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: specFadeIn 0.5s ease both;
+}
+
+.spec-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes specFadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.spec-card__header {
+    background: linear-gradient(135deg, var(--color-accent), #0ea5e9);
+    padding: 24px 28px;
+    color: #fff;
+}
+
+.spec-card__code {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 12px;
+    border-radius: 100px;
+    margin-bottom: 8px;
+}
+
+.spec-card__title {
+    font-family: var(--font-heading);
+    font-size: clamp(18px, 3vw, 24px);
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.spec-card__body {
+    padding: 24px 28px 28px;
+}
+
+/* --- Meta badges --- */
+.spec-card__meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.spec-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--color-bg-primary);
+    padding: 10px 16px;
+    border-radius: 12px;
+    min-width: 120px;
+}
+
+.spec-meta-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.spec-meta-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+/* --- Sections --- */
+.spec-card__section {
+    margin-bottom: 16px;
+}
+
+.spec-section-title {
+    font-family: var(--font-heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-accent);
+    margin: 0 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.spec-section-text {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+/* --- Tags --- */
+.spec-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.spec-tag {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.spec-tag--exam {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--color-accent);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.spec-tag--profession {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* --- Collapsible Stats --- */
+.spec-card__details {
+    margin-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    padding-top: 12px;
+}
+
+.spec-details-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 8px 0;
+    list-style: none;
+    user-select: none;
+}
+
+.spec-details-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.spec-chevron {
+    transition: transform 0.25s ease;
+}
+
+.spec-card__details[open] .spec-chevron {
+    transform: rotate(180deg);
+}
+
+/* --- Stats table --- */
+.spec-stats-table-wrap {
+    overflow-x: auto;
+    margin-top: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.spec-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.spec-stats-table th {
+    background: var(--color-bg-primary);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    padding: 12px 16px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.spec-stats-table td {
+    padding: 10px 16px;
+    color: var(--color-text-primary);
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+    white-space: nowrap;
+}
+
+.spec-stats-table tbody tr:hover {
+    background: var(--color-accent-light);
+}
+
+/* --- Responsive --- */
+@media (max-width: 640px) {
+    .spec-page {
+        padding: 24px 12px 60px;
+    }
+
+    .spec-card__header {
+        padding: 20px 20px;
+    }
+
+    .spec-card__body {
+        padding: 20px 20px 24px;
+    }
+
+    .spec-card__meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .spec-meta-item {
+        min-width: 0;
+    }
+
+    .spec-stats-table th,
+    .spec-stats-table td {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}
+

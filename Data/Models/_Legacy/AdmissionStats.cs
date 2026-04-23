@@ -8,4 +8,5 @@ public class AdmissionStats
     public decimal Price         { get; set; }
     public int    BudgetPlaces   { get; set; }
     public int    MinPassingScore { get; set; }
+    public double? AvgEgeScore    { get; set; }  // Средний балл ЕГЭ
 }

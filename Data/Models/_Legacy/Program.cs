@@ -7,5 +7,7 @@ public class Program
     public string SpecCode    { get; set; } = string.Empty;  // FK → BaseSpecializations
     public int    FormId      { get; set; }                  // FK → EduForms
     public float  YearsEduc   { get; set; }
-    public string Description { get; set; } = string.Empty;
+    public string Description  { get; set; } = string.Empty;
+    public string? Disciplines { get; set; }  // Читаемые дисциплины
+    public string? Spheres     { get; set; }  // Сферы трудоустройства
 }
