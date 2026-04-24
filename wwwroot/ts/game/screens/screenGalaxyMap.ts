@@ -9,6 +9,9 @@
  */
 
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { getStore, dispatch, transition, Screen, ScreenId, on, off } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
 import { GameStore, PlanetDto, ClusterDto, ClusterType, CrystalType, ClusterMeta, ActionType } from '../types.js';
@@ -34,6 +37,7 @@ const PLANET_ZOOM_DURATION = 500; // ms — camera fly + overlay fade-in duratio
 
 // Three.js
 let _mapRenderer: THREE.WebGLRenderer | null = null;
+let _composer: EffectComposer | null = null;
 let _mapScene: THREE.Scene | null = null;
 let _mapCamera: THREE.PerspectiveCamera | null = null;
 let _mapAnimId: number | null = null;
@@ -339,6 +343,14 @@ function _init3DMap(): void {
     dirL.position.set(20, 40, 30);
     _mapScene.add(dirL);
 
+    // Post-processing (Bloom)
+    const renderPass = new RenderPass(_mapScene, _mapCamera);
+    // Strength: 0.4 (мягкое свечение), Radius: 0.8 (широкое рассеивание), Threshold: 0.85 (только для ярких объектов)
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.7, 0.5, 0.5);
+    _composer = new EffectComposer(_mapRenderer);
+    _composer.addPass(renderPass);
+    _composer.addPass(bloomPass);
+
     // Звёздный фон
     _addMapStars();
 
@@ -431,7 +443,7 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             const node = subCenters[Math.floor(Math.random() * subCenters.length)];
-            const r = 10 + Math.random() * 40; // Широкий разброс радиуса
+            const r = 28 + Math.random() * 37; // Полая сфера 28-65
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
 
@@ -474,7 +486,7 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
         const sparksPos = new Float32Array(SPARKS_COUNT * 3);
         for (let i = 0; i < SPARKS_COUNT; i++) {
             const node = subCenters[Math.floor(Math.random() * subCenters.length)];
-            const r = 10 + Math.random() * 25;
+            const r = 28 + Math.random() * 25; // Искры тоже снаружи
             const theta = Math.random() * Math.PI * 2;
             
             sparksPos[i * 3]     = node.x + r * Math.cos(theta) * 1.5;
@@ -507,7 +519,7 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
             depthWrite: false,
         }));
         coreSprite.scale.set(60, 60, 1);
-        coreSprite.userData = { type: 'core' };
+        coreSprite.userData = { type: 'core', currentScale: 60, currentOp: 0.4 };
         group.add(coreSprite);
 
         // ── Слой 4: Точечный свет ──
@@ -589,17 +601,29 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         const mesh = new THREE.Mesh(_sharedPlanetGeo!, mat);
         mesh.scale.setScalar(radius);
 
-        // Расположение вокруг центра туманности
+        // Расположение и форма орбиты
         const angle = (i / clusterPlanets.length) * Math.PI * 2 + Math.random() * 0.18;
         const orbitR = 8 + (i % 4) * 4.8 + Math.floor(i / 4) * 2.2;
+        const orbitRadiusX = orbitR;
+        const orbitRadiusZ = orbitR * (0.6 + Math.random() * 0.4); // Эллипс
         const yOffset = (Math.random() - 0.5) * 3;
-        // Угловая скорость: чем дальше орбита, тем медленнее (закон Кеплера, упрощённо)
+        const tiltX = (Math.random() - 0.5) * 0.3; // небольшой наклон
+        const tiltZ = (Math.random() - 0.5) * 0.3;
+        // Угловая скорость: чем дальше орбита, тем медленнее
         const orbitSpeed = discovered ? (0.15 / Math.sqrt(orbitR)) : 0;
 
+        // Создаём Pivot (родительский узел) для наклона всей орбиты
+        const orbitPivot = new THREE.Group();
+        orbitPivot.position.set(center.x, center.y + yOffset, center.z);
+        orbitPivot.rotation.set(tiltX, 0, tiltZ);
+        orbitPivot.userData = { type: 'orbit-pivot' };
+        _mapScene!.add(orbitPivot);
+
+        // Планета позиционируется локально внутри Pivot
         mesh.position.set(
-            center.x + Math.cos(angle) * orbitR,
-            center.y + yOffset,
-            center.z + Math.sin(angle) * orbitR
+            Math.cos(angle) * orbitRadiusX,
+            0,
+            Math.sin(angle) * orbitRadiusZ
         );
 
         mesh.userData = {
@@ -612,11 +636,8 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
             type: 'planet',
             // Orbital animation data
             orbitAngle: angle,
-            orbitRadius: orbitR,
-            orbitCenterX: center.x,
-            orbitCenterY: center.y,
-            orbitCenterZ: center.z,
-            orbitYOffset: yOffset,
+            orbitRadiusX,
+            orbitRadiusZ,
             orbitSpeed,
         };
 
@@ -660,11 +681,10 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
                 depthWrite: false,
             });
             const orbitLine = new THREE.LineLoop(_sharedOrbitGeo!, orbitMat);
-            orbitLine.scale.setScalar(orbitR);
+            orbitLine.scale.set(orbitRadiusX, orbitRadiusZ, 1);
             orbitLine.rotation.x = Math.PI / 2;
-            orbitLine.position.set(center.x, center.y + yOffset, center.z);
             orbitLine.userData = { planetId: planet.id, type: 'orbit' };
-            _mapScene!.add(orbitLine);
+            orbitPivot.add(orbitLine);
             _orbitMap.set(planet.id, orbitLine);
         }
 
@@ -681,14 +701,18 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         halo.scale.set(4.8, 4.8, 1);
         mesh.add(halo);
 
-        _mapScene!.add(mesh);
+        orbitPivot.add(mesh); // Добавляем планету в Pivot, а не напрямую в сцену
         _planetMeshes.push(mesh);
     });
 }
 
 function _clearPlanetMeshes(): void {
     _planetMeshes.forEach(m => {
-        _mapScene?.remove(m);
+        if (m.parent && m.parent !== _mapScene) {
+            _mapScene?.remove(m.parent); // Удаляем весь orbitPivot из сцены
+        } else {
+            _mapScene?.remove(m);
+        }
         // Recursively dispose all materials and textures (but NOT shared geometries)
         m.traverse(child => {
             const c = child as THREE.Mesh;
@@ -708,7 +732,7 @@ function _clearPlanetMeshes(): void {
     _hoveredObj = null;
 
     _orbitMap.forEach(line => {
-        _mapScene?.remove(line);
+        if (line.parent) line.removeFromParent();
         if (line.material) (line.material as THREE.Material).dispose();
     });
     _orbitMap.clear();
@@ -766,18 +790,39 @@ function _mapRenderLoop(): void {
     for (const group of Object.values(_nebulaMeshes)) {
         group.rotation.y += 0.001;
         
-        // Пульсация только ядра (1 объект вместо 800)
+        const clusterId = group.userData.clusterId as ClusterType;
+        const isFocused = _cameraState === 'focused' && _focusedCluster === clusterId;
+        const isOverview = _cameraState === 'overview';
+        // Если сфокусированы на другой туманности, то эта становится почти прозрачной
+        const targetOpacityMultiplier = (isOverview || isFocused) ? 1.0 : 0.05;
+
         for (const child of group.children) {
             const ud = child.userData as Record<string, unknown>;
             if (ud.type === 'core') {
-                const pulse = 1 + Math.sin(time * 1.5) * 0.08;
-                (child as THREE.Sprite).scale.setScalar(30 * pulse);
-                (child as THREE.Sprite).material.opacity = 0.35 + Math.sin(time * 1.2) * 0.1;
+                const targetScale = isFocused ? 15 : 60;
+                const targetOp = isFocused ? 0.8 : 0.4;
+                
+                ud.currentScale = (ud.currentScale as number) + (targetScale - (ud.currentScale as number)) * 0.05;
+                ud.currentOp = (ud.currentOp as number) + (targetOp - (ud.currentOp as number)) * 0.05;
+
+                const pulseSpeed = isFocused ? 3.0 : 1.5;
+                const pulseAmp = isFocused ? 0.15 : 0.08;
+                const pulse = 1 + Math.sin(time * pulseSpeed) * pulseAmp;
+
+                (child as THREE.Sprite).scale.setScalar((ud.currentScale as number) * pulse);
+                
+                const mat = (child as THREE.Sprite).material;
+                const finalOp = (ud.currentOp as number) + Math.sin(time * 2.0) * (isFocused ? 0.2 : 0.1);
+                mat.opacity += ((finalOp * targetOpacityMultiplier) - mat.opacity) * 0.05;
             } else if (ud.type === 'nebula-cloud') {
-                // Лёгкое мерцание всего облака
-                ((child as THREE.Points).material as THREE.PointsMaterial).opacity = 0.45 + Math.sin(time * 0.6) * 0.05;
+                const mat = ((child as THREE.Points).material as THREE.PointsMaterial);
+                const baseOp = 0.45 + Math.sin(time * 0.6) * 0.05;
+                mat.opacity += ((baseOp * targetOpacityMultiplier) - mat.opacity) * 0.05;
             } else if (ud.type === 'sparks') {
                 (child as THREE.Points).rotation.y += 0.003;
+                const mat = ((child as THREE.Points).material as THREE.PointsMaterial);
+                const baseOp = 0.6;
+                mat.opacity += ((baseOp * targetOpacityMultiplier) - mat.opacity) * 0.05;
             }
         }
     }
@@ -790,8 +835,8 @@ function _mapRenderLoop(): void {
         const speed = ud.orbitSpeed;
         if (speed) {
             ud.orbitAngle += speed * 0.016; // ~60fps dt
-            mesh.position.x = ud.orbitCenterX + Math.cos(ud.orbitAngle) * ud.orbitRadius;
-            mesh.position.z = ud.orbitCenterZ + Math.sin(ud.orbitAngle) * ud.orbitRadius;
+            mesh.position.x = Math.cos(ud.orbitAngle) * ud.orbitRadiusX;
+            mesh.position.z = Math.sin(ud.orbitAngle) * ud.orbitRadiusZ;
         }
     });
 
@@ -829,7 +874,14 @@ function _mapRenderLoop(): void {
         }
     }
 
-    _mapRenderer.render(_mapScene, _mapCamera);
+    const settings = getStore().settings;
+    const isBloomEnabled = settings?.useBloom ?? true; // по умолчанию включено
+    if (isBloomEnabled && _composer) {
+        _composer.render();
+    } else {
+        _mapRenderer.render(_mapScene, _mapCamera);
+    }
+    
     _mapAnimId = requestAnimationFrame(_mapRenderLoop);
 }
 
@@ -917,7 +969,7 @@ function _focusCluster(clusterId: ClusterType): void {
     _cameraState = 'focused';
     _focusedCluster = clusterId;
     _targetDest!.set(meta.position.x, meta.position.y, meta.position.z);
-    _targetRadius = 36;
+    _targetRadius = 28; // Камера пролетает сквозь облако и останавливается на внутренней границе
     _updateZoomUI();
     _showBackButton(true);
 
@@ -1141,6 +1193,7 @@ function _onMapResize(): void {
     _mapCamera.aspect = w / h;
     _mapCamera.updateProjectionMatrix();
     _mapRenderer.setSize(w, h, false);
+    if (_composer) _composer.setSize(w, h);
 }
 
 // ── Cleanup ─────────────────────────────────────────────────────────────────

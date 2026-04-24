@@ -57,6 +57,7 @@ export interface GameSettingsDto {
     soundVolume: number;
     musicVolume: number;
     graphicsQuality: 'low' | 'medium' | 'high';
+    useBloom: boolean;
     controlScheme: 'keyboard' | 'mouse' | 'touch';
     subtitles: boolean;
     colorblindMode: boolean;

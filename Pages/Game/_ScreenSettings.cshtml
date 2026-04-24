@@ -40,6 +40,12 @@
                         <option value="high">Высокое</option>
                     </select>
                 </label>
+                <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;margin-top:0.75rem;">
+                    <span style="font-size:0.9rem;">Включить свечение (Bloom)</span>
+                    <input type="checkbox" id="setting-bloom" checked
+                           onchange="window._settings?.update('useBloom',this.checked)"
+                           style="width:1.125rem;height:1.125rem;accent-color:var(--color-primary);" />
+                </label>
             </div>
 
             <!-- Управление -->

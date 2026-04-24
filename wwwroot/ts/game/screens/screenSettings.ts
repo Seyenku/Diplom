@@ -8,8 +8,12 @@ import { setQuality, QualityLevel } from '../qualityPresets.js';
 import { setSfxVolume, setMusicVolume, playSfx } from '../audioManager.js';
 
 window._settings = {
-    update(key: string, value: string | number) {
-        dispatch('SET_SETTINGS', { [key]: isNaN(Number(value)) ? value : parseFloat(String(value)) });
+    update(key: string, value: string | number | boolean) {
+        let parsed = value;
+        if (typeof value !== 'boolean') {
+            parsed = isNaN(Number(value)) ? value : parseFloat(String(value));
+        }
+        dispatch('SET_SETTINGS', { [key]: parsed });
         // Мгновенное применение качества графики
         if (key === 'graphicsQuality') {
             setQuality(value as QualityLevel);
@@ -39,6 +43,7 @@ export async function init(store: Readonly<import('../types.js').GameStore>): Pr
     _setVal('setting-sound',      (s.soundVolume   ?? 0.7) * 100);
     _setVal('setting-music',      (s.musicVolume   ?? 0.5) * 100);
     _setVal('setting-graphics',    s.graphicsQuality ?? 'medium');
+    _setChk('setting-bloom',       s.useBloom       ?? true);
     _setVal('setting-controls',    s.controlScheme  ?? 'keyboard');
     _setChk('setting-subtitles',   s.subtitles      ?? false);
     _setChk('setting-colorblind',  s.colorblindMode ?? false);
