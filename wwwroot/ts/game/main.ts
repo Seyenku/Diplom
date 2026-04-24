@@ -28,6 +28,7 @@ import { telemetry }      from './telemetryCollector.js';
 import { initQuality, QualityLevel } from './qualityPresets.js';
 import { ClusterDto, PlanetDto, GameSettingsDto } from './types.js';
 import { initAudio, playSfx } from './audioManager.js';
+import { init as initInputManager } from './inputManager.js';
 
 // ── Модули экранов ───────────────────────────────────────────────────────────
 import * as MainMenu      from './screens/screenMainMenu.js';
@@ -108,6 +109,9 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     // 2. Инициализация качества графики ДО создания рендерера
     const savedQuality = (getStore().settings?.graphicsQuality ?? 'medium') as QualityLevel;
     initQuality(savedQuality);
+
+    // 2.5. Инициализация менеджера ввода
+    initInputManager();
 
     // 3. Three.js сцена (canvas всегда в DOM)
     try {

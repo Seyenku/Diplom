@@ -58,11 +58,16 @@ export interface GameSettingsDto {
     musicVolume: number;
     graphicsQuality: 'low' | 'medium' | 'high';
     useBloom: boolean;
-    controlScheme: 'keyboard' | 'mouse' | 'touch';
-    subtitles: boolean;
-    colorblindMode: boolean;
+    controlScheme: 'keyboard' | 'mouse';
     uiScale: number;
     guideEnabled: boolean;
+    keybindings?: {
+        up: string;
+        down: string;
+        left: string;
+        right: string;
+        boost: string;
+    };
 }
 
 // в”Ђв”Ђ DTO: РќР°РіСЂР°РґР° Р·Р° РјРёРЅРё-РёРіСЂСѓ в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -250,8 +255,9 @@ declare global {
             exportStats: () => void;
         };
         _settings: {
-            update: (key: string, value: string | number) => void;
+            update: (key: string, value: string | number | boolean) => void;
             saveAndApply: () => void;
+            startBind?: (action: string) => void;
         };
         _guide: {
             askHint: (id: string) => void;

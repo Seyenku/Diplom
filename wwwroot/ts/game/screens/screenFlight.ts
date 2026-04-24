@@ -18,6 +18,7 @@ import { getProfile, onQualityChange, offQualityChange } from '../qualityPresets
 import { applyShipColor, createFallbackShip } from '../shipUtils.js';
 import { CRYSTAL_COLORS } from '../clusterConfig.js';
 import { playSfx, playMusic } from '../audioManager.js';
+import { getMovementVector, isBoostPressed, getPointerPosition } from '../inputManager.js';
 
 const FLIGHT_DURATION_S = 60;
 
@@ -33,8 +34,8 @@ let _crystalType: CrystalType = 'programming';
 let _shipModel: THREE.Group | null = null;
 let _asteroids: THREE.Object3D[] = [];
 let _crystals: THREE.Object3D[] = [];
-let _keys: Record<string, boolean> = {};
 let _lastTime = 0;
+let _velocity = new THREE.Vector2(0, 0);
 
 // Shared GPU resources (created once per init)
 let _asteroidGeo: THREE.IcosahedronGeometry | null = null;
@@ -54,7 +55,6 @@ window._flightScreen = {
     restart() {
         if (_animId) cancelAnimationFrame(_animId);
         _animId = null;
-        _keys = {};
         
         const scene = window.__threeScene;
         if (scene) {
@@ -62,6 +62,7 @@ window._flightScreen = {
         }
         _asteroids = [];
         _crystals = [];
+        _velocity.set(0, 0);
         
         if (_shipModel) {
             _shipModel.position.set(0, 0, 0);
@@ -79,7 +80,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _collected = 0;
     _shield = 100;
     _elapsed = 0;
-    _keys = {};
+    _velocity.set(0, 0);
 
     // Тип кристаллов из sessionData (установлен Galaxy Map)
     _crystalType = (store.sessionData?.crystalType ?? 'programming') as CrystalType;
@@ -113,10 +114,6 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
         window.__threeScene.add(_shipModel);
     }
 
-    // Слушаем клавиатуру
-    document.addEventListener('keydown', _onKeyDown);
-    document.addEventListener('keyup', _onKeyUp);
-
     // Создаём общие GPU-ресурсы (переиспользуются при каждом спавне)
     _asteroidGeo = new THREE.IcosahedronGeometry(0.5, 1);
     _asteroidMat = new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.9, metalness: 0.2 });
@@ -137,8 +134,6 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 export function destroy(): void {
     offQualityChange(_onFlightQualityChanged);
     _cleanup();
-    document.removeEventListener('keydown', _onKeyDown);
-    document.removeEventListener('keyup', _onKeyUp);
 }
 
 /** Применяем только pixelRatio — переинициализация сцены в середине раунда сбросит прогресс */
@@ -230,26 +225,63 @@ function _gameLoop(now: number): void {
 
 function _moveShip(dt: number): void {
     if (!_shipModel) return;
-    const boost = _keys['Space'] ? BOOST_MULT : 1;
-    const speed = SHIP_SPEED * boost * dt;
+    const boost = isBoostPressed() ? BOOST_MULT : 1;
+    const maxSpeed = SHIP_SPEED * boost;
+    const accel = 40 * boost;
+    const drag = 0.92;
 
-    if (_keys['KeyA'] || _keys['ArrowLeft']) _shipModel.position.x -= speed;
-    if (_keys['KeyD'] || _keys['ArrowRight']) _shipModel.position.x += speed;
-    if (_keys['KeyW'] || _keys['ArrowUp']) _shipModel.position.y += speed;
-    if (_keys['KeyS'] || _keys['ArrowDown']) _shipModel.position.y -= speed;
+    const move = getMovementVector();
+    const pointer = getPointerPosition();
+
+    if (pointer) {
+        // Ограничиваем курсор размерами поля
+        const targetX = pointer.x * (FIELD_W / 2);
+        const targetY = pointer.y * (FIELD_H / 2);
+        
+        const dx = targetX - _shipModel.position.x;
+        const dy = targetY - _shipModel.position.y;
+        
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.1) {
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+            // Ускоряемся к курсору, чем дальше — тем сильнее тяга, но не выше accel
+            const thrust = Math.min(dist * 8, accel);
+            _velocity.x += dirX * thrust * dt;
+            _velocity.y += dirY * thrust * dt;
+        }
+    } else if (move.lengthSq() > 0) {
+        _velocity.x += move.x * accel * dt;
+        _velocity.y += move.y * accel * dt;
+    }
+
+    // Искусственное трение (затухание)
+    const dragFactor = Math.pow(drag, dt * 60);
+    _velocity.x *= dragFactor;
+    _velocity.y *= dragFactor;
+
+    // Ограничение скорости
+    if (_velocity.lengthSq() > maxSpeed * maxSpeed) {
+        _velocity.normalize().multiplyScalar(maxSpeed);
+    }
+
+    // Применение скорости к позиции
+    _shipModel.position.x += _velocity.x * dt;
+    _shipModel.position.y += _velocity.y * dt;
 
     _shipModel.position.x = Math.max(-FIELD_W / 2, Math.min(FIELD_W / 2, _shipModel.position.x));
     _shipModel.position.y = Math.max(-FIELD_H / 2, Math.min(FIELD_H / 2, _shipModel.position.y));
 
-    // Крен (roll): наклон при движении влево/вправо
-    const targetRoll = (_keys['KeyA'] || _keys['ArrowLeft']) ? 0.3
-        : (_keys['KeyD'] || _keys['ArrowRight']) ? -0.3 : 0;
-    _shipModel.rotation.z += (targetRoll - _shipModel.rotation.z) * 0.1;
+    // Крен (roll) и тангаж (pitch) от скорости (от -1 до 1)
+    const rollIntensity = _velocity.x / maxSpeed;
+    const pitchIntensity = _velocity.y / maxSpeed;
 
-    // Тангаж (pitch): наклон носа при движении вверх/вниз
-    const targetPitch = (_keys['KeyW'] || _keys['ArrowUp']) ? 0.15
-        : (_keys['KeyS'] || _keys['ArrowDown']) ? -0.15 : 0;
-    _shipModel.rotation.x += (targetPitch - _shipModel.rotation.x) * 0.1;
+    const targetRoll = -rollIntensity * 0.4;
+    const targetPitch = pitchIntensity * 0.2;
+
+    // Плавная интерполяция
+    _shipModel.rotation.z += (targetRoll - _shipModel.rotation.z) * (dt * 6);
+    _shipModel.rotation.x += (targetPitch - _shipModel.rotation.x) * (dt * 6);
 }
 
 function _moveObjects(dt: number): void {
@@ -401,14 +433,10 @@ function _setText(id: string, v: string): void {
 
 // _applyShipColor и _createFallbackShip вынесены в shipUtils.ts
 
-function _onKeyDown(e: KeyboardEvent): void { _keys[e.code] = true; }
-function _onKeyUp(e: KeyboardEvent): void { _keys[e.code] = false; }
-
 function _cleanup(): void {
     if (_animId) cancelAnimationFrame(_animId);
     _animId = null;
     _state = 'idle';
-    _keys = {};
 
     const scene = window.__threeScene;
     if (scene) {
@@ -418,6 +446,7 @@ function _cleanup(): void {
     _asteroids = [];
     _crystals = [];
     _shipModel = null;
+    _velocity.set(0, 0);
 
     // Dispose shared GPU resources
     _asteroidGeo?.dispose(); _asteroidGeo = null;

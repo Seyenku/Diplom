@@ -57,27 +57,39 @@
                             style="background:rgba(15,23,42,0.8);border:1px solid var(--color-border);color:var(--color-text);border-radius:var(--radius-sm);padding:0.375rem 0.625rem;">
                         <option value="keyboard" selected>Клавиатура</option>
                         <option value="mouse">Мышь</option>
-                        <option value="gamepad">Геймпад</option>
                     </select>
                 </label>
+
+                <div id="settings-keybindings-block" style="display:flex;flex-direction:column;gap:0.75rem;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.1);transition:opacity 0.3s;">
+                    <h4 style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:0.25rem;">ГОРЯЧИЕ КЛАВИШИ</h4>
+                    
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+                        <span style="font-size:0.9rem;">Вперед</span>
+                        <button class="btn-game" id="bind-up" onclick="window._settings?.startBind('up')" style="padding:0.25rem 0.75rem;min-width:6rem;text-align:center;font-family:monospace;font-size:0.9rem;border:1px solid var(--color-border);background:rgba(15,23,42,0.5);">W</button>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+                        <span style="font-size:0.9rem;">Назад</span>
+                        <button class="btn-game" id="bind-down" onclick="window._settings?.startBind('down')" style="padding:0.25rem 0.75rem;min-width:6rem;text-align:center;font-family:monospace;font-size:0.9rem;border:1px solid var(--color-border);background:rgba(15,23,42,0.5);">S</button>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+                        <span style="font-size:0.9rem;">Влево</span>
+                        <button class="btn-game" id="bind-left" onclick="window._settings?.startBind('left')" style="padding:0.25rem 0.75rem;min-width:6rem;text-align:center;font-family:monospace;font-size:0.9rem;border:1px solid var(--color-border);background:rgba(15,23,42,0.5);">A</button>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+                        <span style="font-size:0.9rem;">Вправо</span>
+                        <button class="btn-game" id="bind-right" onclick="window._settings?.startBind('right')" style="padding:0.25rem 0.75rem;min-width:6rem;text-align:center;font-family:monospace;font-size:0.9rem;border:1px solid var(--color-border);background:rgba(15,23,42,0.5);">D</button>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+                        <span style="font-size:0.9rem;">Ускорение</span>
+                        <button class="btn-game" id="bind-boost" onclick="window._settings?.startBind('boost')" style="padding:0.25rem 0.75rem;min-width:6rem;text-align:center;font-family:monospace;font-size:0.9rem;border:1px solid var(--color-border);background:rgba(15,23,42,0.5);">Space</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Доступность -->
             <div class="game-card">
                 <h3 style="font-family:var(--font-display);font-size:0.78rem;letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:0.75rem;">ДОСТУПНОСТЬ</h3>
                 <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                    <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;">
-                        <span style="font-size:0.9rem;">Субтитры</span>
-                        <input type="checkbox" id="setting-subtitles"
-                               onchange="window._settings?.update('subtitles',this.checked)"
-                               style="width:1.125rem;height:1.125rem;accent-color:var(--color-primary);" />
-                    </label>
-                    <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;">
-                        <span style="font-size:0.9rem;">Режим для дальтоников</span>
-                        <input type="checkbox" id="setting-colorblind"
-                               onchange="window._settings?.update('colorblindMode',this.checked)"
-                               style="width:1.125rem;height:1.125rem;accent-color:var(--color-primary);" />
-                    </label>
                     <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;">
                         <span style="font-size:0.9rem;">Подсказки Гайда</span>
                         <input type="checkbox" id="setting-guide" checked

@@ -16,6 +16,7 @@ import { loadModel } from '../gltfLoader.js';
 import { applyShipColor, createFallbackShip } from '../shipUtils.js';
 import { disposeSceneGraph } from '../threeUtils.js';
 import { playSfx, playMusic } from '../audioManager.js';
+import { getMovementVector, getPointerPosition } from '../inputManager.js';
 
 const APPROACH_RAMP_S = 30;
 const HEALTH_MAX = 100;
@@ -72,9 +73,8 @@ let _dodged = 0;
 let _score = 0;
 let _hitFlash = 0;
 let _isPaused = false;
+let _velocity = new THREE.Vector2(0, 0);
 
-let _keys: Record<string, boolean> = {};
-let _pointerTarget: THREE.Vector2 | null = null;
 let _shipColor = '#4fc3f7';
 
 window._miniGame = {
@@ -96,7 +96,6 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _canvas = document.getElementById('minigame-canvas') as HTMLCanvasElement | null;
     if (!_canvas) return;
 
-    _bindInput();
     await _initScene();
     playMusic('ambient_minigame');
     _startGame();
@@ -220,6 +219,7 @@ function _startGame(): void {
     _score = 0;
     _hitFlash = 0;
     _isPaused = false;
+    _velocity.set(0, 0);
 
     _clearAsteroids();
 
@@ -274,27 +274,57 @@ function _loop(now: number): void {
 function _updateShip(dt: number): void {
     if (!_ship) return;
 
-    const move = new THREE.Vector2(0, 0);
-    if (_keys['KeyA'] || _keys['ArrowLeft']) move.x -= 1;
-    if (_keys['KeyD'] || _keys['ArrowRight']) move.x += 1;
-    if (_keys['KeyW'] || _keys['ArrowUp']) move.y += 1;
-    if (_keys['KeyS'] || _keys['ArrowDown']) move.y -= 1;
+    const pointer = getPointerPosition();
+    const move = getMovementVector();
 
-    if (_pointerTarget) {
-        const to = _pointerTarget.clone().sub(new THREE.Vector2(_ship.position.x, _ship.position.y));
-        _ship.position.x += to.x * Math.min(1, dt * 6);
-        _ship.position.y += to.y * Math.min(1, dt * 6);
+    const maxSpeed = SHIP_SPEED;
+    const accel = 35;
+    const drag = 0.90;
+
+    if (pointer) {
+        const targetX = pointer.x * SHIP_BOUNDS_X;
+        const targetY = pointer.y * SHIP_BOUNDS_Y;
+        
+        const dx = targetX - _ship.position.x;
+        const dy = targetY - _ship.position.y;
+        
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.1) {
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+            const thrust = Math.min(dist * 8, accel);
+            _velocity.x += dirX * thrust * dt;
+            _velocity.y += dirY * thrust * dt;
+        }
     } else if (move.lengthSq() > 0) {
-        move.normalize();
-        _ship.position.x += move.x * SHIP_SPEED * dt;
-        _ship.position.y += move.y * SHIP_SPEED * dt;
+        _velocity.x += move.x * accel * dt;
+        _velocity.y += move.y * accel * dt;
     }
+
+    // Искусственное трение (затухание)
+    const dragFactor = Math.pow(drag, dt * 60);
+    _velocity.x *= dragFactor;
+    _velocity.y *= dragFactor;
+
+    // Ограничение скорости
+    if (_velocity.lengthSq() > maxSpeed * maxSpeed) {
+        _velocity.normalize().multiplyScalar(maxSpeed);
+    }
+
+    _ship.position.x += _velocity.x * dt;
+    _ship.position.y += _velocity.y * dt;
 
     _ship.position.x = THREE.MathUtils.clamp(_ship.position.x, -SHIP_BOUNDS_X, SHIP_BOUNDS_X);
     _ship.position.y = THREE.MathUtils.clamp(_ship.position.y, -SHIP_BOUNDS_Y, SHIP_BOUNDS_Y);
 
-    _ship.rotation.z = -_ship.position.x * 0.05;
-    _ship.rotation.x = _ship.position.y * 0.05;
+    const rollIntensity = _velocity.x / maxSpeed;
+    const pitchIntensity = _velocity.y / maxSpeed;
+
+    const targetRoll = -rollIntensity * 0.4;
+    const targetPitch = pitchIntensity * 0.2;
+
+    _ship.rotation.z += (targetRoll - _ship.rotation.z) * (dt * 6);
+    _ship.rotation.x += (targetPitch - _ship.rotation.x) * (dt * 6);
 }
 
 function _updatePlanet(dt: number): void {
@@ -502,41 +532,6 @@ function _updateHud(landingEtaSeconds: number): void {
     }
 }
 
-function _bindInput(): void {
-    document.addEventListener('keydown', _onKeyDown);
-    document.addEventListener('keyup', _onKeyUp);
-    _canvas?.addEventListener('mousemove', _onMouseMove);
-    _canvas?.addEventListener('touchmove', _onTouchMove, { passive: false });
-}
-
-function _onKeyDown(e: KeyboardEvent): void {
-    _keys[e.code] = true;
-    _pointerTarget = null;
-}
-
-function _onKeyUp(e: KeyboardEvent): void {
-    _keys[e.code] = false;
-}
-
-function _onMouseMove(e: MouseEvent): void {
-    if (!_canvas || !_ship) return;
-    const rect = _canvas.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width;
-    const ny = (e.clientY - rect.top) / rect.height;
-    _pointerTarget = new THREE.Vector2(
-        THREE.MathUtils.lerp(-SHIP_BOUNDS_X, SHIP_BOUNDS_X, nx),
-        THREE.MathUtils.lerp(SHIP_BOUNDS_Y, -SHIP_BOUNDS_Y, ny)
-    );
-}
-
-function _onTouchMove(e: TouchEvent): void {
-    if (!_canvas) return;
-    e.preventDefault();
-    if (!e.touches.length) return;
-    const t = e.touches[0];
-    _onMouseMove(new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY }));
-}
-
 function _setText(id: string, value: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -562,6 +557,7 @@ function _disposeScene(): void {
     _stars = null;
     _scene = null;
     _camera = null;
+    _velocity.set(0, 0);
 
     // Dispose shared asteroid resources
     _asteroidGeo?.dispose(); _asteroidGeo = null;
@@ -577,13 +573,6 @@ function _cleanup(): void {
     if (_animId) {
         cancelAnimationFrame(_animId);
         _animId = null;
-    }
-
-    document.removeEventListener('keydown', _onKeyDown);
-    document.removeEventListener('keyup', _onKeyUp);
-    if (_canvas) {
-        _canvas.removeEventListener('mousemove', _onMouseMove);
-        _canvas.removeEventListener('touchmove', _onTouchMove);
     }
 
     if (_resizeObs) {
