@@ -28,7 +28,7 @@
         0 2px 6px rgba(0, 0, 0, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.06);
     color: #d1d5db;
-    font-family: 'Inter', 'Century Gothic', sans-serif;
+    font-family: var(--font-body, 'Roboto Slab', serif);
     animation: auth-slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -92,7 +92,7 @@
     width: 100%;
     padding: 11px 14px;
     font-size: 14px;
-    font-family: 'Inter', 'Century Gothic', sans-serif;
+    font-family: var(--font-body, 'Roboto Slab', serif);
     color: #e8eaed;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -147,7 +147,7 @@
     padding: 12px 20px;
     font-size: 14px;
     font-weight: 600;
-    font-family: 'Inter', 'Century Gothic', sans-serif;
+    font-family: var(--font-heading, 'Roboto Slab', serif);
     color: #fff;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;

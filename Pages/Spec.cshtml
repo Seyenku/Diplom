@@ -4,7 +4,7 @@
     ViewData["Title"] = "Направления подготовки";
 }
 
-<div class="spec-page">
+<div class="spec-page" data-spec-page>
     <div class="spec-header">
         <h1 class="spec-title">Направления подготовки</h1>
         <p class="spec-subtitle">Перечень образовательных программ СГУ им. Питирима Сорокина, связанных с профессиями будущего</p>
@@ -25,116 +25,469 @@
     }
     else
     {
-        <div class="spec-grid">
-            @foreach (var dir in Model.Directions)
-            {
-                <article class="spec-card" id="spec-card-@dir.ProgramId">
-                    <div class="spec-card__header">
-                        <span class="spec-card__code">@dir.Code</span>
-                        <h2 class="spec-card__title">@dir.Title</h2>
-                    </div>
+        <section class="spec-toolbar" aria-label="Поиск направлений">
+            <div class="spec-search">
+                <svg class="spec-search__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                </svg>
+                <input id="spec-search"
+                       class="spec-search__input"
+                       type="search"
+                       placeholder="Поиск по названию, коду, экзаменам, профессиям"
+                       autocomplete="off"
+                       aria-label="Поиск по направлениям подготовки" />
+                <button id="spec-search-clear" class="spec-search__clear" type="button" aria-label="Очистить поиск" hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="spec-toolbar__meta">
+                <span id="spec-result-count" class="spec-result-count"></span>
+            </div>
+        </section>
 
-                    <div class="spec-card__body">
-                        <div class="spec-card__meta">
-                            <div class="spec-meta-item">
-                                <span class="spec-meta-label">Форма обучения</span>
-                                <span class="spec-meta-value">@dir.EduForm</span>
-                            </div>
-                            <div class="spec-meta-item">
-                                <span class="spec-meta-label">Срок обучения</span>
-                                <span class="spec-meta-value">@dir.YearsEduc г.</span>
-                            </div>
-                        </div>
+        <div id="spec-no-results" class="spec-empty spec-empty--compact" hidden>
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+                <path d="M8 11h6"></path>
+            </svg>
+            <p>Ничего не найдено. Попробуйте другой запрос.</p>
+        </div>
 
-                        @if (!string.IsNullOrWhiteSpace(dir.Description))
+        <div class="spec-browser">
+            <aside class="spec-result-panel" aria-label="Найденные направления">
+                <div class="spec-result-panel__header">
+                    <span>Найденные направления</span>
+                </div>
+                <div id="spec-result-list" class="spec-result-list" role="listbox" aria-label="Список направлений"></div>
+            </aside>
+
+            <section class="spec-detail-panel" aria-label="Подробная информация о направлении">
+                <div class="spec-grid">
+                    @foreach (var dir in Model.Directions)
+                    {
+                        var searchCorpus = string.Join(" ", new[]
                         {
-                            <div class="spec-card__section">
-                                <h3 class="spec-section-title">Описание</h3>
-                                <p class="spec-section-text">@dir.Description</p>
-                            </div>
-                        }
+                            dir.Code,
+                            dir.Title,
+                            dir.EduForm,
+                            dir.Description,
+                            dir.Disciplines,
+                            dir.Exams,
+                            dir.Spheres,
+                            dir.Professions
+                        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+                        var admissionHistory = dir.AdmissionHistory.OrderBy(stat => stat.Year).ToList();
+                        var maxBudgetPlaces = admissionHistory.Select(stat => stat.BudgetPlaces).DefaultIfEmpty(0).Max();
+                        var maxPassingScore = admissionHistory.Select(stat => stat.MinPassingScore).DefaultIfEmpty(0).Max();
+                        var maxAvgEgeScore = admissionHistory
+                            .Where(stat => stat.AvgEgeScore.HasValue)
+                            .Select(stat => stat.AvgEgeScore!.Value)
+                            .DefaultIfEmpty(0)
+                            .Max();
+                        var chartPointCount = admissionHistory.Count;
+                        var chartTop = 12;
+                        var chartBottom = 86;
+                        var chartRange = chartBottom - chartTop;
+                        Func<int, int> chartX = index => chartPointCount <= 1
+                            ? 50
+                            : (int)Math.Round(index * 100.0 / (chartPointCount - 1));
+                        Func<double, double, int> chartY = (value, maxValue) => maxValue > 0
+                            ? chartBottom - (int)Math.Round(value * chartRange / maxValue)
+                            : chartBottom;
+                        var budgetLinePoints = string.Join(" ", admissionHistory.Select((stat, index) => $"{chartX(index)},{chartY(stat.BudgetPlaces, maxBudgetPlaces)}"));
+                        var passingLinePoints = string.Join(" ", admissionHistory.Select((stat, index) => $"{chartX(index)},{chartY(stat.MinPassingScore, maxPassingScore)}"));
+                        var avgLinePoints = string.Join(" ", admissionHistory
+                            .Select((stat, index) => stat.AvgEgeScore.HasValue
+                                ? $"{chartX(index)},{chartY(stat.AvgEgeScore.Value, maxAvgEgeScore)}"
+                                : string.Empty)
+                            .Where(point => !string.IsNullOrWhiteSpace(point)));
 
-                        @if (!string.IsNullOrWhiteSpace(dir.Disciplines))
-                        {
-                            <div class="spec-card__section">
-                                <h3 class="spec-section-title">Читаемые дисциплины</h3>
-                                <p class="spec-section-text">@dir.Disciplines</p>
+                        <article class="spec-card"
+                                 id="spec-card-@dir.ProgramId"
+                                 data-spec-card
+                                 data-search="@searchCorpus"
+                                 data-code="@dir.Code"
+                                 data-title="@dir.Title"
+                                 data-edu-form="@dir.EduForm"
+                                 data-years="@dir.YearsEduc">
+                            <div class="spec-card__header">
+                                <span class="spec-card__code">@dir.Code</span>
+                                <h2 class="spec-card__title">@dir.Title</h2>
                             </div>
-                        }
 
-                        @if (!string.IsNullOrWhiteSpace(dir.Exams))
-                        {
-                            <div class="spec-card__section">
-                                <h3 class="spec-section-title">Вступительные испытания</h3>
-                                <div class="spec-tags">
-                                    @foreach (var exam in dir.Exams.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-                                    {
-                                        <span class="spec-tag spec-tag--exam">@exam</span>
-                                    }
+                            <div class="spec-card__body">
+                                <div class="spec-card__meta">
+                                    <div class="spec-meta-item">
+                                        <span class="spec-meta-label">Форма обучения</span>
+                                        <span class="spec-meta-value">@dir.EduForm</span>
+                                    </div>
+                                    <div class="spec-meta-item">
+                                        <span class="spec-meta-label">Срок обучения</span>
+                                        <span class="spec-meta-value">@dir.YearsEduc г.</span>
+                                    </div>
                                 </div>
-                            </div>
-                        }
 
-                        @if (!string.IsNullOrWhiteSpace(dir.Spheres))
-                        {
-                            <div class="spec-card__section">
-                                <h3 class="spec-section-title">Сферы трудоустройства</h3>
-                                <p class="spec-section-text">@dir.Spheres</p>
-                            </div>
-                        }
+                                @if (!string.IsNullOrWhiteSpace(dir.Description))
+                                {
+                                    <div class="spec-card__section">
+                                        <h3 class="spec-section-title">Описание</h3>
+                                        <p class="spec-section-text">@dir.Description</p>
+                                    </div>
+                                }
 
-                        @if (!string.IsNullOrWhiteSpace(dir.Professions))
-                        {
-                            <div class="spec-card__section">
-                                <h3 class="spec-section-title">Профессии будущего</h3>
-                                <div class="spec-tags">
-                                    @foreach (var prof in dir.Professions.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-                                    {
-                                        <span class="spec-tag spec-tag--profession">@prof</span>
-                                    }
-                                </div>
-                            </div>
-                        }
+                                @if (!string.IsNullOrWhiteSpace(dir.Disciplines))
+                                {
+                                    <div class="spec-card__section">
+                                        <h3 class="spec-section-title">Читаемые дисциплины</h3>
+                                        <p class="spec-section-text">@dir.Disciplines</p>
+                                    </div>
+                                }
 
-                        @if (dir.AdmissionHistory.Count > 0)
-                        {
-                            <details class="spec-card__details">
-                                <summary class="spec-details-toggle">
-                                    <span>Статистика приёма</span>
-                                    <svg class="spec-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="6,9 12,15 18,9"/>
-                                    </svg>
-                                </summary>
-                                <div class="spec-stats-table-wrap">
-                                    <table class="spec-stats-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Год</th>
-                                                <th>Стоимость</th>
-                                                <th>Бюджетные места</th>
-                                                <th>Проходной балл</th>
-                                                <th>Средний балл ЕГЭ</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var stat in dir.AdmissionHistory)
+                                @if (!string.IsNullOrWhiteSpace(dir.Exams))
+                                {
+                                    <div class="spec-card__section">
+                                        <h3 class="spec-section-title">Вступительные испытания</h3>
+                                        <div class="spec-tags">
+                                            @foreach (var exam in dir.Exams.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
                                             {
-                                                <tr>
-                                                    <td>@stat.Year</td>
-                                                    <td>@stat.Price.ToString("N0") ₽</td>
-                                                    <td>@stat.BudgetPlaces</td>
-                                                    <td>@stat.MinPassingScore</td>
-                                                    <td>@(stat.AvgEgeScore.HasValue ? stat.AvgEgeScore.Value.ToString("F1") : "—")</td>
-                                                </tr>
+                                                <span class="spec-tag spec-tag--exam">@exam</span>
                                             }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </details>
-                        }
-                    </div>
-                </article>
-            }
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(dir.Spheres))
+                                {
+                                    <div class="spec-card__section">
+                                        <h3 class="spec-section-title">Сферы трудоустройства</h3>
+                                        <p class="spec-section-text">@dir.Spheres</p>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(dir.Professions))
+                                {
+                                    <div class="spec-card__section">
+                                        <h3 class="spec-section-title">Профессии будущего</h3>
+                                        <div class="spec-tags">
+                                            @foreach (var prof in dir.Professions.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                                            {
+                                                <span class="spec-tag spec-tag--profession">@prof</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (admissionHistory.Count > 0)
+                                {
+                                    <details class="spec-card__details">
+                                        <summary class="spec-details-toggle">
+                                            <span>Статистика приёма</span>
+                                            <svg class="spec-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="6,9 12,15 18,9"/>
+                                            </svg>
+                                        </summary>
+                                        <div class="spec-details-content">
+                                            <div class="spec-stats-chart" aria-label="График статистики приёма">
+                                                <div class="spec-stats-chart__header">
+                                                    <div>
+                                                        <span class="spec-stats-chart__eyebrow">Динамика</span>
+                                                        <h4 class="spec-stats-chart__title">Показатели по годам</h4>
+                                                    </div>
+                                                    <div class="spec-stats-legend" aria-hidden="true">
+                                                        <span><i class="spec-stats-legend__marker spec-stats-legend__marker--budget"></i>Бюджет</span>
+                                                        <span><i class="spec-stats-legend__marker spec-stats-legend__marker--passing"></i>Проходной</span>
+                                                        <span><i class="spec-stats-legend__marker spec-stats-legend__marker--avg"></i>Средний</span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="spec-line-chart" role="img" aria-label="Линейный график бюджетных мест, проходного балла и среднего балла ЕГЭ по годам">
+                                                    <div class="spec-line-chart__plot">
+                                                        <svg class="spec-line-chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                                                            <line class="spec-line-chart__grid" x1="0" y1="12" x2="100" y2="12"></line>
+                                                            <line class="spec-line-chart__grid" x1="0" y1="36.5" x2="100" y2="36.5"></line>
+                                                            <line class="spec-line-chart__grid" x1="0" y1="61" x2="100" y2="61"></line>
+                                                            <line class="spec-line-chart__grid" x1="0" y1="86" x2="100" y2="86"></line>
+                                                            <polyline class="spec-line-chart__line spec-line-chart__line--budget" points="@budgetLinePoints" pathLength="1"></polyline>
+                                                            <polyline class="spec-line-chart__line spec-line-chart__line--passing" points="@passingLinePoints" pathLength="1"></polyline>
+                                                            @if (!string.IsNullOrWhiteSpace(avgLinePoints))
+                                                            {
+                                                                <polyline class="spec-line-chart__line spec-line-chart__line--avg" points="@avgLinePoints" pathLength="1"></polyline>
+                                                            }
+                                                        </svg>
+
+                                                        @foreach (var stat in admissionHistory.Select((value, index) => new { value, index }))
+                                                        {
+                                                            var x = chartX(stat.index);
+                                                            var budgetY = chartY(stat.value.BudgetPlaces, maxBudgetPlaces);
+                                                            var passingY = chartY(stat.value.MinPassingScore, maxPassingScore);
+                                                            <span class="spec-line-point spec-line-point--budget"
+                                                                  style="--point-x: @x%; --point-y: @budgetY%;"
+                                                                  title="@stat.value.Year: бюджетных мест — @stat.value.BudgetPlaces"></span>
+                                                            <span class="spec-line-point spec-line-point--passing"
+                                                                  style="--point-x: @x%; --point-y: @passingY%;"
+                                                                  title="@stat.value.Year: проходной балл — @stat.value.MinPassingScore"></span>
+                                                            @if (stat.value.AvgEgeScore.HasValue)
+                                                            {
+                                                                var avgY = chartY(stat.value.AvgEgeScore.Value, maxAvgEgeScore);
+                                                                <span class="spec-line-point spec-line-point--avg"
+                                                                      style="--point-x: @x%; --point-y: @avgY%;"
+                                                                      title="@stat.value.Year: средний балл ЕГЭ — @stat.value.AvgEgeScore.Value.ToString("F1")"></span>
+                                                            }
+                                                        }
+                                                    </div>
+                                                    <div class="spec-line-chart__years" aria-hidden="true">
+                                                        @foreach (var stat in admissionHistory)
+                                                        {
+                                                            <span>@stat.Year</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="spec-stats-table-wrap">
+                                                <table class="spec-stats-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Год</th>
+                                                            <th>Стоимость</th>
+                                                            <th>Бюджетные места</th>
+                                                            <th>Проходной балл</th>
+                                                            <th>Средний балл ЕГЭ</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var stat in admissionHistory.OrderByDescending(stat => stat.Year))
+                                                        {
+                                                            <tr>
+                                                                <td>@stat.Year</td>
+                                                                <td>@stat.Price.ToString("N0") ₽</td>
+                                                                <td>@stat.BudgetPlaces</td>
+                                                                <td>@stat.MinPassingScore</td>
+                                                                <td>@(stat.AvgEgeScore.HasValue ? stat.AvgEgeScore.Value.ToString("F1") : "—")</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </details>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                <nav id="spec-pagination" class="spec-pagination" aria-label="Переключение выбранного направления">
+                    <button id="spec-page-prev" class="spec-page-btn" type="button" aria-label="Предыдущее направление">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m15 18-6-6 6-6"></path>
+                        </svg>
+                    </button>
+                    <div id="spec-page-status" class="spec-page-status" aria-live="polite"></div>
+                    <button id="spec-page-next" class="spec-page-btn" type="button" aria-label="Следующее направление">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m9 18 6-6-6-6"></path>
+                        </svg>
+                    </button>
+                </nav>
+            </section>
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const cards = Array.from(document.querySelectorAll('[data-spec-card]'));
+            const searchInput = document.getElementById('spec-search');
+            const clearButton = document.getElementById('spec-search-clear');
+            const resultCount = document.getElementById('spec-result-count');
+            const resultList = document.getElementById('spec-result-list');
+            const pagination = document.getElementById('spec-pagination');
+            const pageStatus = document.getElementById('spec-page-status');
+            const prevButton = document.getElementById('spec-page-prev');
+            const nextButton = document.getElementById('spec-page-next');
+            const noResults = document.getElementById('spec-no-results');
+            const detailPanel = document.querySelector('.spec-detail-panel');
+
+            if (!searchInput || !resultList || !pagination || !pageStatus || !prevButton || !nextButton) return;
+
+            let currentIndex = 0;
+            let currentQuery = '';
+
+            const normalize = value => (value || '').toLocaleLowerCase('ru-RU').replaceAll('ё', 'е').trim();
+
+            document.querySelectorAll('.spec-card__details').forEach(details => {
+                const summary = details.querySelector('.spec-details-toggle');
+                const content = details.querySelector('.spec-details-content');
+                if (!summary || !content) return;
+
+                summary.addEventListener('click', event => {
+                    event.preventDefault();
+                    if (details.dataset.animating === 'true') return;
+
+                    if (details.open) {
+                        closeDetails(details, content);
+                    } else {
+                        openDetails(details, content);
+                    }
+                });
+            });
+
+            function openDetails(details, content) {
+                details.dataset.animating = 'true';
+                content.style.maxHeight = '0px';
+                content.style.opacity = '0';
+                content.style.overflow = 'hidden';
+                details.open = true;
+
+                const targetHeight = content.scrollHeight;
+                const animation = content.animate([
+                    { maxHeight: '0px', opacity: 0, transform: 'translateY(-8px)' },
+                    { maxHeight: `${targetHeight}px`, opacity: 1, transform: 'translateY(0)' }
+                ], {
+                    duration: 300,
+                    easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
+                });
+
+                animation.onfinish = () => {
+                    content.style.maxHeight = '';
+                    content.style.opacity = '';
+                    content.style.overflow = '';
+                    details.dataset.animating = 'false';
+                };
+            }
+
+            function closeDetails(details, content) {
+                details.dataset.animating = 'true';
+                content.style.overflow = 'hidden';
+
+                const startHeight = content.scrollHeight;
+                const animation = content.animate([
+                    { maxHeight: `${startHeight}px`, opacity: 1, transform: 'translateY(0)' },
+                    { maxHeight: '0px', opacity: 0, transform: 'translateY(-8px)' }
+                ], {
+                    duration: 240,
+                    easing: 'ease'
+                });
+
+                animation.onfinish = () => {
+                    details.open = false;
+                    content.style.maxHeight = '';
+                    content.style.opacity = '';
+                    content.style.overflow = '';
+                    details.dataset.animating = 'false';
+                };
+            }
+
+            function getFilteredCards() {
+                const query = normalize(currentQuery);
+                if (!query) return cards;
+                return cards.filter(card => normalize(card.dataset.search || card.textContent).includes(query));
+            }
+
+            function setCardVisible(card, visible) {
+                card.hidden = !visible;
+                card.classList.toggle('spec-card--hidden', !visible);
+            }
+
+            function buildResultList(filtered) {
+                resultList.innerHTML = '';
+
+                filtered.forEach((card, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'spec-result-item';
+                    button.setAttribute('role', 'option');
+                    button.setAttribute('aria-selected', index === currentIndex ? 'true' : 'false');
+
+                    const code = document.createElement('span');
+                    code.className = 'spec-result-item__code';
+                    code.textContent = card.dataset.code || '';
+
+                    const title = document.createElement('span');
+                    title.className = 'spec-result-item__title';
+                    title.textContent = card.dataset.title || '';
+
+                    button.append(code, title);
+                    button.addEventListener('click', () => {
+                        currentIndex = index;
+                        render({ keepListScroll: true });
+                        if (window.matchMedia('(max-width: 860px)').matches) {
+                            detailPanel?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                        }
+                    });
+
+                    resultList.appendChild(button);
+                });
+            }
+
+            function render(options = {}) {
+                const filtered = getFilteredCards();
+
+                if (currentIndex >= filtered.length) currentIndex = Math.max(0, filtered.length - 1);
+
+                cards.forEach(card => setCardVisible(card, false));
+                if (filtered[currentIndex]) setCardVisible(filtered[currentIndex], true);
+
+                if (resultCount) {
+                    const totalCount = filtered.length;
+                    resultCount.textContent = currentQuery
+                        ? `Найдено: ${totalCount}`
+                        : `Всего направлений: ${cards.length}`;
+                }
+
+                if (noResults) noResults.hidden = filtered.length > 0;
+                pagination.hidden = filtered.length === 0;
+                prevButton.disabled = currentIndex <= 0;
+                nextButton.disabled = currentIndex >= filtered.length - 1;
+                pageStatus.textContent = filtered.length ? `${currentIndex + 1} из ${filtered.length}` : '0 из 0';
+
+                buildResultList(filtered);
+
+                if (!options.keepListScroll) {
+                    const selected = resultList.querySelector('[aria-selected="true"]');
+                    selected?.scrollIntoView({ block: 'nearest' });
+                }
+            }
+
+            searchInput.addEventListener('input', () => {
+                currentQuery = searchInput.value;
+                currentIndex = 0;
+                if (clearButton) clearButton.hidden = currentQuery.trim().length === 0;
+                render();
+            });
+
+            clearButton?.addEventListener('click', () => {
+                searchInput.value = '';
+                currentQuery = '';
+                currentIndex = 0;
+                clearButton.hidden = true;
+                searchInput.focus();
+                render();
+            });
+
+            prevButton.addEventListener('click', () => {
+                if (currentIndex > 0) {
+                    currentIndex -= 1;
+                    render();
+                }
+            });
+
+            nextButton.addEventListener('click', () => {
+                const filtered = getFilteredCards();
+                if (currentIndex < filtered.length - 1) {
+                    currentIndex += 1;
+                    render();
+                }
+            });
+
+            render();
+        })();
+    </script>
+}
