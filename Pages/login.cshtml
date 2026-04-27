@@ -10,27 +10,32 @@
 
 <div class="auth-wrapper">
     <div class="auth-card">
+        <div class="auth-card__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        </div>
         <h1 class="auth-card__title">Вход в систему</h1>
         <p class="auth-card__subtitle">Атлас профессий будущего</p>
 
-        <div asp-validation-summary="ModelOnly"></div>
+        <div asp-validation-summary="ModelOnly" class="validation-summary-errors"></div>
 
         <form method="post">
             <div class="auth-field">
-                <label asp-for="UserName"></label>
+                <label asp-for="UserName">Логин</label>
                 <input asp-for="UserName" placeholder="Введите логин" autocomplete="username" />
-                <span asp-validation-for="UserName"></span>
+                <span asp-validation-for="UserName" class="field-validation-error"></span>
             </div>
 
             <div class="auth-field">
-                <label asp-for="Password"></label>
-                <input asp-for="Password" placeholder="Введите пароль" autocomplete="current-password" />
-                <span asp-validation-for="Password"></span>
+                <label asp-for="Password">Пароль</label>
+                <input asp-for="Password" placeholder="Введите пароль" type="password" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="field-validation-error"></span>
             </div>
 
-            <button type="submit" class="auth-btn">Войти</button>
+            <button type="submit" class="auth-btn">Войти в портал</button>
         </form>
 
-
+        <div class="auth-footer">
+            <p>У вас нет аккаунта? Обратитесь к администратору.</p>
+        </div>
     </div>
 </div>
