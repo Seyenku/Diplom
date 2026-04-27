@@ -6,12 +6,12 @@
 }
 
 <div class="admin-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h2 class="admin-card-title" style="margin: 0;">Просмотр графиков (Аналитика)</h2>
+    <div class="admin-card-toolbar">
+        <h2 class="admin-card-title admin-card-title--flush">Просмотр графиков (Аналитика)</h2>
         <button class="site-nav__btn site-nav__btn--ghost">Экспорт PDF</button>
     </div>
     
-    <div id="graphics-container" style="text-align: center; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 20px; background: var(--color-bg-primary);">
+    <div id="graphics-container" class="admin-graphics-container">
         <canvas id="myChart" width="400" height="400"></canvas>
     </div>
 </div>

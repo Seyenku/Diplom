@@ -15,18 +15,18 @@
     </ul>
 
     <div class="site-nav__actions">
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Темная тема" title="Темная тема">
+            <span class="theme-toggle__sun" aria-hidden="true">☀</span>
+            <span class="theme-toggle__moon" aria-hidden="true">☾</span>
+        </button>
+
         @if (User.Identity?.IsAuthenticated == true)
         {
             <span class="site-nav__username">@User.Identity.Name</span>
-            <form method="post" asp-page="/Logout" style="display:inline;">
+            <form method="post" asp-page="/Logout" class="site-nav__logout-form">
                 <button type="submit" class="site-nav__btn site-nav__btn--ghost">Выйти</button>
             </form>
         }
-        else
-        {
-            <a href="~/login" class="site-nav__btn site-nav__btn--ghost">Войти</a>
-        }
-
         @if (User.IsInRole("admin"))
         {
             <a href="~/admin" class="site-nav__btn site-nav__btn--accent">Личный кабинет</a>

@@ -10,6 +10,13 @@
     
     <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net http://localhost:* https://localhost:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://cdn.jsdelivr.net http://localhost:* https://localhost:* ws://localhost:* wss://localhost:*;" />
+    <script>
+        (() => {
+            const savedTheme = localStorage.getItem('kosmos-theme');
+            const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+            document.documentElement.dataset.theme = savedTheme || (prefersDark ? 'dark' : 'light');
+        })();
+    </script>
     
     <link rel="stylesheet" href="~/css/StyleSheet.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/bootstrap.min.css" asp-append-version="true" />
@@ -26,7 +33,7 @@
         <partial name="_NavPartial" />
     </header>
 
-    <main role="main" class="container" style="padding: 0;">
+    <main role="main" class="container site-main">
         @RenderBody()
     </main>
 
@@ -45,6 +52,56 @@
 
     <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
     <!-- stats.js removed to prevent 404 error -->
+    <script>
+        (() => {
+            const buttons = document.querySelectorAll('[data-theme-toggle]');
+            if (!buttons.length) return;
+
+            const startThemeTransition = button => {
+                const root = document.documentElement;
+                const bodyStyles = getComputedStyle(document.body);
+                const overlay = document.createElement('div');
+
+                overlay.className = 'theme-fade-overlay';
+                overlay.style.backgroundColor = bodyStyles.backgroundColor;
+                overlay.style.backgroundImage = bodyStyles.backgroundImage;
+                document.body.appendChild(overlay);
+
+                root.classList.remove('theme-transitioning');
+                button.classList.remove('theme-toggle--changing');
+                void root.offsetWidth;
+                root.classList.add('theme-transitioning');
+                button.classList.add('theme-toggle--changing');
+
+                requestAnimationFrame(() => overlay.classList.add('theme-fade-overlay--hide'));
+                window.setTimeout(() => {
+                    overlay.remove();
+                    root.classList.remove('theme-transitioning');
+                    button.classList.remove('theme-toggle--changing');
+                }, 520);
+            };
+
+            const applyTheme = theme => {
+                document.documentElement.dataset.theme = theme;
+                localStorage.setItem('kosmos-theme', theme);
+                buttons.forEach(button => {
+                    button.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+                    const label = theme === 'dark' ? 'Светлая тема' : 'Темная тема';
+                    button.setAttribute('aria-label', label);
+                    button.title = label;
+                });
+                window.dispatchEvent(new CustomEvent('kosmos:themechange', { detail: { theme } }));
+            };
+
+            applyTheme(document.documentElement.dataset.theme || 'light');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    startThemeTransition(button);
+                    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+                });
+            });
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

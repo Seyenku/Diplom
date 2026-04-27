@@ -1,0 +1,321 @@
+@page
+@{
+    ViewData["Title"] = "Тест";
+}
+
+<section class="test-page" data-test-page>
+    <div class="test-shell">
+        <header class="test-hero">
+            <span class="test-kicker">Профориентация</span>
+            <h1 class="test-title">Собери свой маршрут в профессии будущего</h1>
+            <p class="test-lead">Представь себя в реальных ситуациях: команда, проект, сложная задача и выбор роли. В конце появится твой профиль и подсказки, куда смотреть дальше.</p>
+        </header>
+
+        <div class="test-layout">
+            <aside class="test-side">
+                <div class="test-side__panel">
+                    <span class="test-side__label">Прогресс</span>
+                    <strong id="test-progress-text" class="test-side__value">1 из 7</strong>
+                    <div class="test-progress-bar" aria-hidden="true">
+                        <span id="test-progress-fill"></span>
+                    </div>
+                </div>
+                <div class="test-side__panel">
+                    <span class="test-side__label">Текущий фокус</span>
+                    <strong id="test-focus" class="test-side__value">Определяется</strong>
+                </div>
+                <div class="test-side__panel test-stats">
+                    <span class="test-side__label">Карта интересов</span>
+                    <div id="test-score-bars" class="test-score-bars"></div>
+                </div>
+            </aside>
+
+            <article class="test-card">
+                <div id="test-question-view">
+                    <div class="test-card__top">
+                        <span id="test-step-badge" class="test-step-badge">Вопрос 1</span>
+                        <span id="test-question-type" class="test-question-type">Интересы</span>
+                    </div>
+
+                    <h2 id="test-question" class="test-question"></h2>
+                    <div id="test-options" class="test-options" role="radiogroup"></div>
+
+                    <footer class="test-actions">
+                        <button id="test-prev" class="test-btn test-btn--ghost" type="button">Назад</button>
+                        <button id="test-next" class="test-btn test-btn--primary" type="button">Далее</button>
+                    </footer>
+                </div>
+
+                <div id="test-result-view" class="test-result" hidden>
+                    <span class="test-step-badge">Результат</span>
+                    <h2 id="test-result-title" class="test-question"></h2>
+                    <p id="test-result-text" class="test-result__text"></p>
+
+                    <div id="test-result-tags" class="test-result-tags"></div>
+
+                    <div class="test-result-actions">
+                        <a href="~/spec" class="test-btn test-btn--primary">Смотреть направления</a>
+                        <a href="~/game" class="test-btn test-btn--ghost">Открыть Атлас</a>
+                        <button id="test-restart" class="test-btn test-btn--plain" type="button">Пройти заново</button>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const questions = [
+                {
+                    type: 'Ситуация 1',
+                    text: 'Команда запускает цифровой проект для университета. Что ты берешь на себя первым делом?',
+                    options: [
+                        { icon: '⚙', title: 'Соберу рабочий прототип', desc: 'Продумать механику, связать части системы и быстро проверить идею.', score: { tech: 3, design: 1 } },
+                        { icon: '📊', title: 'Разберу данные и потребности', desc: 'Понять, что реально нужно пользователям и какие цифры это подтверждают.', score: { data: 3, social: 1 } },
+                        { icon: '🧭', title: 'Настрою командный маршрут', desc: 'Разложить роли, объяснить цель и помочь всем двигаться в одном направлении.', score: { social: 3, design: 1 } }
+                    ]
+                },
+                {
+                    type: 'Ситуация 2',
+                    text: 'В приложении появилась проблема: пользователи теряются и не доходят до результата. Как действуешь?',
+                    options: [
+                        { icon: '🎛', title: 'Пересоберу интерфейс', desc: 'Уберу лишнее, выделю главное и сделаю путь понятнее.', score: { design: 3, social: 1 } },
+                        { icon: '🔍', title: 'Найду слабое место в логике', desc: 'Проверю сценарии, ошибки, узкие места и технические причины.', score: { tech: 2, security: 1 } },
+                        { icon: '📈', title: 'Посмотрю поведение по данным', desc: 'Сравню шаги, метрики и пойму, где именно люди уходят.', score: { data: 3 } }
+                    ]
+                },
+                {
+                    type: 'Ситуация 3',
+                    text: 'Тебе предлагают исследовать неизвестную тему. Что звучит интереснее?',
+                    options: [
+                        { icon: '🧪', title: 'Поставить эксперимент', desc: 'Сформулировать гипотезу, проверить ее и объяснить результат.', score: { science: 3, data: 1 } },
+                        { icon: '🧮', title: 'Построить модель', desc: 'Свести сложную задачу к расчетам, связям и прогнозу.', score: { data: 2, science: 2 } },
+                        { icon: '🛡', title: 'Понять риски', desc: 'Найти, где система может быть уязвимой или ненадежной.', score: { security: 3 } }
+                    ]
+                },
+                {
+                    type: 'Ситуация 4',
+                    text: 'Город хочет стать умнее: датчики, сервисы, данные, безопасность. Какая часть твоя?',
+                    options: [
+                        { icon: '🌐', title: 'Связать устройства и сервисы', desc: 'Чтобы все работало как единая система.', score: { tech: 2, security: 1 } },
+                        { icon: '🧠', title: 'Научить систему принимать решения', desc: 'Данные, прогнозы, алгоритмы и понятные выводы.', score: { data: 2, science: 1 } },
+                        { icon: '🤝', title: 'Сделать сервис удобным для людей', desc: 'Чтобы технология не мешала, а действительно помогала.', score: { social: 2, design: 2 } }
+                    ]
+                },
+                {
+                    type: 'Ситуация 5',
+                    text: 'На хакатоне осталось мало времени. Какая роль помогает тебе включиться быстрее?',
+                    options: [
+                        { icon: '💻', title: 'Разработчик', desc: 'Беру сложную часть и довожу до рабочего состояния.', score: { tech: 3 } },
+                        { icon: '🧩', title: 'Аналитик', desc: 'Быстро структурирую проблему и предлагаю решение.', score: { data: 2, science: 1 } },
+                        { icon: '🎨', title: 'Проектировщик опыта', desc: 'Делаю идею понятной, красивой и убедительной.', score: { design: 3, social: 1 } }
+                    ]
+                },
+                {
+                    type: 'Ситуация 6',
+                    text: 'Перед тобой новая технология. Как ты обычно с ней знакомишься?',
+                    options: [
+                        { icon: '🛠', title: 'Сразу пробую руками', desc: 'Запустить, сломать, починить и понять через практику.', score: { tech: 2, security: 1 } },
+                        { icon: '📚', title: 'Разбираю принципы', desc: 'Важно понять, почему это работает и где границы метода.', score: { science: 3 } },
+                        { icon: '🗣', title: 'Объясняю другим', desc: 'Если могу понятно рассказать, значит сам разобрался.', score: { social: 2, design: 1 } }
+                    ]
+                },
+                {
+                    type: 'Финальный выбор',
+                    text: 'Какая фраза больше похожа на тебя в будущем?',
+                    options: [
+                        { icon: '🚀', title: 'Я создаю то, чем пользуются', desc: 'Мне важно видеть результат в работающем продукте.', score: { tech: 3, design: 1 } },
+                        { icon: '🔮', title: 'Я нахожу закономерности', desc: 'Мне нравится превращать хаос данных в понятную картину.', score: { data: 3, science: 1 } },
+                        { icon: '🛡', title: 'Я делаю системы надежнее', desc: 'Мне важно, чтобы технологии были безопасными и устойчивыми.', score: { security: 3, social: 1 } }
+                    ]
+                }
+            ];
+
+            const scoreMeta = {
+                tech: { label: 'Технологии', icon: '⚙' },
+                data: { label: 'Данные', icon: '📊' },
+                security: { label: 'Безопасность', icon: '🛡' },
+                science: { label: 'Исследования', icon: '🧪' },
+                design: { label: 'Дизайн опыта', icon: '🎛' },
+                social: { label: 'Коммуникация', icon: '🧭' }
+            };
+
+            const profiles = {
+                tech: {
+                    title: 'Создатель цифровых миров',
+                    text: 'Ты выбираешь путь человека, который превращает идеи в работающие системы. Тебе подойдут направления, где есть программирование, архитектура сервисов, автоматизация и разработка цифровых продуктов.',
+                    tags: ['Разработка', 'Информационные системы', 'Автоматизация', 'Продуктовое мышление']
+                },
+                data: {
+                    title: 'Навигатор данных',
+                    text: 'Ты видишь ценность в фактах, закономерностях и прогнозах. Тебе стоит смотреть направления, где много математики, аналитики, моделирования и работы с данными.',
+                    tags: ['Аналитика', 'Моделирование', 'Big Data', 'Прогнозирование']
+                },
+                security: {
+                    title: 'Защитник цифровой среды',
+                    text: 'Ты замечаешь риски и думаешь о надежности. Тебе могут подойти направления, связанные с информационной безопасностью, аудитом, устойчивостью систем и защитой данных.',
+                    tags: ['Безопасность', 'Риски', 'Защита данных', 'Надежность']
+                },
+                science: {
+                    title: 'Исследователь сложных систем',
+                    text: 'Тебе интересно разбираться в причинах, проверять гипотезы и строить объяснения. Подойдут научные, математические и междисциплинарные направления.',
+                    tags: ['Исследования', 'Эксперименты', 'Научный подход', 'Гипотезы']
+                },
+                design: {
+                    title: 'Проектировщик впечатлений',
+                    text: 'Ты хочешь делать сложные технологии понятными и удобными. Тебе близки направления на стыке цифровых продуктов, интерфейсов, коммуникации и проектирования опыта.',
+                    tags: ['UX', 'Прототипирование', 'Цифровые продукты', 'Сценарии']
+                },
+                social: {
+                    title: 'Проводник команд и смыслов',
+                    text: 'Ты хорошо чувствуешь людей, роли и общий маршрут проекта. Тебе могут подойти направления, где важны коммуникация, образование, управление и связь технологий с реальными задачами.',
+                    tags: ['Коммуникация', 'Обучение', 'Проекты', 'Командная работа']
+                }
+            };
+
+            const state = {
+                index: 0,
+                answers: Array(questions.length).fill(null)
+            };
+
+            const questionView = document.getElementById('test-question-view');
+            const resultView = document.getElementById('test-result-view');
+            const progressText = document.getElementById('test-progress-text');
+            const progressFill = document.getElementById('test-progress-fill');
+            const focus = document.getElementById('test-focus');
+            const stepBadge = document.getElementById('test-step-badge');
+            const questionType = document.getElementById('test-question-type');
+            const questionTitle = document.getElementById('test-question');
+            const optionsNode = document.getElementById('test-options');
+            const prevButton = document.getElementById('test-prev');
+            const nextButton = document.getElementById('test-next');
+            const restartButton = document.getElementById('test-restart');
+            const resultTitle = document.getElementById('test-result-title');
+            const resultText = document.getElementById('test-result-text');
+            const resultTags = document.getElementById('test-result-tags');
+            const scoreBars = document.getElementById('test-score-bars');
+
+            function getScores() {
+                return state.answers.reduce((scores, answerIndex, questionIndex) => {
+                    if (answerIndex === null) return scores;
+                    const score = questions[questionIndex].options[answerIndex].score;
+                    Object.entries(score).forEach(([key, value]) => {
+                        scores[key] = (scores[key] || 0) + value;
+                    });
+                    return scores;
+                }, {});
+            }
+
+            function getTopProfile() {
+                const scores = getScores();
+                const [key] = Object.entries(scores).sort((a, b) => b[1] - a[1])[0] || ['tech'];
+                return { key, profile: profiles[key] };
+            }
+
+            function renderScoreBars() {
+                const scores = getScores();
+                const maxScore = Math.max(1, ...Object.values(scores));
+                scoreBars.innerHTML = '';
+
+                Object.entries(scoreMeta).forEach(([key, meta]) => {
+                    const value = scores[key] || 0;
+                    const item = document.createElement('div');
+                    item.className = 'test-score-row';
+                    item.innerHTML = `
+                        <div class="test-score-row__top">
+                            <span>${meta.icon} ${meta.label}</span>
+                            <strong>${value}</strong>
+                        </div>
+                        <div class="test-score-row__bar"><span></span></div>
+                    `;
+                    item.querySelector('.test-score-row__bar span').style.width = `${Math.round((value / maxScore) * 100)}%`;
+                    scoreBars.appendChild(item);
+                });
+            }
+
+            function renderQuestion() {
+                const question = questions[state.index];
+                const selected = state.answers[state.index];
+                const progress = ((state.index + 1) / questions.length) * 100;
+                const top = getTopProfile();
+
+                questionView.hidden = false;
+                resultView.hidden = true;
+                progressText.textContent = `${state.index + 1} из ${questions.length}`;
+                progressFill.style.width = `${progress}%`;
+                focus.textContent = state.answers.some(answer => answer !== null) ? top.profile.title : 'Определяется';
+                renderScoreBars();
+                stepBadge.textContent = `Вопрос ${state.index + 1}`;
+                questionType.textContent = question.type;
+                questionTitle.textContent = question.text;
+                prevButton.disabled = state.index === 0;
+                nextButton.textContent = state.index === questions.length - 1 ? 'Показать результат' : 'Далее';
+                nextButton.disabled = selected === null;
+
+                optionsNode.innerHTML = '';
+                question.options.forEach((option, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'test-option';
+                    button.setAttribute('role', 'radio');
+                    button.setAttribute('aria-checked', selected === index ? 'true' : 'false');
+                    button.innerHTML = `<span class="test-option__icon"></span><span class="test-option__title"></span><span class="test-option__desc"></span>`;
+                    button.querySelector('.test-option__icon').textContent = option.icon;
+                    button.querySelector('.test-option__title').textContent = option.title;
+                    button.querySelector('.test-option__desc').textContent = option.desc;
+                    button.addEventListener('click', () => {
+                        state.answers[state.index] = index;
+                        renderQuestion();
+                    });
+                    optionsNode.appendChild(button);
+                });
+            }
+
+            function renderResult() {
+                const top = getTopProfile();
+                questionView.hidden = true;
+                resultView.hidden = false;
+                progressText.textContent = `${questions.length} из ${questions.length}`;
+                progressFill.style.width = '100%';
+                focus.textContent = top.profile.title;
+                renderScoreBars();
+                resultTitle.textContent = top.profile.title;
+                resultText.textContent = top.profile.text;
+                resultTags.innerHTML = '';
+                top.profile.tags.forEach(tag => {
+                    const item = document.createElement('span');
+                    item.textContent = tag;
+                    resultTags.appendChild(item);
+                });
+            }
+
+            prevButton.addEventListener('click', () => {
+                if (state.index > 0) {
+                    state.index -= 1;
+                    renderQuestion();
+                }
+            });
+
+            nextButton.addEventListener('click', () => {
+                if (state.answers[state.index] === null) return;
+                if (state.index === questions.length - 1) {
+                    renderResult();
+                    return;
+                }
+
+                state.index += 1;
+                renderQuestion();
+            });
+
+            restartButton.addEventListener('click', () => {
+                state.index = 0;
+                state.answers = Array(questions.length).fill(null);
+                renderQuestion();
+            });
+
+            renderQuestion();
+        })();
+    </script>
+}

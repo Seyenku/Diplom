@@ -82,30 +82,8 @@
                             dir.Professions
                         }.Where(value => !string.IsNullOrWhiteSpace(value)));
                         var admissionHistory = dir.AdmissionHistory.OrderBy(stat => stat.Year).ToList();
-                        var maxBudgetPlaces = admissionHistory.Select(stat => stat.BudgetPlaces).DefaultIfEmpty(0).Max();
-                        var maxPassingScore = admissionHistory.Select(stat => stat.MinPassingScore).DefaultIfEmpty(0).Max();
-                        var maxAvgEgeScore = admissionHistory
-                            .Where(stat => stat.AvgEgeScore.HasValue)
-                            .Select(stat => stat.AvgEgeScore!.Value)
-                            .DefaultIfEmpty(0)
-                            .Max();
-                        var chartPointCount = admissionHistory.Count;
-                        var chartTop = 12;
-                        var chartBottom = 86;
-                        var chartRange = chartBottom - chartTop;
-                        Func<int, int> chartX = index => chartPointCount <= 1
-                            ? 50
-                            : (int)Math.Round(index * 100.0 / (chartPointCount - 1));
-                        Func<double, double, int> chartY = (value, maxValue) => maxValue > 0
-                            ? chartBottom - (int)Math.Round(value * chartRange / maxValue)
-                            : chartBottom;
-                        var budgetLinePoints = string.Join(" ", admissionHistory.Select((stat, index) => $"{chartX(index)},{chartY(stat.BudgetPlaces, maxBudgetPlaces)}"));
-                        var passingLinePoints = string.Join(" ", admissionHistory.Select((stat, index) => $"{chartX(index)},{chartY(stat.MinPassingScore, maxPassingScore)}"));
-                        var avgLinePoints = string.Join(" ", admissionHistory
-                            .Select((stat, index) => stat.AvgEgeScore.HasValue
-                                ? $"{chartX(index)},{chartY(stat.AvgEgeScore.Value, maxAvgEgeScore)}"
-                                : string.Empty)
-                            .Where(point => !string.IsNullOrWhiteSpace(point)));
+                        var passingChartLabels = System.Text.Json.JsonSerializer.Serialize(admissionHistory.Select(stat => stat.Year.ToString()).ToArray());
+                        var passingChartValues = System.Text.Json.JsonSerializer.Serialize(admissionHistory.Select(stat => stat.MinPassingScore).ToArray());
 
                         <article class="spec-card"
                                  id="spec-card-@dir.ProgramId"
@@ -192,60 +170,19 @@
                                             </svg>
                                         </summary>
                                         <div class="spec-details-content">
-                                            <div class="spec-stats-chart" aria-label="График статистики приёма">
+                                            <div class="spec-stats-chart" aria-label="График проходного балла по годам">
                                                 <div class="spec-stats-chart__header">
                                                     <div>
-                                                        <span class="spec-stats-chart__eyebrow">Динамика</span>
-                                                        <h4 class="spec-stats-chart__title">Показатели по годам</h4>
+                                                        <span class="spec-stats-chart__eyebrow">Динамика проходного балла</span>
+                                                        <h4 class="spec-stats-chart__title">Проходной балл по годам</h4>
                                                     </div>
-                                                    <div class="spec-stats-legend" aria-hidden="true">
-                                                        <span><i class="spec-stats-legend__marker spec-stats-legend__marker--budget"></i>Бюджет</span>
-                                                        <span><i class="spec-stats-legend__marker spec-stats-legend__marker--passing"></i>Проходной</span>
-                                                        <span><i class="spec-stats-legend__marker spec-stats-legend__marker--avg"></i>Средний</span>
-                                                    </div>
+                                                    <span class="spec-stats-chart__badge">Проходной балл</span>
                                                 </div>
 
-                                                <div class="spec-line-chart" role="img" aria-label="Линейный график бюджетных мест, проходного балла и среднего балла ЕГЭ по годам">
-                                                    <div class="spec-line-chart__plot">
-                                                        <svg class="spec-line-chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                                                            <line class="spec-line-chart__grid" x1="0" y1="12" x2="100" y2="12"></line>
-                                                            <line class="spec-line-chart__grid" x1="0" y1="36.5" x2="100" y2="36.5"></line>
-                                                            <line class="spec-line-chart__grid" x1="0" y1="61" x2="100" y2="61"></line>
-                                                            <line class="spec-line-chart__grid" x1="0" y1="86" x2="100" y2="86"></line>
-                                                            <polyline class="spec-line-chart__line spec-line-chart__line--budget" points="@budgetLinePoints" pathLength="1"></polyline>
-                                                            <polyline class="spec-line-chart__line spec-line-chart__line--passing" points="@passingLinePoints" pathLength="1"></polyline>
-                                                            @if (!string.IsNullOrWhiteSpace(avgLinePoints))
-                                                            {
-                                                                <polyline class="spec-line-chart__line spec-line-chart__line--avg" points="@avgLinePoints" pathLength="1"></polyline>
-                                                            }
-                                                        </svg>
-
-                                                        @foreach (var stat in admissionHistory.Select((value, index) => new { value, index }))
-                                                        {
-                                                            var x = chartX(stat.index);
-                                                            var budgetY = chartY(stat.value.BudgetPlaces, maxBudgetPlaces);
-                                                            var passingY = chartY(stat.value.MinPassingScore, maxPassingScore);
-                                                            <span class="spec-line-point spec-line-point--budget"
-                                                                  style="--point-x: @x%; --point-y: @budgetY%;"
-                                                                  title="@stat.value.Year: бюджетных мест — @stat.value.BudgetPlaces"></span>
-                                                            <span class="spec-line-point spec-line-point--passing"
-                                                                  style="--point-x: @x%; --point-y: @passingY%;"
-                                                                  title="@stat.value.Year: проходной балл — @stat.value.MinPassingScore"></span>
-                                                            @if (stat.value.AvgEgeScore.HasValue)
-                                                            {
-                                                                var avgY = chartY(stat.value.AvgEgeScore.Value, maxAvgEgeScore);
-                                                                <span class="spec-line-point spec-line-point--avg"
-                                                                      style="--point-x: @x%; --point-y: @avgY%;"
-                                                                      title="@stat.value.Year: средний балл ЕГЭ — @stat.value.AvgEgeScore.Value.ToString("F1")"></span>
-                                                            }
-                                                        }
-                                                    </div>
-                                                    <div class="spec-line-chart__years" aria-hidden="true">
-                                                        @foreach (var stat in admissionHistory)
-                                                        {
-                                                            <span>@stat.Year</span>
-                                                        }
-                                                    </div>
+                                                <div class="spec-line-chart" role="img" aria-label="Линейный график проходного балла по годам">
+                                                    <canvas class="spec-score-chart"
+                                                            data-chart-labels="@passingChartLabels"
+                                                            data-chart-values="@passingChartValues"></canvas>
                                                 </div>
                                             </div>
 
@@ -301,6 +238,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
     <script>
         (() => {
             const cards = Array.from(document.querySelectorAll('[data-spec-card]'));
@@ -314,13 +252,183 @@
             const nextButton = document.getElementById('spec-page-next');
             const noResults = document.getElementById('spec-no-results');
             const detailPanel = document.querySelector('.spec-detail-panel');
+            const charts = new Set();
 
             if (!searchInput || !resultList || !pagination || !pageStatus || !prevButton || !nextButton) return;
 
             let currentIndex = 0;
             let currentQuery = '';
 
+            const getCssValue = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+            function getChartColors() {
+                const isDark = document.documentElement.dataset.theme === 'dark';
+
+                return {
+                    line: getCssValue('--color-accent-mint') || '#059669',
+                    text: getCssValue('--color-text-primary') || '#1e293b',
+                    muted: getCssValue('--color-text-muted') || '#64748b',
+                    pointBorder: isDark ? '#0f172a' : '#ffffff',
+                    grid: isDark ? 'rgba(148, 163, 184, 0.16)' : 'rgba(100, 116, 139, 0.16)',
+                    fillStart: isDark ? 'rgba(94, 234, 212, 0.22)' : 'rgba(16, 185, 129, 0.22)',
+                    fillEnd: isDark ? 'rgba(94, 234, 212, 0.02)' : 'rgba(16, 185, 129, 0.02)',
+                    tooltipBg: isDark ? 'rgba(15, 23, 42, 0.96)' : '#ffffff',
+                    tooltipBorder: isDark ? 'rgba(94, 234, 212, 0.24)' : 'rgba(5, 150, 105, 0.20)',
+                    tooltipBody: isDark ? '#5eead4' : '#047857'
+                };
+            }
+
+            function createChartGradient(context, colors) {
+                const chart = context.chart;
+                const area = chart.chartArea;
+                if (!area) return colors.fillStart;
+
+                const gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+                gradient.addColorStop(0, colors.fillStart);
+                gradient.addColorStop(1, colors.fillEnd);
+                return gradient;
+            }
+
+            function applyChartTheme(chart) {
+                const colors = getChartColors();
+                const dataset = chart.data.datasets[0];
+
+                dataset.borderColor = colors.line;
+                dataset.pointBackgroundColor = colors.line;
+                dataset.pointBorderColor = colors.pointBorder;
+                dataset.backgroundColor = context => createChartGradient(context, colors);
+
+                chart.options.scales.x.ticks.color = colors.muted;
+                chart.options.scales.y.ticks.color = colors.muted;
+                chart.options.scales.y.grid.color = colors.grid;
+                chart.options.plugins.tooltip.backgroundColor = colors.tooltipBg;
+                chart.options.plugins.tooltip.borderColor = colors.tooltipBorder;
+                chart.options.plugins.tooltip.titleColor = colors.text;
+                chart.options.plugins.tooltip.bodyColor = colors.tooltipBody;
+
+                chart.update('none');
+            }
+
             const normalize = value => (value || '').toLocaleLowerCase('ru-RU').replaceAll('ё', 'е').trim();
+
+            function initCharts(scope = document) {
+                if (!window.Chart) return;
+
+                scope.querySelectorAll('.spec-score-chart:not([data-chart-ready])').forEach(canvas => {
+                    const labels = JSON.parse(canvas.dataset.chartLabels || '[]');
+                    const values = JSON.parse(canvas.dataset.chartValues || '[]').map(Number);
+                    if (!labels.length || !values.length) return;
+
+                    const minValue = Math.min(...values);
+                    const maxValue = Math.max(...values);
+                    const padding = Math.max(5, Math.ceil((maxValue - minValue || 10) * 0.2));
+                    const yMin = Math.max(0, Math.floor((minValue - padding) / 10) * 10);
+                    const yMax = Math.ceil((maxValue + padding) / 10) * 10;
+                    const colors = getChartColors();
+
+                    canvas.dataset.chartReady = 'true';
+                    const chart = new Chart(canvas, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: 'Проходной балл',
+                                data: values,
+                                borderColor: colors.line,
+                                backgroundColor: context => createChartGradient(context, colors),
+                                borderWidth: 3,
+                                pointRadius: 5,
+                                pointHoverRadius: 7,
+                                pointBackgroundColor: colors.line,
+                                pointBorderColor: colors.pointBorder,
+                                pointBorderWidth: 3,
+                                pointHoverBorderWidth: 3,
+                                tension: 0.36,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    border: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: colors.muted,
+                                        font: {
+                                            family: "'Roboto Slab', serif",
+                                            size: 12,
+                                            weight: 800
+                                        }
+                                    }
+                                },
+                                y: {
+                                    min: yMin,
+                                    max: yMax,
+                                    border: {
+                                        display: false
+                                    },
+                                    grid: {
+                                        color: colors.grid,
+                                        drawTicks: false
+                                    },
+                                    ticks: {
+                                        color: colors.muted,
+                                        padding: 10,
+                                        precision: 0,
+                                        stepSize: 10,
+                                        font: {
+                                            family: "'Roboto Slab', serif",
+                                            size: 12,
+                                            weight: 700
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    displayColors: false,
+                                    backgroundColor: colors.tooltipBg,
+                                    borderColor: colors.tooltipBorder,
+                                    borderWidth: 1,
+                                    titleColor: colors.text,
+                                    bodyColor: colors.tooltipBody,
+                                    titleFont: {
+                                        family: "'Roboto Slab', serif",
+                                        weight: 800
+                                    },
+                                    bodyFont: {
+                                        family: "'Roboto Slab', serif",
+                                        weight: 800
+                                    },
+                                    padding: 12,
+                                    callbacks: {
+                                        label: context => `Проходной балл: ${context.parsed.y}`
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    charts.add(chart);
+                });
+            }
+
+            window.addEventListener('kosmos:themechange', () => {
+                charts.forEach(applyChartTheme);
+            });
 
             document.querySelectorAll('.spec-card__details').forEach(details => {
                 const summary = details.querySelector('.spec-details-toggle');
@@ -345,6 +453,7 @@
                 content.style.opacity = '0';
                 content.style.overflow = 'hidden';
                 details.open = true;
+                requestAnimationFrame(() => initCharts(details));
 
                 const targetHeight = content.scrollHeight;
                 const animation = content.animate([

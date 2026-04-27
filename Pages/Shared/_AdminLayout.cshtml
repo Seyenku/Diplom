@@ -7,6 +7,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - KosmosCore Админ-панель</title>
+    <script>
+        (() => {
+            const savedTheme = localStorage.getItem('kosmos-theme');
+            const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+            document.documentElement.dataset.theme = savedTheme || (prefersDark ? 'dark' : 'light');
+        })();
+    </script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,6 +53,10 @@
         <main class="admin-main">
             <header class="admin-topbar">
                 <h1 class="admin-page-title">@ViewData["Title"]</h1>
+                <button class="theme-toggle theme-toggle--admin" type="button" data-theme-toggle aria-label="Темная тема" title="Темная тема">
+                    <span class="theme-toggle__sun" aria-hidden="true">☀</span>
+                    <span class="theme-toggle__moon" aria-hidden="true">☾</span>
+                </button>
             </header>
             
             <div class="admin-content-inner">
@@ -54,6 +65,56 @@
         </main>
     </div>
 
+    <script>
+        (() => {
+            const buttons = document.querySelectorAll('[data-theme-toggle]');
+            if (!buttons.length) return;
+
+            const startThemeTransition = button => {
+                const root = document.documentElement;
+                const bodyStyles = getComputedStyle(document.body);
+                const overlay = document.createElement('div');
+
+                overlay.className = 'theme-fade-overlay';
+                overlay.style.backgroundColor = bodyStyles.backgroundColor;
+                overlay.style.backgroundImage = bodyStyles.backgroundImage;
+                document.body.appendChild(overlay);
+
+                root.classList.remove('theme-transitioning');
+                button.classList.remove('theme-toggle--changing');
+                void root.offsetWidth;
+                root.classList.add('theme-transitioning');
+                button.classList.add('theme-toggle--changing');
+
+                requestAnimationFrame(() => overlay.classList.add('theme-fade-overlay--hide'));
+                window.setTimeout(() => {
+                    overlay.remove();
+                    root.classList.remove('theme-transitioning');
+                    button.classList.remove('theme-toggle--changing');
+                }, 520);
+            };
+
+            const applyTheme = theme => {
+                document.documentElement.dataset.theme = theme;
+                localStorage.setItem('kosmos-theme', theme);
+                buttons.forEach(button => {
+                    button.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+                    const label = theme === 'dark' ? 'Светлая тема' : 'Темная тема';
+                    button.setAttribute('aria-label', label);
+                    button.title = label;
+                });
+                window.dispatchEvent(new CustomEvent('kosmos:themechange', { detail: { theme } }));
+            };
+
+            applyTheme(document.documentElement.dataset.theme || 'light');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    startThemeTransition(button);
+                    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+                });
+            });
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

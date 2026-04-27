@@ -4,37 +4,19 @@
     ViewData["Title"] = "Главная";
 }
 
-@section Head {
-    <style>
-        /* Для главной страницы убираем ограничение bootstrap container,
-           чтобы hero-анимация занимала всю ширину экрана */
-        main.container {
-            max-width: 100% !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-
-        .hero-wrapper {
-            width: 100vw;
-            margin-left: calc(50% - 50vw);
-            margin-right: calc(50% - 50vw);
-        }
-    </style>
-}
-
 <div class="hero-wrapper">
     <div id="particles-js"></div>
     <div class="hero-content">
         <h1 class="hero-title">Атлас профессий будущего</h1>
         <p class="hero-subtitle">Ваш интерактивный проводник в мир новых компетенций, технологий и специальностей Сыктывкарского государственного университета им. Питирима Сорокина.</p>
-        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-            <a href="~/game" class="site-nav__btn site-nav__btn--accent" style="padding: 16px 32px; font-size: 16px; font-weight: 600; border-radius: 12px;">Открыть Атлас</a>
-            <a href="#about" class="site-nav__btn site-nav__btn--ghost" style="padding: 16px 32px; font-size: 16px; font-weight: 600; border-radius: 12px; background: white;">О проекте</a>
+        <div class="hero-actions">
+            <a href="~/game" class="site-nav__btn site-nav__btn--accent site-nav__btn--hero">Открыть Атлас</a>
+            <a href="#about" class="site-nav__btn site-nav__btn--ghost site-nav__btn--hero">О проекте</a>
         </div>
     </div>
 </div>
 
-<div id="about" class="container-fluid py-4" style="position: relative; z-index: 10;">
+<div id="about" class="container-fluid py-4 home-section">
     <div class="proekt">
         <div class="proekt-content">
             <div class="proekt-heading">
@@ -77,7 +59,7 @@
         </div>
     </div>
 
-    <h2 class="proekt-title" style="margin-top: 20px;">Что вас интересует?</h2>
+    <h2 class="proekt-title proekt-title--interest">Что вас интересует?</h2>
     
     <div class="rules-grid">
         <div class="card-item">
