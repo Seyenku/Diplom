@@ -1,31 +1,31 @@
 /**
- * threeScene.ts — Инициализация и управление Three.js сценой
+ * threeScene.ts — Инициализация и управление базовой Three.js сценой (#game-canvas)
  *
  * Canvas (#game-canvas) живёт в DOM постоянно.
  * Сцена меняется через switchScene() при смене экранов,
  * без destroy/recreate WebGL-контекста.
- *
- * Three.js файл: three.module.min.js (WebGL renderer)
  */
 
 import * as THREE from 'three';
 import { getProfile, onQualityChange } from './qualityPresets.js';
 import { disposeSceneGraph } from './threeUtils.js';
 
-type SceneName = 'starfield' | 'asteroid-belt' | 'flight' | 'galaxy-map' | 'planet' | 'none';
+export type SceneBuilder = () => { scene: THREE.Scene; camera: THREE.PerspectiveCamera };
 
 let _renderer: THREE.WebGLRenderer | null = null;
 let _currentScene: { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | null = null;
 let _animFrameId: number | null = null;
 let _starfieldPoints: THREE.Points | null = null;
-let _lastSceneName: SceneName = 'none';
+let _lastSceneName: string = 'none';
+
+const _builders = new Map<string, SceneBuilder>();
+
+export function registerSceneBuilder(name: string, builder: SceneBuilder): void {
+    _builders.set(name, builder);
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 
-/**
- * Инициализирует Three.js рендерер на указанном canvas.
- * Вызывается один раз при старте.
- */
 export async function initThreeScene(canvasId: string): Promise<void> {
     const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     if (!canvas) throw new Error(`Canvas #${canvasId} not found`);
@@ -44,34 +44,38 @@ export async function initThreeScene(canvasId: string): Promise<void> {
 
     window.addEventListener('resize', _onResize);
 
-    // Подписка на изменение качества графики
     onQualityChange(() => {
         recreateRenderer();
     });
 
-    // Стартовая сцена — звёздное поле (фон главного меню)
+    // Стартовая сцена
     await switchScene('starfield');
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-
-/**
- * Переключает Three.js сцену без пересоздания WebGL-контекста.
- * Предыдущая сцена корректно очищается (dispose GPU-ресурсов).
- */
-export async function switchScene(sceneName: SceneName): Promise<void> {
+export async function switchScene(sceneName: string): Promise<void> {
     if (_animFrameId) cancelAnimationFrame(_animFrameId);
     _disposeCurrentScene();
 
     _lastSceneName = sceneName;
-    _currentScene = _buildScene(sceneName);
+    const builder = _builders.get(sceneName);
+    
+    if (builder) {
+        _currentScene = builder();
+    } else {
+        // Fallback to empty scene if no builder found
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 2000);
+        _currentScene = { scene, camera };
+        window.__threeScene = scene;
+        (window as any).__threeCamera = camera;
+    }
+    
+    // Check if starfield exists in the new scene for the generic animation loop
+    _starfieldPoints = _currentScene?.scene.children.find(c => c.userData?.type === 'starfield') as THREE.Points ?? null;
+
     _startRenderLoop();
 }
 
-/**
- * Пересоздаёт WebGL-рендерер с новыми параметрами качества.
- * Необходимо для смены antialias (параметр WebGL-контекста, нельзя менять на лету).
- */
 export function recreateRenderer(): void {
     if (!_renderer) return;
     const profile = getProfile();
@@ -91,12 +95,15 @@ export function recreateRenderer(): void {
     _renderer.setSize(container.clientWidth, container.clientHeight, false);
     _renderer.setClearColor(0x050a1a, 1);
 
-    // Пересоздаём текущую сцену с новыми параметрами
-    _currentScene = _buildScene(_lastSceneName);
+    const builder = _builders.get(_lastSceneName);
+    if (builder) {
+        _currentScene = builder();
+        _starfieldPoints = _currentScene.scene.children.find(c => c.userData?.type === 'starfield') as THREE.Points ?? null;
+    }
+    
     _startRenderLoop();
 }
 
-/** Рекурсивно освобождает GPU-ресурсы текущей сцены */
 function _disposeCurrentScene(): void {
     if (!_currentScene) return;
     disposeSceneGraph(_currentScene.scene);
@@ -104,58 +111,15 @@ function _disposeCurrentScene(): void {
     _currentScene = null;
 }
 
-// ── Билдеры сцен ──────────────────────────────────────────────────────────
+// ── Общие утилиты для билдеров сцен ───────────────────────────────────────
 
-function _buildScene(name: SceneName): { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | null {
-    const scene = new THREE.Scene();
+export function getBaseCamera(): THREE.PerspectiveCamera {
     const canvas = _renderer!.domElement;
     const container = canvas.parentNode as HTMLElement;
-    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 2000);
-    camera.position.z = 300;
-
-    switch (name) {
-        case 'starfield':
-            _addStarfield(scene);
-            break;
-        case 'asteroid-belt':
-            _addStarfield(scene);
-            _addAsteroidBelt(scene);
-            break;
-        case 'flight': {
-            const profile = getProfile();
-            _addStarfield(scene, profile.flightStarfieldCount, 0.6);
-            camera.position.set(0, 2, 8);
-            camera.lookAt(0, 0, -50);
-            // Освещение для flight
-            scene.add(new THREE.AmbientLight(0x334155, 0.6));
-            const dirLight = new THREE.DirectionalLight(0x4fc3f7, 1.2);
-            dirLight.position.set(5, 10, 10);
-            scene.add(dirLight);
-            const backLight = new THREE.PointLight(0x818cf8, 0.8, 100);
-            backLight.position.set(0, -5, -20);
-            scene.add(backLight);
-            break;
-        }
-        case 'galaxy-map':
-            _addStarfield(scene, 2000, 0.8);
-            _addNebulaFog(scene);
-            break;
-        case 'planet':
-            _addStarfield(scene, 800, 0.5);
-            break;
-        case 'none':
-        default:
-            break;
-    }
-
-    // Глобальный доступ к текущей сцене (для screenFlight динамического добавления объектов)
-    window.__threeScene = scene;
-    (window as any).__threeCamera = camera;
-
-    return { scene, camera };
+    return new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 2000);
 }
 
-function _addStarfield(scene: THREE.Scene, count?: number, size = 1.0): void {
+export function addStarfield(scene: THREE.Scene, count?: number, size = 1.0): THREE.Points {
     const n = count ?? getProfile().starfieldCount;
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(n * 3);
@@ -165,47 +129,33 @@ function _addStarfield(scene: THREE.Scene, count?: number, size = 1.0): void {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const mat = new THREE.PointsMaterial({ color: 0xffffff, size, sizeAttenuation: true, transparent: true, opacity: 0.85 });
     const points = new THREE.Points(geo, mat);
+    points.userData = { type: 'starfield' };
     scene.add(points);
-    _starfieldPoints = points;
+    return points;
 }
 
-function _addAsteroidBelt(scene: THREE.Scene): void {
-    const profile = getProfile();
-    const geo = new THREE.SphereGeometry(4, 5, 5);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x7c8a9e, roughness: 0.9 });
-    const light = new THREE.PointLight(0x4fc3f7, 2, 800);
-    light.position.set(0, 0, 200);
-    scene.add(light, new THREE.AmbientLight(0x334155, 0.5));
-    for (let i = 0; i < profile.asteroidBeltCount; i++) {
-        const mesh = new THREE.Mesh(geo, mat);
-        const angle = Math.random() * Math.PI * 2;
-        const r = 100 + Math.random() * 120;
-        mesh.position.set(Math.cos(angle) * r, (Math.random() - 0.5) * 40, Math.sin(angle) * r);
-        mesh.scale.setScalar(0.5 + Math.random() * 1.5);
-        mesh.rotation.set(Math.random(), Math.random(), Math.random());
-        scene.add(mesh);
-    }
-}
+// ── Базовые сцены ─────────────────────────────────────────────────────────
 
-function _addNebulaFog(scene: THREE.Scene): void {
-    scene.fog = new THREE.FogExp2(0x0a0f2e, 0.0015);
-    const light = new THREE.PointLight(0xa78bfa, 1.5, 600);
-    light.position.set(0, 50, 0);
-    scene.add(light, new THREE.AmbientLight(0x1e1b4b, 0.4));
-}
+registerSceneBuilder('starfield', () => {
+    const scene = new THREE.Scene();
+    const camera = getBaseCamera();
+    camera.position.z = 300;
+    addStarfield(scene);
+    
+    window.__threeScene = scene;
+    (window as any).__threeCamera = camera;
+    return { scene, camera };
+});
 
 // ── Render loop ───────────────────────────────────────────────────────────
 
 function _startRenderLoop(): void {
     if (!_renderer || !_currentScene) return;
 
-    // Galaxy Map uses its own dedicated WebGLRenderer and render loop.
-    // Running this background loop simultaneously wastes GPU time for an invisible canvas.
-    if (_lastSceneName === 'galaxy-map') return;
+    if (_lastSceneName === 'galaxy-map' || _lastSceneName === 'flight') return;
 
     function render(): void {
         _animFrameId = requestAnimationFrame(render);
-        // Лёгкое вращение звёздного поля для атмосферности
         if (_starfieldPoints) _starfieldPoints.rotation.y += 0.00015;
         _renderer!.render(_currentScene!.scene, _currentScene!.camera);
     }
@@ -218,7 +168,6 @@ function _onResize(): void {
     const canvas = _renderer.domElement;
     const container = canvas.parentNode as HTMLElement;
 
-    // Если контейнер скрыт или имеет нулевой размер, избегаем ошибок
     if (container.clientWidth === 0 || container.clientHeight === 0) return;
 
     camera.aspect = container.clientWidth / container.clientHeight;

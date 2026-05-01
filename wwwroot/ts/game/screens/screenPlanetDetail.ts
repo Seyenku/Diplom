@@ -8,7 +8,20 @@
 
 import * as THREE from 'three';
 import { getStore, transition, Screen, dispatch, on, off } from '../stateManager.js';
-import { switchScene } from '../threeScene.js';
+import { switchScene, registerSceneBuilder, getBaseCamera, addStarfield } from '../threeScene.js';
+
+// ── Scene Builder ───────────────────────────────────────────────────────────
+
+registerSceneBuilder('planet', () => {
+    const scene = new THREE.Scene();
+    const camera = getBaseCamera();
+    camera.position.z = 300;
+    addStarfield(scene, 800, 0.5);
+    
+    window.__threeScene = scene;
+    (window as any).__threeCamera = camera;
+    return { scene, camera };
+});
 import { GameStore, PlanetDto, CrystalType, ClusterType, ActionType } from '../types.js';
 import { disposeSceneGraph } from '../threeUtils.js';
 import { CLUSTER_MAP } from '../clusterConfig.js';

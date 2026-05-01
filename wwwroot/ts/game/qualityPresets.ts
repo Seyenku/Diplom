@@ -34,6 +34,18 @@ export interface QualityProfile {
     // Flight
     flightStarfieldCount: number;
     spawnChancePerFrame: number;
+
+    // Flight — Visual Effects
+    flightPostProcessing: boolean;
+    flightSpeedLines: boolean;
+    flightSpeedLinesCount: number;
+    flightEngineTrail: boolean;
+    flightShieldSphere: boolean;
+    flightDynamicFOV: boolean;
+    flightParallaxLayers: number;      // 1 / 2 / 3
+    flightDamageOverlay: boolean;
+    flightVignette: boolean;
+    flightParticleMultiplier: number;  // 0.5 / 1.0 / 2.0
 }
 
 // ── Профили ─────────────────────────────────────────────────────────────────
@@ -54,6 +66,17 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         planetRingSegments:   16,
         flightStarfieldCount: 800,
         spawnChancePerFrame:  0.025,
+        // VFX — всё выключено
+        flightPostProcessing: false,
+        flightSpeedLines:     false,
+        flightSpeedLinesCount: 0,
+        flightEngineTrail:    false,
+        flightShieldSphere:   false,
+        flightDynamicFOV:     false,
+        flightParallaxLayers: 1,
+        flightDamageOverlay:  false,
+        flightVignette:       false,
+        flightParticleMultiplier: 0.5,
     },
     medium: {
         pixelRatio:           Math.min(dpr, 1.5),
@@ -68,6 +91,17 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         planetRingSegments:   32,
         flightStarfieldCount: 2500,
         spawnChancePerFrame:  0.04,
+        // VFX — основной набор
+        flightPostProcessing: true,
+        flightSpeedLines:     true,
+        flightSpeedLinesCount: 80,
+        flightEngineTrail:    false,
+        flightShieldSphere:   true,
+        flightDynamicFOV:     true,
+        flightParallaxLayers: 2,
+        flightDamageOverlay:  true,
+        flightVignette:       true,
+        flightParticleMultiplier: 1.0,
     },
     high: {
         pixelRatio:           Math.min(dpr, 2),
@@ -82,6 +116,17 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         planetRingSegments:   48,
         flightStarfieldCount: 4000,
         spawnChancePerFrame:  0.06,
+        // VFX — всё включено
+        flightPostProcessing: true,
+        flightSpeedLines:     true,
+        flightSpeedLinesCount: 200,
+        flightEngineTrail:    true,
+        flightShieldSphere:   true,
+        flightDynamicFOV:     true,
+        flightParallaxLayers: 3,
+        flightDamageOverlay:  true,
+        flightVignette:       true,
+        flightParticleMultiplier: 2.0,
     },
 };
 

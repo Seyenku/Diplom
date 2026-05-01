@@ -12,8 +12,8 @@
 import * as THREE from 'three';
 import { dispatch, goBack } from '../stateManager.js';
 import { GameStore, MiniGameRewardDto } from '../types.js';
-import { loadModel } from '../gltfLoader.js';
-import { applyShipColor, createFallbackShip } from '../shipUtils.js';
+import { loadShipGroup } from '../systems/shipLoader.js';
+import { updateShipPhysics, MINIGAME_SHIP_CONFIG } from '../systems/shipController.js';
 import { disposeSceneGraph } from '../threeUtils.js';
 import { playSfx, playMusic } from '../audioManager.js';
 import { getMovementVector, getPointerPosition } from '../inputManager.js';
@@ -164,23 +164,8 @@ function _buildStars(): void {
 }
 
 async function _buildShip(): Promise<void> {
-    const ship = new THREE.Group();
-    ship.position.set(0, -0.3, 4);
-
-    try {
-        const mesh = await loadModel('/models/ship.glb');
-        mesh.scale.set(0.5, 0.5, 0.5);
-        mesh.rotation.y = -Math.PI / 2;
-        ship.add(mesh);
-    } catch (e) {
-        console.warn('[MiniGame3D] ship.glb not loaded, using fallback', e);
-        const fallback = createFallbackShip();
-        ship.add(fallback);
-    }
-
-    applyShipColor(ship, _shipColor);
-    _ship = ship;
-    _scene!.add(ship);
+    _ship = await loadShipGroup(_shipColor, new THREE.Vector3(0, -0.3, 4));
+    _scene!.add(_ship);
 }
 
 function _buildPlanet(): void {
@@ -273,58 +258,7 @@ function _loop(now: number): void {
 
 function _updateShip(dt: number): void {
     if (!_ship) return;
-
-    const pointer = getPointerPosition();
-    const move = getMovementVector();
-
-    const maxSpeed = SHIP_SPEED;
-    const accel = 35;
-    const drag = 0.90;
-
-    if (pointer) {
-        const targetX = pointer.x * SHIP_BOUNDS_X;
-        const targetY = pointer.y * SHIP_BOUNDS_Y;
-        
-        const dx = targetX - _ship.position.x;
-        const dy = targetY - _ship.position.y;
-        
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 0.1) {
-            const dirX = dx / dist;
-            const dirY = dy / dist;
-            const thrust = Math.min(dist * 8, accel);
-            _velocity.x += dirX * thrust * dt;
-            _velocity.y += dirY * thrust * dt;
-        }
-    } else if (move.lengthSq() > 0) {
-        _velocity.x += move.x * accel * dt;
-        _velocity.y += move.y * accel * dt;
-    }
-
-    // Искусственное трение (затухание)
-    const dragFactor = Math.pow(drag, dt * 60);
-    _velocity.x *= dragFactor;
-    _velocity.y *= dragFactor;
-
-    // Ограничение скорости
-    if (_velocity.lengthSq() > maxSpeed * maxSpeed) {
-        _velocity.normalize().multiplyScalar(maxSpeed);
-    }
-
-    _ship.position.x += _velocity.x * dt;
-    _ship.position.y += _velocity.y * dt;
-
-    _ship.position.x = THREE.MathUtils.clamp(_ship.position.x, -SHIP_BOUNDS_X, SHIP_BOUNDS_X);
-    _ship.position.y = THREE.MathUtils.clamp(_ship.position.y, -SHIP_BOUNDS_Y, SHIP_BOUNDS_Y);
-
-    const rollIntensity = _velocity.x / maxSpeed;
-    const pitchIntensity = _velocity.y / maxSpeed;
-
-    const targetRoll = -rollIntensity * 0.4;
-    const targetPitch = pitchIntensity * 0.2;
-
-    _ship.rotation.z += (targetRoll - _ship.rotation.z) * (dt * 6);
-    _ship.rotation.x += (targetPitch - _ship.rotation.x) * (dt * 6);
+    updateShipPhysics(_ship, _velocity, dt, MINIGAME_SHIP_CONFIG);
 }
 
 function _updatePlanet(dt: number): void {
@@ -500,9 +434,10 @@ function _showResults(passed: boolean, reward: MiniGameRewardDto | null): void {
     if (!overlay) return;
     overlay.classList.remove('hidden');
 
-    _setText('mg-result-icon', passed ? '🛬' : '💥');
-    _setText('mg-result-title', passed ? 'Посадка выполнена!' : 'Посадка провалена!');
-    _setText('mg-result-text', `Здоровье: ${_health}%  •  Уклонений: ${_dodged}  •  Счёт: ${_score}`);
+    const setTxt = (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setTxt('mg-result-icon', passed ? '🛬' : '💥');
+    setTxt('mg-result-title', passed ? 'Посадка выполнена!' : 'Посадка провалена!');
+    setTxt('mg-result-text', `Здоровье: ${_health}%  •  Уклонений: ${_dodged}  •  Счёт: ${_score}`);
 
     const badgesEl = document.getElementById('mg-reward-badges');
     if (badgesEl && reward?.valid) {
@@ -521,10 +456,11 @@ function _showResults(passed: boolean, reward: MiniGameRewardDto | null): void {
 }
 
 function _updateHud(landingEtaSeconds: number): void {
-    _setText('mg-timer', String(Math.ceil(Math.max(0, landingEtaSeconds))));
+    const setTxt = (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setTxt('mg-timer', String(Math.ceil(Math.max(0, landingEtaSeconds))));
 
     const healthText = `${Math.max(0, Math.round(_health))}%`;
-    _setText('mg-health', healthText);
+    setTxt('mg-health', healthText);
     const healthEl = document.getElementById('mg-health');
     if (healthEl) {
         healthEl.style.color = _health > 60 ? '#4ade80' : _health > 30 ? '#facc15' : '#f87171';
@@ -532,10 +468,7 @@ function _updateHud(landingEtaSeconds: number): void {
     }
 }
 
-function _setText(id: string, value: string): void {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-}
+
 
 function _clearAsteroids(): void {
     for (const a of _asteroids) {

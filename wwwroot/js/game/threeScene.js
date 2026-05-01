@@ -105,7 +105,16 @@ function _buildScene(name) {
             break;
         case 'flight': {
             const profile = getProfile();
+            // Layer 1: далёкие звёзды (всегда)
             _addStarfield(scene, profile.flightStarfieldCount, 0.6);
+            // Layer 2: средняя космическая пыль (medium+)
+            if (profile.flightParallaxLayers >= 2) {
+                _addFlightDustLayer(scene, 'mid', 300, 1.5, 0.25);
+            }
+            // Layer 3: ближняя пыль (high)
+            if (profile.flightParallaxLayers >= 3) {
+                _addFlightDustLayer(scene, 'near', 120, 3.0, 0.15);
+            }
             camera.position.set(0, 2, 8);
             camera.lookAt(0, 0, -50);
             // Освещение для flight
@@ -116,6 +125,11 @@ function _buildScene(name) {
             const backLight = new THREE.PointLight(0x818cf8, 0.8, 100);
             backLight.position.set(0, -5, -20);
             scene.add(backLight);
+            // ToneMapping для bloom post-processing
+            if (profile.flightPostProcessing && _renderer) {
+                _renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                _renderer.toneMappingExposure = 1.0;
+            }
             break;
         }
         case 'galaxy-map':
@@ -170,13 +184,34 @@ function _addNebulaFog(scene) {
     light.position.set(0, 50, 0);
     scene.add(light, new THREE.AmbientLight(0x1e1b4b, 0.4));
 }
+/** Adds a parallax dust layer for the flight scene */
+function _addFlightDustLayer(scene, tag, count, size, opacity) {
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * 40; // X spread
+        pos[i * 3 + 1] = (Math.random() - 0.5) * 25; // Y spread
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 600; // Z depth
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const color = tag === 'near' ? 0x8888cc : 0x6677aa;
+    const mat = new THREE.PointsMaterial({
+        color, size, sizeAttenuation: true,
+        transparent: true, opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+    });
+    const points = new THREE.Points(geo, mat);
+    points.userData = { flightDust: tag };
+    scene.add(points);
+}
 // ── Render loop ───────────────────────────────────────────────────────────
 function _startRenderLoop() {
     if (!_renderer || !_currentScene)
         return;
-    // Galaxy Map uses its own dedicated WebGLRenderer and render loop.
-    // Running this background loop simultaneously wastes GPU time for an invisible canvas.
-    if (_lastSceneName === 'galaxy-map')
+    // Galaxy Map and Flight use their own dedicated render loops.
+    // Running this background loop simultaneously wastes GPU time (double rendering).
+    if (_lastSceneName === 'galaxy-map' || _lastSceneName === 'flight')
         return;
     function render() {
         _animFrameId = requestAnimationFrame(render);
