@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { getStore, dispatch, transition, Screen, ScreenId, on, off } from '../stateManager.js';
 import { switchScene } from '../threeScene.js';
 import { GameStore, PlanetDto, ClusterDto, ClusterType, CrystalType, ClusterMeta, ActionType } from '../types.js';
@@ -128,8 +129,10 @@ window._galaxyMap = {
         _zoomingPlanetId = planetId;
         _zoomStartTime = performance.now();
 
-        // Fly camera toward the planet
-        _targetDest!.copy(planetMesh.position);
+        // Fly camera toward the planet (world position, not local to orbitPivot)
+        const worldPos = new THREE.Vector3();
+        planetMesh.getWorldPosition(worldPos);
+        _targetDest!.copy(worldPos);
         _targetRadius = 3;
 
         // Start fullscreen overlay fade-in (symmetric with zoom-out fade)
@@ -189,8 +192,10 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
         if (prevScreen === Screen.PLANET_DETAIL && returnPlanetId) {
             const planetMesh = _planetMeshes.find(m => m.userData.planetId === returnPlanetId);
             if (planetMesh) {
-                // Spawn camera right next to the planet
-                if (_targetCenter) _targetCenter.copy(planetMesh.position);
+                // Spawn camera right next to the planet (world position, not local to orbitPivot)
+                const worldPos = new THREE.Vector3();
+                planetMesh.getWorldPosition(worldPos);
+                if (_targetCenter) _targetCenter.copy(worldPos);
                 _spherical.radius = 3;
 
                 // Target: fly back to nebula overview
@@ -326,6 +331,10 @@ function _init3DMap(): void {
     _mapRenderer.setClearColor(0x050a1a, 1);
     // Output encoding для корректного цвета
     _mapRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    // Tone mapping: сжимает HDR-яркость от AdditiveBlending, чтобы
+    // частицы туманностей не пробивали порог bloom сплошным белым пятном
+    _mapRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    _mapRenderer.toneMappingExposure = 1.0;
     _mapRenderer.domElement.style.cssText = 'width:100%;height:100%;display:block;border-radius:var(--radius-sm);';
     wrap.insertBefore(_mapRenderer.domElement, wrap.firstChild);
 
@@ -345,11 +354,14 @@ function _init3DMap(): void {
 
     // Post-processing (Bloom)
     const renderPass = new RenderPass(_mapScene, _mapCamera);
-    // Strength: 0.4 (мягкое свечение), Radius: 0.8 (широкое рассеивание), Threshold: 0.85 (только для ярких объектов)
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.7, 0.5, 0.5);
+    // Strength: 0.5 (мягкое свечение), Radius: 0.4 (компактное рассеивание), Threshold: 0.92 (только яркие объекты)
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.5, 0.4, 0.92);
     _composer = new EffectComposer(_mapRenderer);
     _composer.addPass(renderPass);
     _composer.addPass(bloomPass);
+    // OutputPass: восстанавливает sRGB гамма-коррекцию и применяет toneMapping
+    // Без него EffectComposer выводит сырые линейные данные → блеклые цвета
+    _composer.addPass(new OutputPass());
 
     // Звёздный фон
     _addMapStars();
@@ -441,16 +453,37 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
             ));
         }
 
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            const node = subCenters[Math.floor(Math.random() * subCenters.length)];
-            const r = 28 + Math.random() * 37; // Полая сфера 28-65
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1);
+        const clusterPlanets = _allPlanets.filter(p => p.clusterId === clusterId);
+        let maxOrbitR = 8;
+        for (let j = 0; j < clusterPlanets.length; j++) {
+            const r = 8 + (j % 4) * 4.8 + Math.floor(j / 4) * 2.2;
+            if (r > maxOrbitR) maxOrbitR = r;
+        }
+        const innerRadius = maxOrbitR + 6; // Сделаем отступ от последней орбиты
 
-            // Асимметричное позиционирование 
-            positions[i * 3]     = node.x + r * Math.sin(phi) * Math.cos(theta) * 1.5;
-            positions[i * 3 + 1] = node.y + r * Math.sin(phi) * Math.sin(theta) * 0.25;
-            positions[i * 3 + 2] = node.z + r * Math.cos(phi) * 1.2;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            let px = 0, py = 0, pz = 0;
+            let distSq = 0;
+            let attempts = 0;
+            const minDistSq = (maxOrbitR + 3) * (maxOrbitR + 3);
+
+            do {
+                const node = subCenters[Math.floor(Math.random() * subCenters.length)];
+                const r = innerRadius + Math.random() * 37;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+
+                px = node.x + r * Math.sin(phi) * Math.cos(theta) * 1.5;
+                py = node.y + r * Math.sin(phi) * Math.sin(theta) * 0.25;
+                pz = node.z + r * Math.cos(phi) * 1.2;
+
+                distSq = px * px + py * py + pz * pz;
+                attempts++;
+            } while (distSq < minDistSq && attempts < 5);
+
+            positions[i * 3]     = px;
+            positions[i * 3 + 1] = py;
+            positions[i * 3 + 2] = pz;
 
             // Вариация яркости
             const brightness = 0.6 + Math.random() * 0.4;
@@ -486,7 +519,7 @@ function _buildNebulae(clusterIds: ClusterType[]): void {
         const sparksPos = new Float32Array(SPARKS_COUNT * 3);
         for (let i = 0; i < SPARKS_COUNT; i++) {
             const node = subCenters[Math.floor(Math.random() * subCenters.length)];
-            const r = 28 + Math.random() * 25; // Искры тоже снаружи
+            const r = innerRadius + Math.random() * 25; // Искры тоже снаружи
             const theta = Math.random() * Math.PI * 2;
             
             sparksPos[i * 3]     = node.x + r * Math.cos(theta) * 1.5;
@@ -609,8 +642,8 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         const yOffset = (Math.random() - 0.5) * 3;
         const tiltX = (Math.random() - 0.5) * 0.3; // небольшой наклон
         const tiltZ = (Math.random() - 0.5) * 0.3;
-        // Угловая скорость: чем дальше орбита, тем медленнее
-        const orbitSpeed = discovered ? (0.15 / Math.sqrt(orbitR)) : 0;
+        // Угловая скорость: чем дальше орбита, тем медленнее (двигаются все планеты)
+        const orbitSpeed = 0.15 / Math.sqrt(orbitR);
 
         // Создаём Pivot (родительский узел) для наклона всей орбиты
         const orbitPivot = new THREE.Group();
@@ -672,21 +705,19 @@ function _buildPlanetsForCluster(clusterId: ClusterType): void {
         outline.scale.setScalar(1.1);
         mesh.add(outline);
 
-        // Тонкая линия орбиты для открытой планеты (shared orbit geo, unique material)
-        if (discovered) {
-            const orbitMat = new THREE.LineBasicMaterial({
-                color: meta.color,
-                transparent: true,
-                opacity: 0.25,
-                depthWrite: false,
-            });
-            const orbitLine = new THREE.LineLoop(_sharedOrbitGeo!, orbitMat);
-            orbitLine.scale.set(orbitRadiusX, orbitRadiusZ, 1);
-            orbitLine.rotation.x = Math.PI / 2;
-            orbitLine.userData = { planetId: planet.id, type: 'orbit' };
-            orbitPivot.add(orbitLine);
-            _orbitMap.set(planet.id, orbitLine);
-        }
+        // Тонкая линия орбиты для каждой планеты (shared orbit geo, unique material)
+        const orbitMat = new THREE.LineBasicMaterial({
+            color: discovered ? meta.color : 0x556677,
+            transparent: true,
+            opacity: discovered ? 0.25 : 0.1,
+            depthWrite: false,
+        });
+        const orbitLine = new THREE.LineLoop(_sharedOrbitGeo!, orbitMat);
+        orbitLine.scale.set(orbitRadiusX, orbitRadiusZ, 1);
+        orbitLine.rotation.x = Math.PI / 2;
+        orbitLine.userData = { planetId: planet.id, type: 'orbit' };
+        orbitPivot.add(orbitLine);
+        _orbitMap.set(planet.id, orbitLine);
 
         const halo = new THREE.Sprite(new THREE.SpriteMaterial({
             map: _createGlowTexture(128, meta.colorHex, 0.4),
@@ -1201,6 +1232,9 @@ function _onMapResize(): void {
 function _cleanup3D(): void {
     if (_mapAnimId) cancelAnimationFrame(_mapAnimId);
     _mapAnimId = null;
+
+    // Dispose render targets внутри composer (предотвращает утечку GPU-памяти)
+    if (_composer) { _composer.dispose(); _composer = null; }
 
     if (_mapResizeObs) { _mapResizeObs.disconnect(); _mapResizeObs = null; }
 

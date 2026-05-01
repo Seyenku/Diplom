@@ -150,6 +150,7 @@ function _buildScene(name: SceneName): { scene: THREE.Scene; camera: THREE.Persp
 
     // Глобальный доступ к текущей сцене (для screenFlight динамического добавления объектов)
     window.__threeScene = scene;
+    (window as any).__threeCamera = camera;
 
     return { scene, camera };
 }

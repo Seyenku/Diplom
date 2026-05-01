@@ -626,6 +626,90 @@ html {
     to   { opacity: 1; }
 }
 
+/* Wave progress bar & HUD wrapper */
+.flight-hud-top-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    pointer-events: all;
+}
+
+.flight-wave-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0.65rem;
+    background: rgba(5, 10, 26, 0.75);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+.flight-wave-label {
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
+.flight-bar-track--wave {
+    flex: 1;
+    height: 0.3rem;
+}
+
+/* Hit flash overlay */
+.flight-hit-flash {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(ellipse at center, rgba(248, 113, 113, 0.35) 0%, rgba(248, 113, 113, 0) 70%);
+    transition: opacity 0.08s ease;
+}
+
+.flight-hit-flash.active {
+    opacity: 1;
+    animation: hitFlashPulse 0.4s ease-out forwards;
+}
+
+@keyframes hitFlashPulse {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Combo multiplier */
+.flight-combo {
+    position: absolute;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fbbf24;
+    text-shadow: 0 0 24px rgba(251, 191, 36, 0.5),
+                 0 0 48px rgba(251, 191, 36, 0.2);
+    pointer-events: none;
+    transition: transform 0.15s ease, opacity 0.3s ease;
+    z-index: 22;
+}
+
+/* Floating text (+N popups) */
+.flight-floating-text {
+    position: absolute;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 22;
+    text-shadow: 0 0 8px currentColor;
+    transform: translate(-50%, 0);
+    opacity: 1;
+    transition: transform 0.7s ease-out, opacity 0.7s ease-out;
+}
+
 /* Main menu layout */
 .main-menu-screen {
     width: 100%;

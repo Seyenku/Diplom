@@ -36,9 +36,12 @@ export function applyShipColor(root: THREE.Object3D, hexColor: string): void {
         });
     });
 
-    if (!bodyFound && firstPaintable && _isColorMaterial(firstPaintable)) {
-        //firstPaintable.color.set(hexColor);
-        (firstPaintable as THREE.Material).needsUpdate = true;
+    if (!bodyFound && firstPaintable) {
+        const mat = firstPaintable as unknown as { color: THREE.Color; needsUpdate: boolean };
+        if (mat.color) {
+            mat.color.set(hexColor);
+            mat.needsUpdate = true;
+        }
     }
 }
 

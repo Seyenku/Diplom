@@ -131,6 +131,7 @@ function _buildScene(name) {
     }
     // Глобальный доступ к текущей сцене (для screenFlight динамического добавления объектов)
     window.__threeScene = scene;
+    window.__threeCamera = camera;
     return { scene, camera };
 }
 function _addStarfield(scene, count, size = 1.0) {

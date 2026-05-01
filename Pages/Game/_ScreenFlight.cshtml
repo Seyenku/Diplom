@@ -9,24 +9,33 @@
 
     <!-- HUD полёта (Стейт 2) — поверх Three.js canvas -->
     <div id="flight-hud" class="flight-hud hidden">
-        <!-- Верхний левой — кристаллы текущей сессии -->
-        <div class="flight-hud-top">
-            <div class="flight-stat-group">
-                <span class="flight-stat-icon">💎</span>
-                <span id="flight-crystals-count" class="flight-stat-value">0</span>
-            </div>
-            <div class="flight-stat-group" style="font-size:0.75rem;">
-                <span id="flight-crystal-type" style="color:var(--color-text-muted);">💎 Программирование</span>
-            </div>
-            <div class="flight-stat-group">
-                <span class="flight-stat-icon">🛡</span>
-                <div class="flight-bar-track">
-                    <div id="flight-shield-bar" class="flight-bar-fill flight-bar-shield" style="width:100%"></div>
+        <!-- Верхний блок: статы + прогресс волны -->
+        <div class="flight-hud-top-wrap">
+            <div class="flight-hud-top">
+                <div class="flight-stat-group">
+                    <span class="flight-stat-icon">💎</span>
+                    <span id="flight-crystals-count" class="flight-stat-value">0</span>
+                </div>
+                <div class="flight-stat-group" style="font-size:0.75rem;">
+                    <span id="flight-crystal-type" style="color:var(--color-text-muted);">💎 Программирование</span>
+                </div>
+                <div class="flight-stat-group">
+                    <span class="flight-stat-icon">🛡</span>
+                    <div class="flight-bar-track">
+                        <div id="flight-shield-bar" class="flight-bar-fill flight-bar-shield" style="width:100%"></div>
+                    </div>
+                </div>
+                <div class="flight-stat-group">
+                    <span class="flight-stat-icon">⏱</span>
+                    <span id="flight-timer" class="flight-stat-value">60</span>
                 </div>
             </div>
-            <div class="flight-stat-group">
-                <span class="flight-stat-icon">⏱</span>
-                <span id="flight-timer" class="flight-stat-value">60</span>
+            <!-- Прогресс-бар волны -->
+            <div class="flight-wave-row">
+                <span id="flight-wave-label" class="flight-wave-label">Волна 1/3</span>
+                <div class="flight-bar-track flight-bar-track--wave">
+                    <div id="flight-wave-bar" class="flight-bar-fill" style="width:0%;background:#4ade80;"></div>
+                </div>
             </div>
         </div>
 
@@ -35,7 +44,13 @@
             <div class="flight-hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span>Маневрирование</span></div>
             <div class="flight-hint-row"><kbd>Space</kbd> <span>Ускорение</span></div>
         </div>
+
+        <!-- Комбо-множитель -->
+        <div id="flight-combo" class="flight-combo hidden">×1</div>
     </div>
+
+    <!-- Hit flash overlay (для фазы 2) -->
+    <div id="flight-hit-flash" class="flight-hit-flash"></div>
 
     <!-- Оверлей результатов (Стейт 3) -->
     <div id="flight-results" class="flight-results-overlay hidden">
