@@ -1,29 +1,54 @@
 @page
-@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,SuperAdmin")]
 @{
-    ViewData["Title"] = "Админ-панель";
+    ViewData["Title"] = "Личный кабинет";
     Layout = "_AdminLayout";
+    var isSuperAdmin = User.IsInRole("SuperAdmin");
 }
 
-<div class="admin-card">
-    <h2 class="admin-card-title">Добро пожаловать</h2>
-    <p class="admin-muted-text">Вы находитесь в панели управления проектом KosmosCore. Выберите нужный раздел в левом меню.</p>
-</div>
+<section class="admin-dashboard-hero clay-surface">
+    <div class="admin-dashboard-hero__content">
+        <span class="admin-kicker">Панель управления</span>
+        <h2>Личный кабинет администратора</h2>
+        <p>Единое рабочее пространство для управления направлениями, игровыми планетами и доступами команды.</p>
+    </div>
+    <div class="admin-dashboard-hero__badge">
+        <span>Роль</span>
+        <strong>@(isSuperAdmin ? "Суперадмин" : "Админ")</strong>
+    </div>
+</section>
 
-<div class="admin-actions-grid">
-    <div class="admin-card">
-        <h3 class="admin-card-title">Статистика системы</h3>
-        <ul class="admin-stats-list">
-            <li><strong>Всего профессий:</strong> <span>--</span></li>
-            <li><strong>Активных пользователей:</strong> <span>--</span></li>
-            <li><strong>Пройдено тестов:</strong> <span>--</span></li>
-        </ul>
-    </div>
-    <div class="admin-card">
-        <h3 class="admin-card-title">Быстрые действия</h3>
-        <div class="admin-actions-col">
-            <button class="site-nav__btn site-nav__btn--accent admin-action-btn">Добавить профессию</button>
-            <button class="site-nav__btn site-nav__btn--ghost admin-action-btn">Посмотреть логи</button>
-        </div>
-    </div>
+<div class="admin-dashboard-grid">
+    <a class="admin-feature-card clay-surface" asp-page="/Admin/Directions">
+        <span class="admin-feature-card__icon admin-feature-card__icon--blue">01</span>
+        <h3>Направления</h3>
+        <p>CRUD для образовательных программ, формы обучения, описания, дисциплин и сфер трудоустройства.</p>
+        <span class="admin-feature-card__action">Открыть раздел</span>
+    </a>
+
+    @if (isSuperAdmin)
+    {
+        <a class="admin-feature-card clay-surface" asp-page="/Admin/Planets">
+            <span class="admin-feature-card__icon admin-feature-card__icon--coral">02</span>
+            <h3>Планеты</h3>
+            <p>Создание профессий будущего, привязка к туманностям и настройка игровых параметров.</p>
+            <span class="admin-feature-card__action">Открыть раздел</span>
+        </a>
+
+        <a class="admin-feature-card clay-surface" asp-page="/Admin/Users">
+            <span class="admin-feature-card__icon admin-feature-card__icon--mint">03</span>
+            <h3>Администраторы</h3>
+            <p>Создание новых админов, смена ролей и управление доступами к личному кабинету.</p>
+            <span class="admin-feature-card__action">Открыть раздел</span>
+        </a>
+    }
+    else
+    {
+        <article class="admin-feature-card admin-feature-card--locked clay-surface">
+            <span class="admin-feature-card__icon">•</span>
+            <h3>Расширенные разделы</h3>
+            <p>Планеты и пользователи доступны только суперадмину. Для обычного админа открыт раздел направлений.</p>
+            <span class="admin-feature-card__action">Доступ ограничен</span>
+        </article>
+    }
 </div>

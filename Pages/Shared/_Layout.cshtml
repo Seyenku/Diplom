@@ -1,5 +1,9 @@
 @namespace KosmosCore.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    var pagePath = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+    var isGamePage = pagePath.Equals("/Game", StringComparison.OrdinalIgnoreCase);
+}
 
 <!DOCTYPE html>
 <html lang="ru">
@@ -28,7 +32,7 @@
 
     @await RenderSectionAsync("Head", required: false)
 </head>
-<body>
+<body class="@(isGamePage ? "game-layout" : "standard-layout")">
     <header class="site-header">
         <partial name="_NavPartial" />
     </header>
@@ -100,6 +104,50 @@
                     applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
                 });
             });
+        })();
+    </script>
+    <script>
+        (() => {
+            if (!document.body.classList.contains('standard-layout')) return;
+
+            const revealSelector = [
+                '.hero-content',
+                '.proekt-heading',
+                '.about-card',
+                '.card-item',
+                '.spec-header',
+                '.spec-toolbar',
+                '.spec-result-panel',
+                '.spec-card',
+                '.spec-empty',
+                '.test-hero',
+                '.test-side__panel',
+                '.test-card',
+                '.auth-card'
+            ].join(',');
+
+            const items = [...document.querySelectorAll(revealSelector)]
+                .filter(item => !item.closest('.game-page-container'));
+
+            items.forEach((item, index) => {
+                item.setAttribute('data-reveal', '');
+                item.style.setProperty('--reveal-delay', `${Math.min(index * 45, 360)}ms`);
+            });
+
+            if (!('IntersectionObserver' in window)) {
+                items.forEach(item => item.classList.add('is-visible'));
+                return;
+            }
+
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                });
+            }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' });
+
+            requestAnimationFrame(() => items.forEach(item => observer.observe(item)));
         })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)

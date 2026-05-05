@@ -27,7 +27,7 @@
                 <button type="submit" class="site-nav__btn site-nav__btn--ghost">Выйти</button>
             </form>
         }
-        @if (User.IsInRole("admin"))
+        @if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
         {
             <a href="~/admin" class="site-nav__btn site-nav__btn--accent">Личный кабинет</a>
         }

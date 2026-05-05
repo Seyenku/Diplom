@@ -1,0 +1,134 @@
+@page
+@model KosmosCore.Pages.Admin.DirectionsModel
+@{
+    ViewData["Title"] = "Направления";
+    Layout = "_AdminLayout";
+}
+
+<section class="admin-hero clay-surface">
+    <div>
+        <span class="admin-kicker">Каталог обучения</span>
+        <h2>Управление направлениями</h2>
+        <p>Создание и редактирование образовательных программ, которые отображаются на странице направлений.</p>
+    </div>
+    <div class="admin-hero__stat">
+        <strong>@Model.Directions.Count</strong>
+        <span>записей</span>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="admin-alert">@Model.StatusMessage</div>
+}
+
+<div class="admin-crud-grid">
+    <section class="admin-panel clay-surface">
+        <div class="admin-section-head">
+            <div>
+                <span class="admin-kicker">Форма</span>
+                <h3>@(Model.Input.ProgramId > 0 ? "Редактирование" : "Новое направление")</h3>
+            </div>
+            @if (Model.Input.ProgramId > 0)
+            {
+                <a class="admin-link" asp-page="/Admin/Directions">Очистить</a>
+            }
+        </div>
+
+        <form method="post" asp-page-handler="Save" class="admin-form">
+            <input type="hidden" asp-for="Input.ProgramId" />
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Code">Код</label>
+                <input asp-for="Input.Code" placeholder="09.03.03" />
+                <span asp-validation-for="Input.Code"></span>
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Title">Название</label>
+                <input asp-for="Input.Title" placeholder="Прикладная информатика" />
+                <span asp-validation-for="Input.Title"></span>
+            </div>
+
+            <div class="admin-form-split">
+                <div class="admin-form-row">
+                    <label asp-for="Input.FormId">Форма обучения</label>
+                    <select asp-for="Input.FormId">
+                        <option value="0">Выберите форму</option>
+                        @foreach (var form in Model.EduForms)
+                        {
+                            <option value="@form.Id">@form.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Input.FormId"></span>
+                </div>
+                <div class="admin-form-row">
+                    <label asp-for="Input.YearsEduc">Срок</label>
+                    <input asp-for="Input.YearsEduc" type="number" step="0.1" min="0.5" />
+                    <span asp-validation-for="Input.YearsEduc"></span>
+                </div>
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Description">Описание</label>
+                <textarea asp-for="Input.Description" rows="4"></textarea>
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Disciplines">Дисциплины</label>
+                <textarea asp-for="Input.Disciplines" rows="3"></textarea>
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Spheres">Сферы трудоустройства</label>
+                <textarea asp-for="Input.Spheres" rows="3"></textarea>
+            </div>
+
+            <button type="submit" class="admin-primary-btn">@(Model.Input.ProgramId > 0 ? "Сохранить изменения" : "Создать направление")</button>
+        </form>
+    </section>
+
+    <section class="admin-panel clay-surface">
+        <div class="admin-section-head">
+            <div>
+                <span class="admin-kicker">Список</span>
+                <h3>Все направления</h3>
+            </div>
+        </div>
+
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Код</th>
+                        <th>Название</th>
+                        <th>Форма</th>
+                        <th>Срок</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Directions)
+                    {
+                        <tr>
+                            <td><span class="admin-code">@item.Code</span></td>
+                            <td>@item.Title</td>
+                            <td>@item.EduForm</td>
+                            <td>@item.YearsEduc г.</td>
+                            <td class="admin-table-actions">
+                                <a class="admin-icon-btn" asp-page="/Admin/Directions" asp-route-editId="@item.ProgramId" title="Редактировать">✎</a>
+                                <form method="post" asp-page-handler="Delete" asp-route-programId="@item.ProgramId" onsubmit="return confirm('Удалить направление?');">
+                                    <button type="submit" class="admin-icon-btn admin-icon-btn--danger" title="Удалить">×</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

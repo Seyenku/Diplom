@@ -1,0 +1,121 @@
+@page
+@model KosmosCore.Pages.Admin.PlanetsModel
+@{
+    ViewData["Title"] = "Планеты";
+    Layout = "_AdminLayout";
+}
+
+<section class="admin-hero clay-surface admin-hero--coral">
+    <div>
+        <span class="admin-kicker">Профессии будущего</span>
+        <h2>Управление планетами</h2>
+        <p>Создание и настройка игровых планет: название, туманность, стоимость открытия и описание профессии.</p>
+    </div>
+    <div class="admin-hero__stat">
+        <strong>@Model.Planets.Count</strong>
+        <span>планет</span>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="admin-alert">@Model.StatusMessage</div>
+}
+
+<div class="admin-crud-grid">
+    <section class="admin-panel clay-surface">
+        <div class="admin-section-head">
+            <div>
+                <span class="admin-kicker">Форма</span>
+                <h3>@(Model.Input.Id > 0 ? "Редактирование планеты" : "Новая планета")</h3>
+            </div>
+            @if (Model.Input.Id > 0)
+            {
+                <a class="admin-link" asp-page="/Admin/Planets">Очистить</a>
+            }
+        </div>
+
+        <form method="post" asp-page-handler="Save" class="admin-form">
+            <input type="hidden" asp-for="Input.Id" />
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Title">Название</label>
+                <input asp-for="Input.Title" placeholder="Инженер искусственного интеллекта" />
+                <span asp-validation-for="Input.Title"></span>
+            </div>
+
+            <div class="admin-form-split">
+                <div class="admin-form-row">
+                    <label asp-for="Input.ClusterId">Туманность</label>
+                    <select asp-for="Input.ClusterId">
+                        <option value="0">Выберите туманность</option>
+                        @foreach (var cluster in Model.Clusters)
+                        {
+                            <option value="@cluster.Id">@cluster.DisplayName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Input.ClusterId"></span>
+                </div>
+                <div class="admin-form-row">
+                    <label asp-for="Input.UnlockCost">Стоимость</label>
+                    <input asp-for="Input.UnlockCost" type="number" min="0" />
+                    <span asp-validation-for="Input.UnlockCost"></span>
+                </div>
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.TextureId">ID текстуры</label>
+                <input asp-for="Input.TextureId" type="number" min="1" placeholder="Необязательно" />
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Description">Описание</label>
+                <textarea asp-for="Input.Description" rows="5"></textarea>
+            </div>
+
+            <button type="submit" class="admin-primary-btn">@(Model.Input.Id > 0 ? "Сохранить планету" : "Создать планету")</button>
+        </form>
+    </section>
+
+    <section class="admin-panel clay-surface">
+        <div class="admin-section-head">
+            <div>
+                <span class="admin-kicker">Список</span>
+                <h3>Каталог планет</h3>
+            </div>
+        </div>
+
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Туманность</th>
+                        <th>Стоимость</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Planets)
+                    {
+                        <tr>
+                            <td>@item.Title</td>
+                            <td>@item.ClusterDisplayName</td>
+                            <td><span class="admin-code">@item.UnlockCost</span></td>
+                            <td class="admin-table-actions">
+                                <a class="admin-icon-btn" asp-page="/Admin/Planets" asp-route-editId="@item.Id" title="Редактировать">✎</a>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" onsubmit="return confirm('Удалить планету?');">
+                                    <button type="submit" class="admin-icon-btn admin-icon-btn--danger" title="Удалить">×</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -3,7 +3,9 @@ using System.Data.Common;
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using KosmosCore.Business.DTOs.Requests;
 using KosmosCore.Business.DTOs.Responses;
+using KosmosCore.Data.Models;
 using KosmosCore.Data.Repositories.Interfaces;
 
 namespace KosmosCore.Data.Repositories.Implementations;
@@ -99,6 +101,57 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
     }
 
     /// <summary>Внутренний класс для маппинга строк AdmissionStats через Dapper.</summary>
+    public async Task<IReadOnlyList<EduForm>> GetEduFormsAsync(CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, Name FROM dbo.EduForms ORDER BY Id";
+        var result = await db.QueryAsync<EduForm>(
+            new CommandDefinition(sql, cancellationToken: ct));
+        return result.ToList().AsReadOnly();
+    }
+
+    public async Task CreateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default)
+    {
+        const string sql = @"
+            IF NOT EXISTS (SELECT 1 FROM dbo.BaseSpecializations WHERE Code = @Code)
+                INSERT INTO dbo.BaseSpecializations (Code, Title) VALUES (@Code, @Title);
+            ELSE
+                UPDATE dbo.BaseSpecializations SET Title = @Title WHERE Code = @Code;
+
+            INSERT INTO dbo.Programs (SpecCode, FormId, YearsEduc, Description, Disciplines, Spheres)
+            VALUES (@Code, @FormId, @YearsEduc, @Description, @Disciplines, @Spheres);";
+
+        await db.ExecuteAsync(new CommandDefinition(sql, direction, cancellationToken: ct));
+        cache.Remove(CacheKey);
+    }
+
+    public async Task UpdateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default)
+    {
+        const string sql = @"
+            IF NOT EXISTS (SELECT 1 FROM dbo.BaseSpecializations WHERE Code = @Code)
+                INSERT INTO dbo.BaseSpecializations (Code, Title) VALUES (@Code, @Title);
+            ELSE
+                UPDATE dbo.BaseSpecializations SET Title = @Title WHERE Code = @Code;
+
+            UPDATE dbo.Programs
+               SET SpecCode = @Code,
+                   FormId = @FormId,
+                   YearsEduc = @YearsEduc,
+                   Description = @Description,
+                   Disciplines = @Disciplines,
+                   Spheres = @Spheres
+             WHERE Id = @ProgramId;";
+
+        await db.ExecuteAsync(new CommandDefinition(sql, direction, cancellationToken: ct));
+        cache.Remove(CacheKey);
+    }
+
+    public async Task DeleteDirectionAsync(int programId, CancellationToken ct = default)
+    {
+        const string sql = "DELETE FROM dbo.Programs WHERE Id = @ProgramId";
+        await db.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId }, cancellationToken: ct));
+        cache.Remove(CacheKey);
+    }
+
     private class AdmissionStatsRow
     {
         public int     ProgramId       { get; set; }

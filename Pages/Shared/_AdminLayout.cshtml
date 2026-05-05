@@ -1,12 +1,17 @@
 @namespace KosmosCore.Pages.Admin
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    var page = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+    var isSuperAdmin = User.IsInRole("SuperAdmin");
+    string Active(string target) => page.Equals(target, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
 
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - KosmosCore Админ-панель</title>
+    <title>@ViewData["Title"] - KosmosCore</title>
     <script>
         (() => {
             const savedTheme = localStorage.getItem('kosmos-theme');
@@ -14,34 +19,47 @@
             document.documentElement.dataset.theme = savedTheme || (prefersDark ? 'dark' : 'light');
         })();
     </script>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&display=swap" rel="stylesheet" />
-    
+
     <link rel="stylesheet" href="~/css/bootstrap.min.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/StyleSheet.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
 <body class="admin-body">
     <div class="admin-wrapper">
-        <!-- Sidebar -->
-        <aside class="admin-sidebar">
+        <aside class="admin-sidebar clay-surface">
             <div class="admin-sidebar-header">
-                <h2>KosmosCore</h2>
-                <span>Панель управления</span>
+                <div class="admin-brand-mark">KC</div>
+                <div>
+                    <h2>KosmosCore</h2>
+                    <span>Личный кабинет</span>
+                </div>
             </div>
-            <nav class="admin-nav">
+
+            <nav class="admin-nav" aria-label="Админ-навигация">
                 <ul>
-                    <li><a href="~/admin" class="@(ViewContext.RouteData.Values["page"]?.ToString().EndsWith("Index") == true ? "active" : "")">Главная</a></li>
-                    <li><a href="~/admin/GraphicView" class="@(ViewContext.RouteData.Values["page"]?.ToString().EndsWith("GraphicView", StringComparison.OrdinalIgnoreCase) == true ? "active" : "")">Аналитика</a></li>
-                    <li><a href="~/">Перейти на сайт</a></li>
+                    <li><a asp-page="/Admin/Index" class="@Active("/Admin/Index")">Главная</a></li>
+                    <li><a asp-page="/Admin/Directions" class="@Active("/Admin/Directions")">Направления</a></li>
+                    @if (isSuperAdmin)
+                    {
+                        <li><a asp-page="/Admin/Planets" class="@Active("/Admin/Planets")">Планеты</a></li>
+                        <li><a asp-page="/Admin/Users" class="@Active("/Admin/Users")">Администраторы</a></li>
+                    }
+                    <li><a asp-page="/Admin/GraphicView" class="@Active("/Admin/GraphicView")">Аналитика</a></li>
+                    <li><a asp-page="/Index">Перейти на сайт</a></li>
                 </ul>
             </nav>
+
             <div class="admin-sidebar-footer">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <div class="admin-sidebar-user">Вы вошли как <br/><b>@User.Identity.Name</b></div>
+                    <div class="admin-sidebar-user">
+                        <span>@(isSuperAdmin ? "Суперадмин" : "Админ")</span>
+                        <b>@User.Identity.Name</b>
+                    </div>
                     <form method="post" asp-page="/Logout">
                         <button type="submit" class="admin-btn-logout">Выйти</button>
                     </form>
@@ -49,16 +67,18 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="admin-main">
             <header class="admin-topbar">
-                <h1 class="admin-page-title">@ViewData["Title"]</h1>
+                <div>
+                    <span class="admin-topbar__label">KosmosCore</span>
+                    <h1 class="admin-page-title">@ViewData["Title"]</h1>
+                </div>
                 <button class="theme-toggle theme-toggle--admin" type="button" data-theme-toggle aria-label="Темная тема" title="Темная тема">
                     <span class="theme-toggle__sun" aria-hidden="true">☀</span>
                     <span class="theme-toggle__moon" aria-hidden="true">☾</span>
                 </button>
             </header>
-            
+
             <div class="admin-content-inner">
                 @RenderBody()
             </div>

@@ -159,6 +159,157 @@ html.theme-transitioning .spec-stats-chart__badge {
     }
 }
 
+/* Page motion polish (ordinary pages only, game is excluded by body class) */
+:root {
+    --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --motion-fast: 180ms;
+    --motion-medium: 420ms;
+    --motion-slow: 760ms;
+}
+
+.standard-layout .site-header {
+    animation: navDrop 0.62s var(--motion-ease) both;
+}
+
+.standard-layout .site-main {
+    animation: pageSoftEnter 0.5s ease both;
+}
+
+.standard-layout [data-reveal] {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+    filter: blur(7px);
+    transition:
+        opacity var(--motion-slow) var(--motion-ease),
+        transform var(--motion-slow) var(--motion-ease),
+        filter var(--motion-medium) ease;
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform, filter;
+}
+
+.standard-layout [data-reveal].is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+}
+
+.standard-layout .site-nav__links a {
+    position: relative;
+    overflow: hidden;
+}
+
+.standard-layout .site-nav__links a::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    bottom: 7px;
+    left: 16px;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-accent), var(--color-accent-mint));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--motion-fast) ease;
+}
+
+.standard-layout .site-nav__links a:hover::after,
+.standard-layout .site-nav__links a.active::after {
+    transform: scaleX(1);
+}
+
+.standard-layout .site-nav__brand,
+.standard-layout .site-nav__btn,
+.standard-layout .theme-toggle,
+.standard-layout .card-item,
+.standard-layout .about-card,
+.standard-layout .wizard-card,
+.standard-layout .test-card,
+.standard-layout .test-option,
+.standard-layout .test-btn,
+.standard-layout .spec-card,
+.standard-layout .spec-result-item,
+.standard-layout .spec-page-btn,
+.standard-layout .spec-toolbar,
+.standard-layout .auth-card {
+    transition:
+        transform var(--motion-fast) ease,
+        box-shadow var(--motion-fast) ease,
+        border-color var(--motion-fast) ease,
+        background var(--motion-fast) ease,
+        color var(--motion-fast) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .standard-layout .site-nav__brand:hover,
+    .standard-layout .site-nav__btn:hover,
+    .standard-layout .theme-toggle:hover {
+        transform: translateY(-2px);
+    }
+
+    .standard-layout .card-item:hover,
+    .standard-layout .about-card:hover,
+    .standard-layout .wizard-card:hover,
+    .standard-layout .test-card:hover,
+    .standard-layout .spec-card:hover,
+    .standard-layout .spec-toolbar:hover,
+    .standard-layout .auth-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-clay-hover);
+    }
+
+    .standard-layout .test-option:hover,
+    .standard-layout .spec-result-item:hover,
+    .standard-layout .spec-page-btn:hover {
+        transform: translateY(-2px);
+    }
+}
+
+.standard-layout .hero-actions .site-nav__btn:first-child {
+    animation: gentlePulse 3.8s ease-in-out infinite;
+}
+
+@keyframes navDrop {
+    from {
+        opacity: 0;
+        transform: translateY(-16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pageSoftEnter {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        box-shadow: var(--shadow-glow);
+    }
+    50% {
+        box-shadow: 0 18px 40px rgba(59, 130, 246, 0.32);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .standard-layout .site-header,
+    .standard-layout .site-main,
+    .standard-layout .hero-actions .site-nav__btn:first-child,
+    .standard-layout [data-reveal] {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+}
+
 html body,
 button,
 input,

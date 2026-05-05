@@ -4,6 +4,7 @@ using System.Text.Json;
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using KosmosCore.Business.DTOs.Requests;
 using KosmosCore.Data.Models;
 using KosmosCore.Data.Repositories.Interfaces;
 
@@ -93,5 +94,37 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
             logger.LogError(ex, "SQL error in PlanetRepository.GetClustersAsync");
             throw;
         }
+    }
+
+    public async Task CreatePlanetAsync(AdminPlanetInputDto planet, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO dbo.Planets (ClusterId, Title, TextureId, UnlockCost, Description)
+            VALUES (@ClusterId, @Title, @TextureId, @UnlockCost, @Description);";
+
+        await db.ExecuteAsync(new CommandDefinition(sql, planet, cancellationToken: ct));
+        cache.Remove(CacheKey);
+    }
+
+    public async Task UpdatePlanetAsync(AdminPlanetInputDto planet, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE dbo.Planets
+               SET ClusterId = @ClusterId,
+                   Title = @Title,
+                   TextureId = @TextureId,
+                   UnlockCost = @UnlockCost,
+                   Description = @Description
+             WHERE Id = @Id;";
+
+        await db.ExecuteAsync(new CommandDefinition(sql, planet, cancellationToken: ct));
+        cache.Remove(CacheKey);
+    }
+
+    public async Task DeletePlanetAsync(int id, CancellationToken ct = default)
+    {
+        const string sql = "DELETE FROM dbo.Planets WHERE Id = @Id";
+        await db.ExecuteAsync(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
+        cache.Remove(CacheKey);
     }
 }

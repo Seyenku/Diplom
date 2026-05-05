@@ -1,0 +1,108 @@
+@page
+@model KosmosCore.Pages.Admin.UsersModel
+@{
+    ViewData["Title"] = "Администраторы";
+    Layout = "_AdminLayout";
+}
+
+<section class="admin-hero clay-surface admin-hero--mint">
+    <div>
+        <span class="admin-kicker">Доступы</span>
+        <h2>Управление администраторами</h2>
+        <p>Создание новых админов, смена ролей и удаление учетных записей. Раздел доступен только суперадмину.</p>
+    </div>
+    <div class="admin-hero__stat">
+        <strong>@Model.Admins.Count</strong>
+        <span>аккаунтов</span>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="admin-alert">@Model.StatusMessage</div>
+}
+
+<div class="admin-crud-grid">
+    <section class="admin-panel clay-surface">
+        <div class="admin-section-head">
+            <div>
+                <span class="admin-kicker">Форма</span>
+                <h3>@(Model.Input.Id > 0 ? "Редактирование доступа" : "Новый администратор")</h3>
+            </div>
+            @if (Model.Input.Id > 0)
+            {
+                <a class="admin-link" asp-page="/Admin/Users">Очистить</a>
+            }
+        </div>
+
+        <form method="post" asp-page-handler="Save" class="admin-form">
+            <input type="hidden" asp-for="Input.Id" />
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Login">Логин</label>
+                <input asp-for="Input.Login" autocomplete="username" />
+                <span asp-validation-for="Input.Login"></span>
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.Password">Пароль</label>
+                <input asp-for="Input.Password" type="password" autocomplete="new-password" placeholder="@(Model.Input.Id > 0 ? "Оставьте пустым, чтобы не менять" : "Минимум 4 символа")" />
+                <span asp-validation-for="Input.Password"></span>
+            </div>
+
+            <div class="admin-form-row">
+                <label asp-for="Input.RoleId">Роль</label>
+                <select asp-for="Input.RoleId">
+                    <option value="0">Выберите роль</option>
+                    @foreach (var role in Model.Roles)
+                    {
+                        <option value="@role.Id">@(role.RoleName == "SuperAdmin" ? "Суперадмин" : "Админ")</option>
+                    }
+                </select>
+                <span asp-validation-for="Input.RoleId"></span>
+            </div>
+
+            <button type="submit" class="admin-primary-btn">@(Model.Input.Id > 0 ? "Сохранить доступ" : "Создать админа")</button>
+        </form>
+    </section>
+
+    <section class="admin-panel clay-surface">
+        <div class="admin-section-head">
+            <div>
+                <span class="admin-kicker">Список</span>
+                <h3>Команда админов</h3>
+            </div>
+        </div>
+
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Логин</th>
+                        <th>Роль</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Admins)
+                    {
+                        <tr>
+                            <td>@item.Login</td>
+                            <td><span class="admin-role-pill @(item.RoleName == "SuperAdmin" ? "admin-role-pill--super" : "")">@(item.RoleName == "SuperAdmin" ? "Суперадмин" : "Админ")</span></td>
+                            <td class="admin-table-actions">
+                                <a class="admin-icon-btn" asp-page="/Admin/Users" asp-route-editId="@item.Id" title="Редактировать">✎</a>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" onsubmit="return confirm('Удалить администратора?');">
+                                    <button type="submit" class="admin-icon-btn admin-icon-btn--danger" title="Удалить">×</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

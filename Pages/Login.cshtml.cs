@@ -52,7 +52,12 @@ public class LoginModel : PageModel
             return Page();
         }
 
-        var roleName = string.IsNullOrWhiteSpace(user.RoleName) ? "admin" : user.RoleName;
+        var roleName = string.IsNullOrWhiteSpace(user.RoleName) ? "Admin" : user.RoleName;
+        roleName = roleName.Equals("admin", StringComparison.OrdinalIgnoreCase)
+            ? "Admin"
+            : roleName.Equals("superadmin", StringComparison.OrdinalIgnoreCase)
+                ? "SuperAdmin"
+                : roleName;
 
         var claims = new List<Claim>
         {
@@ -69,6 +74,6 @@ public class LoginModel : PageModel
             principal,
             new AuthenticationProperties { IsPersistent = true });
 
-        return RedirectToPage("/Index");
+        return RedirectToPage("/Admin/Index");
     }
 }
