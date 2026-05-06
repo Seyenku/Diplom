@@ -1,0 +1,314 @@
+/* =============================================
+   Stellar Vocation — Planet Detail
+   Glassmorphism & centered 3D layout
+   ============================================= */
+
+/* ── 3D viewport ───────────────────────────────── */
+.planet-3d-viewport {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(600px, 120vw);
+    height: min(600px, 120vw);
+    border-radius: 50%;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+    box-shadow: 0 0 80px rgba(79, 195, 247, 0.15),
+                inset 0 0 60px rgba(79, 195, 247, 0.1);
+}
+
+/* ── Detail overlay ────────────────────────────── */
+.planet-detail-overlay {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: clamp(1.25rem, 2vw, 2.2rem);
+    gap: clamp(1rem, 1.8vh, 2rem);
+    background:
+        linear-gradient(180deg, rgba(2, 8, 20, 0.78) 0%, rgba(2, 8, 20, 0.24) 22%, rgba(2, 8, 20, 0.22) 78%, rgba(2, 8, 20, 0.75) 100%);
+}
+
+.planet-player-crystals {
+    position: absolute;
+    top: clamp(0.7rem, 1.1vw, 1rem);
+    left: clamp(0.7rem, 1.1vw, 1rem);
+    z-index: 25;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: clamp(0.78rem, 0.12vw + 0.74rem, 0.9rem);
+    letter-spacing: 0.04em;
+    color: var(--color-text);
+    background: rgba(7, 14, 28, 0.72);
+    border: 1px solid rgba(120, 147, 255, 0.28);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+}
+
+/* ── Header ────────────────────────────────────── */
+.planet-detail-header {
+    text-align: center;
+    width: 100%;
+    max-width: min(760px, 94vw);
+    margin: 0 auto;
+    background: rgba(10, 15, 30, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 0.9rem;
+    padding: clamp(0.75rem, 1.1vw, 1.2rem);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.planet-description {
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+    line-height: 1.55;
+    font-size: clamp(0.9rem, 0.18vw + 0.84rem, 1.02rem);
+}
+
+#screen-planet-detail #planet-category {
+    font-size: clamp(0.7rem, 0.14vw + 0.66rem, 0.82rem);
+    letter-spacing: 0.11em;
+}
+
+#screen-planet-detail #planet-name {
+    font-size: clamp(1.45rem, 1.2vw + 1.1rem, 2rem);
+    line-height: 1.1;
+    margin-top: 0.15rem;
+}
+
+/* ── Content grid ──────────────────────────────── */
+.planet-detail-content {
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) minmax(360px, 46vw) minmax(260px, 360px);
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    width: 100%;
+    max-width: min(1680px, 98vw);
+    margin: 0 auto;
+    gap: clamp(0.8rem, 2.4vw, 3.2rem);
+    pointer-events: none;
+}
+
+.planet-detail-side {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.75rem, 1.2vh, 1.2rem);
+    width: 100%;
+    max-width: 100%;
+    pointer-events: auto;
+}
+
+.planet-detail-side:first-child { grid-column: 1; }
+.planet-detail-side:last-child { grid-column: 3; }
+
+/* ── Glass panels ──────────────────────────────── */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.glass-panel:hover {
+    background: rgba(15, 23, 42, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ── Detail card ───────────────────────────────── */
+.planet-detail-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: clamp(0.95rem, 1.1vw, 1.35rem);
+}
+
+.planet-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.25rem;
+}
+
+.planet-card-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.planet-card-title {
+    font-family: var(--font-display);
+    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
+    letter-spacing: 0.06em;
+}
+
+/* ── Skills ────────────────────────────────────── */
+.planet-skill-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.planet-skill-item {
+    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+}
+
+.planet-skill-item::before {
+    content: "•";
+    color: var(--color-primary);
+    font-weight: bold;
+}
+
+/* ── Crystal requirements ──────────────────────── */
+.crystal-req-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.crystal-req-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.65rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--crystal-color, var(--color-border));
+    border-radius: var(--radius-sm);
+    transition: box-shadow 0.3s ease;
+}
+
+.crystal-req-badge:hover {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--crystal-color) 30%, transparent);
+}
+
+.crystal-req-icon {
+    font-size: clamp(0.95rem, 0.18vw + 0.88rem, 1.08rem);
+}
+
+.crystal-req-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.crystal-req-count {
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    color: var(--crystal-color, var(--color-primary));
+}
+
+/* ── Programs ──────────────────────────────────── */
+.planet-programs-container {
+    width: 100%;
+    max-width: 760px;
+}
+
+.planet-programs-title {
+    font-family: var(--font-display);
+    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
+    letter-spacing: 0.06em;
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+}
+
+.planet-programs-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+/* ── Actions ───────────────────────────────────── */
+.planet-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    align-items: stretch;
+    width: 100%;
+    margin-top: clamp(0.3rem, 1vh, 1rem);
+    padding-bottom: calc(0.35rem + env(safe-area-inset-bottom));
+    z-index: 20;
+    pointer-events: auto;
+}
+
+.btn-action {
+    flex: 1 1 240px;
+    min-height: 48px;
+    max-width: min(100%, 420px);
+    font-size: clamp(0.92rem, 0.2vw + 0.86rem, 1.08rem);
+    border-radius: 2rem;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    white-space: normal;
+    text-transform: none;
+    letter-spacing: 0.03em;
+    line-height: 1.25;
+    text-align: center;
+    padding: 0.7rem 1rem;
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 768px) {
+    .planet-3d-viewport {
+        position: relative;
+        top: 0;
+        left: 0;
+        transform: none;
+        width: 100%;
+        max-width: 320px;
+        height: 320px;
+        margin: 0 auto;
+    }
+
+    .planet-detail-overlay {
+        padding: 1rem;
+        gap: clamp(0.75rem, 1.2vh, 1.2rem);
+    }
+
+    .planet-player-crystals {
+        top: 0.6rem;
+        left: 0.6rem;
+        font-size: 0.76rem;
+        padding: 0.35rem 0.6rem;
+    }
+
+    .planet-detail-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(0.75rem, 1.2vh, 1.2rem);
+        max-width: 100%;
+    }
+
+    .planet-detail-side {
+        max-width: 100%;
+    }
+
+    .planet-detail-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-action {
+        width: 100%;
+        max-width: 100%;
+        flex: 1 1 auto;
+    }
+}

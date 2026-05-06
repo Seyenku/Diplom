@@ -1,0 +1,65 @@
+/* ===========================================
+   KosmosCore — Global Reset & Base Layout
+   =========================================== */
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+}
+
+html, body {
+    font-size: 16px;
+    font-family: var(--font-body);
+    background: var(--page-background);
+    background-attachment: fixed;
+    color: var(--color-text-primary);
+    height: 100%;
+    width: 100%;
+    margin: 0;
+}
+
+html body,
+button,
+input,
+select,
+textarea {
+    font-family: var(--font-body);
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex-grow: 1;
+    width: 100%;
+    background: transparent;
+}
+
+.site-main {
+    padding: 0;
+}
+
+.site-main.container {
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.wrapper {
+    height: auto !important;
+    width: 100%;
+}
+
+.table {
+    font-family: var(--font-body);
+}
+
+/* Dark theme: global input color */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    color: var(--color-text-primary);
+}

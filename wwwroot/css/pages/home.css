@@ -1,0 +1,362 @@
+/* ===========================================
+   KosmosCore — Home Page
+   Hero, Proekt, About Bento, Rule Cards
+   =========================================== */
+
+/* ── Hero ───────────────────────────────────────── */
+.hero-wrapper {
+    position: relative;
+    width: 100vw;
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    margin-top: -64px; /* Compensate for the sticky nav */
+    padding-top: 64px;
+    margin-bottom: 0;
+    background: transparent;
+}
+
+#particles-js {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    background: transparent;
+}
+
+#particles-js canvas {
+    display: block;
+    background: transparent !important;
+}
+
+.hero-content {
+    --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(245, 251, 255, 0.90));
+    --clay-card-radius: 34px;
+    --clay-card-blur: blur(16px);
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 44px 34px;
+    max-width: 800px;
+    animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+}
+
+@keyframes slideUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hero-title {
+    font-family: var(--font-heading);
+    font-size: clamp(40px, 6vw, 64px);
+    font-weight: 800;
+    background: var(--gradient-heading);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 24px;
+    line-height: 1.1;
+}
+
+.hero-subtitle {
+    font-size: clamp(16px, 2vw, 20px);
+    color: var(--color-text-muted);
+    margin: 0 auto 40px;
+    line-height: 1.6;
+}
+
+/* ── Proekt section ────────────────────────────── */
+.proekt {
+    position: relative;
+    z-index: 1;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.proekt-content {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.proekt-title {
+    font-size: 36px;
+    text-align: center;
+    font-family: var(--font-heading);
+    font-weight: 800;
+    color: var(--color-text-primary);
+    margin: 0 0 40px;
+}  
+
+.proekt-title--interest {
+    margin-top: 20px;
+}
+
+.home-section {
+    position: relative;
+    z-index: 10;
+}
+
+.proekt-heading {
+    max-width: 880px;
+    margin: 0 auto 30px;
+}
+
+.proekt-kicker {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    margin-bottom: 16px;
+    padding: 7px 14px;
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    border-radius: 14px;
+    background: var(--surface-bg);
+    box-shadow: var(--surface-shadow);
+    color: var(--color-accent);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.proekt-title--bento {
+    max-width: 860px;
+    margin: 0 auto 18px;
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1.15;
+}
+
+.proekt-lead {
+    max-width: 780px;
+    margin: 0 auto;
+    color: var(--color-text-muted);
+    font-size: clamp(16px, 1.7vw, 19px);
+    line-height: 1.7;
+}
+
+/* ── About bento grid ──────────────────────────── */
+.about-bento {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 18px;
+    text-align: left;
+}
+
+.about-card {
+    --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(247, 251, 255, 0.88));
+    position: relative;
+    grid-column: span 4;
+    min-height: 0;
+    padding: 24px;
+    overflow: hidden;
+}
+
+.about-card::after {
+    content: "";
+    position: absolute;
+    right: -46px;
+    bottom: -54px;
+    width: 118px;
+    height: 118px;
+    border-radius: 38px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.10), rgba(20, 184, 166, 0.12));
+    transform: rotate(18deg);
+}
+
+[data-theme="dark"] .about-card::after {
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.09), rgba(94, 234, 212, 0.08));
+}
+
+.about-card--lead {
+    grid-column: span 6;
+    min-height: 250px;
+    padding: 34px;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(239, 248, 255, 0.9)),
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%);
+}
+
+.about-card--accent {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(242, 253, 249, 0.9)),
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.16), transparent 34%);
+}
+
+.about-card--wide {
+    grid-column: span 6;
+    min-height: 250px;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 250, 0.88)),
+        radial-gradient(circle at top right, rgba(251, 113, 133, 0.16), transparent 36%);
+}
+
+[data-theme="dark"] .about-card--lead,
+[data-theme="dark"] .about-card--accent,
+[data-theme="dark"] .about-card--wide {
+    background:
+        linear-gradient(145deg, rgba(24, 34, 52, 0.94), rgba(15, 23, 42, 0.88)),
+        radial-gradient(circle at top right, rgba(125, 211, 252, 0.12), transparent 36%);
+}
+
+.about-card__label,
+.about-card__number {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: auto;
+    margin-bottom: 12px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.about-card__number {
+    min-width: 0;
+    color: var(--color-green-accent);
+}
+
+.about-card h3 {
+    position: relative;
+    z-index: 1;
+    margin: 0 0 14px;
+    color: var(--color-text-primary);
+    font-family: var(--font-heading);
+    font-size: clamp(21px, 2vw, 30px);
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.about-card p {
+    position: relative;
+    z-index: 1;
+    max-width: 56ch;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 15px;
+    line-height: 1.58;
+    overflow-wrap: anywhere;
+}
+
+.about-card--lead p,
+.about-card--wide p {
+    font-size: 16px;
+}
+
+/* ── Rule cards ────────────────────────────────── */
+.rules-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    max-width: 1000px;
+    margin: 0 auto 80px;
+    padding: 0 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.card-item {
+    --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(247, 251, 255, 0.88));
+    --clay-card-blur: var(--glass-blur);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 40px 24px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card-item:hover {
+    transform: translateY(-6px);
+    border-color: rgba(59, 130, 246, 0.22);
+    box-shadow: var(--shadow-clay-hover);
+}
+
+.card-item .image {
+    display: block;
+    width: 200px;
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    margin-bottom: 30px;
+    transition: transform 0.4s ease;
+    border-radius: 28px;
+    box-shadow: var(--card-image-shadow);
+}
+
+.card-item:hover .image {
+    transform: scale(1.05);
+}
+
+.card-link {
+    font-size: 24px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-decoration: none;
+    color: var(--color-text-primary);
+    transition: color 0.3s ease;
+}
+
+.card-item:hover .card-link {
+    color: var(--color-accent);
+}
+
+.card-text {
+    font-size: 15px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.atlas { background-image: url('/images/atlas1.png'); }
+.naprav { background-image: url('/images/naprav1.png'); }
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 980px) {
+    .about-bento {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .about-card,
+    .about-card--lead,
+    .about-card--wide {
+        grid-column: span 6;
+        min-height: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .rules-grid { grid-template-columns: 1fr; gap: 30px; }
+    .proekt { padding: 44px 16px; }
+    .proekt-title { font-size: 28px; }
+    .proekt-title--bento { font-size: 30px; }
+    .about-card,
+    .about-card--lead {
+        padding: 24px;
+        border-radius: 24px;
+    }
+}

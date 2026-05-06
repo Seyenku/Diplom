@@ -1,0 +1,134 @@
+/* =============================================
+   Stellar Vocation — Achievements & Stats
+   ============================================= */
+
+.achievements-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.75rem;
+}
+
+.stats-card {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    transition: border-color 0.3s ease;
+}
+
+.stats-card:hover {
+    border-color: rgba(79, 195, 247, 0.3);
+}
+
+.stats-card-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    margin-bottom: 0.15rem;
+}
+
+.stats-card-value {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: var(--color-primary);
+}
+
+.stats-card-value--accent  { color: var(--color-accent, #818cf8); }
+.stats-card-value--crystal { color: #c084fc; }
+.stats-card-value--orange  { color: #fb923c; }
+.stats-card-value--green   { color: #4ade80; }
+
+.stats-card-label {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+}
+
+.achievements-section-title {
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+}
+
+.achievements-section-desc {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    opacity: 0.7;
+}
+
+/* ── Achievement badges ────────────────────────── */
+.achievements-badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.75rem;
+}
+
+.achievement-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    opacity: 0.35;
+    transition: all 0.3s ease;
+}
+
+.achievement-badge--earned {
+    opacity: 1;
+    border-color: rgba(79, 195, 247, 0.2);
+    background: rgba(79, 195, 247, 0.04);
+}
+
+.achievement-badge--earned:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 12px rgba(79, 195, 247, 0.1);
+}
+
+.achievement-badge-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.achievement-badge-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.achievement-badge-title {
+    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.achievement-badge-desc {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+.achievement-badge-check {
+    margin-left: auto;
+    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
+    color: #4ade80;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 768px) {
+    .achievements-stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    }
+    .achievements-badge-grid {
+        grid-template-columns: 1fr;
+    }
+}

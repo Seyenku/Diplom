@@ -1,0 +1,128 @@
+/* ===========================================
+   KosmosCore — Design Tokens
+   Все CSS-переменные (light + dark).
+   Расширенный набор для минимизации
+   [data-theme="dark"] override'ов.
+   =========================================== */
+
+:root {
+    /* ── Core palette ──────────────────────────── */
+    --color-bg-primary: #eef6fb;
+    --color-bg-secondary: #ffffff;
+    --color-bg-card: rgba(255, 255, 255, 0.92);
+    
+    --color-accent: #3b82f6;          /* Blue */
+    --color-accent-hover: #2563eb;
+    --color-accent-light: rgba(59, 130, 246, 0.1);
+    --color-accent-mint: #14b8a6;
+    --color-accent-coral: #fb7185;
+    
+    --color-text-primary: #1e293b;
+    --color-text-muted: #64748b;
+
+    /* ── Glass ──────────────────────────────────── */
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-border: rgba(255, 255, 255, 0.74);
+    --glass-blur: blur(12px);
+
+    /* ── Clay ───────────────────────────────────── */
+    --clay-bg: #eef6fb;
+    --clay-surface: #ffffff;
+    --clay-surface-tint: #f7fbff;
+    --clay-border: rgba(255, 255, 255, 0.9);
+    --clay-inset: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    --page-background:
+        linear-gradient(135deg, #eef6fb 0%, #f7fbff 42%, #edfdf7 100%);
+    
+    /* ── Typography ────────────────────────────── */
+    --font-heading: 'Roboto Slab', serif;
+    --font-body: 'Roboto Slab', serif;
+    
+    /* ── Shadows ────────────────────────────────── */
+    --shadow-sm: 0 8px 20px rgba(30, 41, 59, 0.07);
+    --shadow-card: 16px 18px 42px rgba(37, 99, 235, 0.10), -10px -10px 28px rgba(255, 255, 255, 0.85);
+    --shadow-clay: 18px 22px 46px rgba(30, 64, 175, 0.13), -12px -12px 30px rgba(255, 255, 255, 0.92), var(--clay-inset);
+    --shadow-clay-hover: 22px 28px 56px rgba(30, 64, 175, 0.17), -12px -12px 30px rgba(255, 255, 255, 0.94), var(--clay-inset);
+    --shadow-glow: 0 14px 32px rgba(59, 130, 246, 0.24);
+
+    /* ── Semantic surface tokens ────────────────── */
+    --surface-bg: linear-gradient(145deg, #ffffff, #f4fbff);
+    --surface-border: rgba(100, 116, 139, 0.16);
+    --surface-shadow: 8px 10px 20px rgba(30, 41, 59, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    --surface-hover-bg: rgba(255, 255, 255, 0.78);
+    --surface-hover-shadow: 6px 8px 18px rgba(59, 130, 246, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+    /* ── Heading gradient ──────────────────────── */
+    --gradient-heading: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+
+    /* ── Semantic component tokens ─────────────── */
+    --card-image-shadow: 12px 16px 32px rgba(30, 41, 59, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.62);
+    --input-bg: rgba(255, 255, 255, 0.72);
+    --progress-bg: rgba(100, 116, 139, 0.12);
+    --progress-inset-shadow: inset 2px 3px 8px rgba(30, 41, 59, 0.08);
+    --section-border: rgba(100, 116, 139, 0.12);
+    --table-header-bg: var(--color-bg-primary);
+    --table-hover-bg: var(--color-accent-light);
+    --color-green-accent: #047857;
+
+    /* ── Motion ─────────────────────────────────── */
+    --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --motion-fast: 180ms;
+    --motion-medium: 420ms;
+    --motion-slow: 760ms;
+}
+
+/* ── Dark theme ────────────────────────────────── */
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-bg-primary: #111827;
+    --color-bg-secondary: #172033;
+    --color-bg-card: rgba(24, 34, 52, 0.86);
+
+    --color-accent: #7dd3fc;
+    --color-accent-hover: #38bdf8;
+    --color-accent-light: rgba(125, 211, 252, 0.14);
+    --color-accent-mint: #5eead4;
+    --color-accent-coral: #fb7185;
+
+    --color-text-primary: #e5edf7;
+    --color-text-muted: #9fb0c7;
+
+    --glass-bg: rgba(17, 24, 39, 0.74);
+    --glass-border: rgba(148, 163, 184, 0.20);
+
+    --clay-bg: #0d1422;
+    --clay-surface: #172033;
+    --clay-surface-tint: #1e2a42;
+    --clay-border: rgba(148, 163, 184, 0.18);
+    --clay-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --page-background:
+        radial-gradient(circle at 14% 8%, rgba(56, 189, 248, 0.16), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(94, 234, 212, 0.11), transparent 28%),
+        linear-gradient(135deg, #0b1120 0%, #111827 48%, #0f172a 100%);
+
+    --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.28);
+    --shadow-card: 16px 18px 42px rgba(0, 0, 0, 0.34), -10px -10px 28px rgba(255, 255, 255, 0.03);
+    --shadow-clay: 18px 22px 46px rgba(0, 0, 0, 0.36), -12px -12px 30px rgba(255, 255, 255, 0.035), var(--clay-inset);
+    --shadow-clay-hover: 22px 28px 56px rgba(0, 0, 0, 0.44), -12px -12px 30px rgba(255, 255, 255, 0.04), var(--clay-inset);
+    --shadow-glow: 0 14px 32px rgba(56, 189, 248, 0.22);
+
+    /* Semantic surface tokens — dark */
+    --surface-bg: linear-gradient(145deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.84));
+    --surface-border: rgba(148, 163, 184, 0.18);
+    --surface-shadow: 8px 10px 22px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --surface-hover-bg: rgba(30, 41, 59, 0.82);
+    --surface-hover-shadow: 6px 8px 18px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    --gradient-heading: linear-gradient(135deg, #bae6fd 0%, #5eead4 100%);
+
+    --card-image-shadow: 12px 16px 32px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --input-bg: linear-gradient(145deg, rgba(24, 34, 52, 0.9), rgba(15, 23, 42, 0.78));
+    --progress-bg: rgba(148, 163, 184, 0.14);
+    --progress-inset-shadow: inset 2px 3px 8px rgba(0, 0, 0, 0.26);
+    --section-border: rgba(148, 163, 184, 0.14);
+    --table-header-bg: rgba(15, 23, 42, 0.84);
+    --table-hover-bg: rgba(125, 211, 252, 0.08);
+    --color-green-accent: #5eead4;
+}

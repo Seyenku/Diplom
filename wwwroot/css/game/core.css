@@ -1,0 +1,386 @@
+/* =============================================
+   Stellar Vocation — Game Core
+   Variables, reset, root containers,
+   typography, buttons, cards, scrollbar,
+   utilities, skeleton
+   ============================================= */
+
+/* ── Переменные ───────────────────────────────── */
+:root {
+    --color-bg:          #050a1a;
+    --color-bg-deep:     #020710;
+    --color-primary:     #4fc3f7;
+    --color-accent:      #a78bfa;
+    --color-glow-green:  #39ff14;
+    --color-glow-blue:   #00e5ff;
+    --color-crystal1:    #5eead4;
+    --color-crystal2:    #818cf8;
+    --color-text:        #e2e8f0;
+    --color-text-muted:  #94a3b8;
+    --color-surface:     rgba(15, 23, 42, 0.85);
+    --color-border:      rgba(99, 102, 241, 0.3);
+    --font-display:      'Tektur', sans-serif;
+    --font-body:         'Tektur', sans-serif;
+    --transition-screen: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-ui:     180ms ease;
+    --radius:            0.75rem;
+    --radius-sm:         0.375rem;
+    --user-ui-scale:     1;
+}
+
+html {
+    /* Применяем пользовательский масштаб к корню, чтобы все rem-единицы (отступы, шрифты компонентов) масштабировались честно. Базовый размер 10px взят из Bootstrap. */
+    font-size: calc(10px * var(--user-ui-scale)) !important;
+}
+
+/* ── Reset ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* html и body стили удалены, чтобы не ломать портал. Цвета и шрифты перенесены на .game-page-container */
+.game-page-container {
+    color: var(--color-text);
+    font-family: var(--font-body);
+    /* Адаптивный размер шрифта: ~16px на 1366×768, ~19px на 1920×1080, макс 24px */
+    font-size: calc(clamp(16px, 0.5vw + 0.95vh + 8px, 26px) * var(--user-ui-scale));
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── Корневой контейнер игры ───────────────────── */
+#game-root {
+    position: relative;
+    width: 100%;
+    height: 80vh;
+    min-height: 480px;
+    max-height: none;
+    overflow: hidden;
+    background: var(--color-bg-deep);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+#game-root:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    min-height: 0;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+}
+
+#game-root:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    min-height: 0;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+}
+
+/* ── Three.js canvas (слой 0) ─────────────────── */
+#game-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: block;
+}
+
+/* ── Контейнер активного экрана (слой 1) ─────── */
+#screen-container {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    outline: none; /* tabindex=-1, убираем ring при focus */
+}
+
+/* ── Динамический контент внутри экрана ────────── */
+#screen-dynamic-content {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    position: relative;
+    overflow: hidden;
+    outline: none;
+}
+
+/* Force every SPA screen to fit available game viewport without extra page scroll. */
+#screen-dynamic-content > .screen {
+    width: 100%;
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+/* ── Оверлей перехода (слой 20) ────────────────── */
+#screen-transition-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: var(--color-bg-deep);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-screen);
+}
+
+#screen-transition-overlay.fade-out {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* ── Planet Zoom Transition Overlay (слой 25) ──── */
+#planet-zoom-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    pointer-events: none;
+    opacity: 0;
+    will-change: opacity;
+}
+
+#planet-zoom-overlay.fade-in {
+    opacity: 1;
+    transition: opacity 500ms ease-in;
+}
+
+#planet-zoom-overlay.covering {
+    opacity: 1;
+}
+
+#planet-zoom-overlay.fading {
+    opacity: 0;
+    transition: opacity 400ms ease-out;
+}
+
+/* ── HUD (слой 30) ─────────────────────────────── */
+.hud-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none; /* Клики проходят сквозь, только дочерние элементы кликабельны */
+}
+
+/* ── Утилита hidden ────────────────────────────── */
+.hidden {
+    display: none !important;
+}
+
+.opacity-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ── Типография ────────────────────────────────── */
+.game-title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--color-primary);
+    text-shadow: 0 0 24px rgba(79, 195, 247, 0.6);
+}
+
+.game-subtitle {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 0.85em;
+    color: var(--color-text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+/* ── Кнопки ────────────────────────────────────── */
+.btn-game {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 0.85rem 1.95rem;
+    font-family: var(--font-display);
+    font-size: clamp(1rem, 0.22vw + 0.92rem, 1.2rem);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: transform var(--transition-ui), box-shadow var(--transition-ui), background var(--transition-ui), border-color var(--transition-ui);
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-game:hover {
+    transform: translateY(-2px);
+}
+
+.btn-game:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4fc3f7, #818cf8);
+    color: #050a1a;
+    box-shadow: 0 10px 24px rgba(79, 195, 247, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 14px 32px rgba(79, 195, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.btn-secondary {
+    background: linear-gradient(180deg, rgba(26, 36, 64, 0.78), rgba(15, 23, 42, 0.78));
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    box-shadow: 0 8px 18px rgba(4, 10, 25, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(180deg, rgba(37, 51, 84, 0.84), rgba(20, 32, 58, 0.84));
+}
+
+/* ── Карточки ──────────────────────────────────── */
+.game-card {
+    background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 45%),
+        linear-gradient(180deg, rgba(16, 26, 50, 0.92), rgba(8, 15, 30, 0.9));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    padding: clamp(1rem, 1.5vw, 1.6rem);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    transition: border-color var(--transition-ui), box-shadow var(--transition-ui), transform var(--transition-ui);
+}
+
+.game-card:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(99, 102, 241, 0.14);
+    transform: translateY(-2px);
+}
+
+/* ── Кристаллы (индикаторы ресурсов) ──────────── */
+.crystal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.875rem;
+    border-radius: 999px;
+    font-size: clamp(0.98rem, 0.2vw + 0.92rem, 1.14rem);
+    font-weight: 600;
+    background: rgba(94, 234, 212, 0.1);
+    border: 1px solid rgba(94, 234, 212, 0.3);
+    color: var(--color-crystal1);
+}
+
+/* ── Звёздный фон (CSS-частицы для статичных экранов) ── */
+.starfield {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 20% 50%, rgba(79, 195, 247, 0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(167, 139, 250, 0.06) 0%, transparent 60%),
+        var(--color-bg);
+    pointer-events: auto;
+}
+
+/* ── Скроллбар (тёмная тема) ───────────────────── */
+::-webkit-scrollbar {
+    width: 0.375rem;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg-deep);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.4);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.7);
+}
+
+/* ── Экранные переходы ─────────────────────────── */
+.screen-enter {
+    animation: screenEnter 300ms ease-out forwards;
+}
+
+@keyframes screenEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ── Skeleton / Lazy Loading Placeholders ────────── */
+.skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+.skeleton-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        110deg,
+        transparent 30%,
+        rgba(79, 195, 247, 0.06) 48%,
+        rgba(129, 140, 248, 0.08) 52%,
+        transparent 70%
+    );
+    animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.skeleton-line {
+    height: 0.85rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    background: rgba(79, 195, 247, 0.06);
+}
+
+.skeleton-line:last-child { width: 60%; }
+
+.skeleton-circle {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: rgba(79, 195, 247, 0.06);
+}
+
+/* ── Mini-Game Canvas ──────────────────────────── */
+#minigame-canvas {
+    background: #020710;
+    cursor: crosshair;
+}

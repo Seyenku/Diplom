@@ -1,0 +1,710 @@
+/* ===========================================
+   KosmosCore — Spec (Directions) Page
+   =========================================== */
+
+.spec-page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+}
+
+.spec-header {
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+.spec-title {
+    font-family: var(--font-heading);
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 800;
+    background: var(--gradient-heading);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0 0 16px;
+    line-height: 1.15;
+}
+
+.spec-subtitle {
+    font-size: clamp(15px, 2vw, 18px);
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ── Search and paging controls ────────────────── */
+.spec-toolbar {
+    --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.90));
+    --clay-card-radius: 22px;
+    --clay-card-shadow: 12px 16px 34px rgba(30, 64, 175, 0.10), -8px -8px 24px rgba(255, 255, 255, 0.88), var(--clay-inset);
+    --clay-card-blur: var(--glass-blur);
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 16px;
+}
+
+.spec-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.spec-search__icon {
+    position: absolute;
+    left: 16px;
+    color: var(--color-text-muted);
+    pointer-events: none;
+}
+
+.spec-search__input {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 48px;
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    background: var(--surface-bg);
+    color: var(--color-text-primary);
+    font: 500 15px var(--font-body);
+    outline: none;
+    box-shadow: inset 4px 5px 12px rgba(30, 41, 59, 0.04), inset -4px -4px 10px rgba(255, 255, 255, 0.86);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+[data-theme="dark"] .spec-search__input {
+    box-shadow: none;
+}
+
+.spec-search__input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 4px var(--color-accent-light);
+}
+
+.spec-search__clear {
+    position: absolute;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--input-bg);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.spec-search__clear:hover {
+    background: var(--surface-hover-bg);
+    box-shadow: var(--surface-hover-shadow);
+    color: var(--color-accent);
+    transform: translateY(-1px);
+}
+
+.spec-toolbar__meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--color-text-muted);
+}
+
+.spec-result-count {
+    min-width: 150px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: right;
+}
+
+/* ── Empty state ───────────────────────────────── */
+.spec-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--color-text-muted);
+}
+
+.spec-empty svg {
+    margin-bottom: 20px;
+    opacity: 0.4;
+}
+
+.spec-empty p {
+    font-size: 18px;
+}
+
+.spec-empty--compact {
+    --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.9));
+    --clay-card-radius: 22px;
+    --clay-card-shadow: var(--shadow-card);
+    padding: 44px 20px;
+    margin-bottom: 20px;
+}
+
+/* ── Browser layout ────────────────────────────── */
+.spec-browser {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.36fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.spec-result-panel {
+    --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.9));
+    --clay-card-radius: 24px;
+    --clay-card-blur: var(--glass-blur);
+    overflow: hidden;
+}
+
+.spec-result-panel__header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--section-border);
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.spec-result-list {
+    display: grid;
+    gap: 8px;
+    max-height: min(64vh, 620px);
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.spec-result-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "code title";
+    gap: 8px 10px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--color-text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.spec-result-item:hover {
+    background: var(--surface-hover-bg);
+    border-color: rgba(59, 130, 246, 0.18);
+    box-shadow: var(--surface-shadow);
+}
+
+[data-theme="dark"] .spec-result-item:hover {
+    background: rgba(30, 41, 59, 0.74);
+}
+
+.spec-result-item[aria-selected="true"] {
+    background: var(--surface-bg);
+    border-color: rgba(59, 130, 246, 0.34);
+    box-shadow: 10px 14px 28px rgba(59, 130, 246, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.spec-result-item__code {
+    grid-area: code;
+    align-self: start;
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: var(--color-bg-secondary);
+    box-shadow: var(--surface-shadow);
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.spec-result-item__title {
+    grid-area: title;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.spec-detail-panel {
+    min-width: 0;
+    scroll-margin-top: 166px;
+}
+
+/* ── Grid ──────────────────────────────────────── */
+.spec-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: none;
+    margin: 0;
+}
+
+/* ── Card ──────────────────────────────────────── */
+.spec-card {
+    --clay-card-bg: linear-gradient(145deg, #ffffff, #f7fbff);
+    --clay-card-radius: 28px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    animation: specFadeIn 0.5s ease both;
+}
+
+.spec-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 6px;
+    background: linear-gradient(180deg, var(--color-accent), #14b8a6);
+}
+
+.spec-card--hidden {
+    display: none;
+}
+
+.spec-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.28);
+    box-shadow: var(--shadow-clay-hover);
+}
+
+@keyframes specFadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.spec-card__header {
+    position: relative;
+    padding: 28px 32px 22px 38px;
+    color: var(--color-text-primary);
+    background:
+        linear-gradient(135deg, rgba(59, 130, 246, 0.10), rgba(20, 184, 166, 0.08)),
+        linear-gradient(145deg, #ffffff, #f5fbff);
+    border-bottom: 1px solid var(--section-border);
+}
+
+[data-theme="dark"] .spec-card__header {
+    background:
+        linear-gradient(135deg, rgba(125, 211, 252, 0.08), rgba(94, 234, 212, 0.06)),
+        linear-gradient(145deg, rgba(30, 41, 59, 0.90), rgba(15, 23, 42, 0.84));
+}
+
+.spec-card__code {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    padding: 5px 12px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+}
+
+.spec-card__title {
+    font-family: var(--font-heading);
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.15;
+    letter-spacing: 0;
+}
+
+.spec-card__body {
+    display: grid;
+    gap: 22px;
+    padding: 28px 32px 32px 38px;
+}
+
+/* ── Meta badges ───────────────────────────────── */
+.spec-card__meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 0;
+}
+
+.spec-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--surface-bg);
+    border: 1px solid var(--surface-border);
+    padding: 14px 16px;
+    border-radius: 18px;
+    box-shadow: var(--surface-shadow);
+    min-width: 0;
+}
+
+.spec-meta-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.spec-meta-value {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--color-text-primary);
+}
+
+/* ── Sections ──────────────────────────────────── */
+.spec-card__section {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.25fr) minmax(0, 1fr);
+    gap: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--section-border);
+}
+
+.spec-section-title {
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--color-accent);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.spec-section-text {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+/* ── Tags ──────────────────────────────────────── */
+.spec-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.spec-tag {
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.spec-tag--exam {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--color-accent);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.spec-tag--profession {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-green-accent);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* ── Collapsible stats ─────────────────────────── */
+.spec-card__details {
+    margin-top: 0;
+    border-top: 1px solid var(--section-border);
+    padding-top: 16px;
+}
+
+.spec-details-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 8px 0;
+    list-style: none;
+    user-select: none;
+}
+
+.spec-details-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.spec-chevron {
+    transition: transform 0.25s ease;
+}
+
+.spec-card__details[open] .spec-chevron {
+    transform: rotate(180deg);
+}
+
+.spec-details-content {
+    overflow: hidden;
+}
+
+/* ── Stats chart ───────────────────────────────── */
+.spec-stats-chart {
+    --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(246, 251, 255, 0.88));
+    --clay-card-border: 1px solid rgba(255, 255, 255, 0.92);
+    --clay-card-radius: 22px;
+    --clay-card-shadow: 10px 14px 28px rgba(30, 41, 59, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    margin-top: 12px;
+    padding: 18px;
+}
+
+.spec-stats-chart__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.spec-stats-chart__eyebrow {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.spec-stats-chart__title {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.spec-stats-chart__badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 6px 12px;
+    border: 1px solid rgba(5, 150, 105, 0.16);
+    border-radius: 999px;
+    background: var(--surface-bg);
+    box-shadow: var(--surface-shadow);
+    color: var(--color-green-accent);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.spec-line-chart {
+    position: relative;
+    height: 280px;
+    min-height: 250px;
+    padding: 18px 16px 14px;
+    overflow: hidden;
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(20, 184, 166, 0.10), transparent 32%),
+        linear-gradient(145deg, rgba(238, 246, 251, 0.78), rgba(255, 255, 255, 0.78));
+}
+
+[data-theme="dark"] .spec-line-chart {
+    background:
+        radial-gradient(circle at 18% 18%, rgba(94, 234, 212, 0.10), transparent 32%),
+        linear-gradient(145deg, rgba(15, 23, 42, 0.78), rgba(30, 41, 59, 0.70));
+}
+
+.spec-score-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ── Stats table ───────────────────────────────── */
+.spec-stats-table-wrap {
+    overflow-x: auto;
+    margin-top: 12px;
+    border-radius: 16px;
+    border: 1px solid var(--section-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.spec-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.spec-stats-table th {
+    background: var(--table-header-bg);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    padding: 12px 16px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.spec-stats-table td {
+    padding: 10px 16px;
+    color: var(--color-text-primary);
+    border-top: 1px solid var(--section-border);
+    white-space: nowrap;
+}
+
+.spec-stats-table tbody tr:hover {
+    background: var(--table-hover-bg);
+}
+
+/* ── Pagination ────────────────────────────────── */
+.spec-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+.spec-page-status {
+    min-width: 84px;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.spec-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+    background: var(--surface-bg);
+    color: var(--color-text-primary);
+    font: 700 14px var(--font-body);
+    cursor: pointer;
+    box-shadow: var(--surface-shadow);
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.spec-page-btn:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    background: var(--color-bg-secondary);
+    color: var(--color-accent);
+    transform: translateY(-1px);
+}
+
+.spec-page-btn:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 860px) {
+    .spec-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .spec-browser {
+        grid-template-columns: 1fr;
+    }
+
+    .spec-detail-panel {
+        scroll-margin-top: 24px;
+    }
+
+    .spec-result-list {
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(230px, 1fr);
+        grid-template-columns: none;
+        max-height: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x proximity;
+    }
+
+    .spec-result-item {
+        scroll-snap-align: start;
+    }
+
+    .spec-toolbar__meta {
+        justify-content: space-between;
+    }
+
+    .spec-result-count {
+        min-width: 0;
+        text-align: left;
+    }
+
+}
+
+@media (max-width: 640px) {
+    .spec-page {
+        padding: 24px 12px 60px;
+    }
+
+    .spec-header {
+        margin-bottom: 28px;
+    }
+
+    .spec-toolbar {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .spec-search__input {
+        min-height: 46px;
+        font-size: 14px;
+    }
+
+    .spec-toolbar__meta {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .spec-page-btn {
+        min-width: 36px;
+        height: 36px;
+    }
+
+    .spec-card__header {
+        padding: 22px 20px 20px 26px;
+    }
+
+    .spec-card__body {
+        padding: 22px 20px 24px 26px;
+    }
+
+    .spec-card__meta {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .spec-meta-item {
+        min-width: 0;
+    }
+
+    .spec-card__section {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .spec-stats-table th,
+    .spec-stats-table td {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}

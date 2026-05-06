@@ -1,0 +1,233 @@
+/* ===========================================
+   KosmosCore — Motion & Transitions
+   Theme transitions, page reveal animations,
+   standard-layout polish
+   =========================================== */
+
+/* ── Theme fade overlay ────────────────────────── */
+.theme-fade-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    pointer-events: none;
+    opacity: 1;
+    background-attachment: fixed;
+    transition: opacity 0.46s ease;
+}
+
+.theme-fade-overlay--hide {
+    opacity: 0;
+}
+
+/* ── Theme transition smoothing ────────────────── */
+html.theme-transitioning,
+html.theme-transitioning body,
+html.theme-transitioning main,
+html.theme-transitioning .site-header,
+html.theme-transitioning .site-footer,
+html.theme-transitioning .site-nav__links a,
+html.theme-transitioning .site-nav__btn,
+html.theme-transitioning .clay-surface,
+html.theme-transitioning .hero-content,
+html.theme-transitioning .about-card,
+html.theme-transitioning .card-item,
+html.theme-transitioning .wizard-card,
+html.theme-transitioning .test-side__panel,
+html.theme-transitioning .test-card,
+html.theme-transitioning .test-option,
+html.theme-transitioning .test-btn,
+html.theme-transitioning .spec-toolbar,
+html.theme-transitioning .spec-empty,
+html.theme-transitioning .spec-result-panel,
+html.theme-transitioning .spec-result-item,
+html.theme-transitioning .spec-card,
+html.theme-transitioning .spec-meta-item,
+html.theme-transitioning .spec-stats-chart,
+html.theme-transitioning .spec-line-chart,
+html.theme-transitioning .spec-page-btn,
+html.theme-transitioning .admin-sidebar,
+html.theme-transitioning .admin-topbar,
+html.theme-transitioning .admin-card,
+html.theme-transitioning .admin-graphics-container,
+html.theme-transitioning input,
+html.theme-transitioning select,
+html.theme-transitioning textarea {
+    transition:
+        background-color 0.42s ease,
+        background 0.42s ease,
+        color 0.34s ease,
+        border-color 0.42s ease,
+        box-shadow 0.42s ease,
+        text-shadow 0.34s ease,
+        opacity 0.34s ease;
+}
+
+html.theme-transitioning .hero-title,
+html.theme-transitioning .spec-title,
+html.theme-transitioning .about-card__number,
+html.theme-transitioning .spec-tag,
+html.theme-transitioning .test-result-tags span,
+html.theme-transitioning .spec-stats-chart__badge {
+    transition:
+        background 0.42s ease,
+        color 0.34s ease,
+        border-color 0.42s ease,
+        box-shadow 0.42s ease,
+        -webkit-text-fill-color 0.34s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .theme-fade-overlay,
+    html.theme-transitioning,
+    html.theme-transitioning * {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* ── Page motion polish (standard-layout only) ─── */
+.standard-layout .site-header {
+    animation: navDrop 0.62s var(--motion-ease) both;
+}
+
+.standard-layout .site-main {
+    animation: pageSoftEnter 0.5s ease both;
+}
+
+.standard-layout [data-reveal] {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+    filter: blur(7px);
+    transition:
+        opacity var(--motion-slow) var(--motion-ease),
+        transform var(--motion-slow) var(--motion-ease),
+        filter var(--motion-medium) ease;
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform, filter;
+}
+
+.standard-layout [data-reveal].is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+}
+
+/* ── Nav link underline animation ──────────────── */
+.standard-layout .site-nav__links a {
+    position: relative;
+    overflow: hidden;
+}
+
+.standard-layout .site-nav__links a::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    bottom: 7px;
+    left: 16px;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-accent), var(--color-accent-mint));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--motion-fast) ease;
+}
+
+.standard-layout .site-nav__links a:hover::after,
+.standard-layout .site-nav__links a.active::after {
+    transform: scaleX(1);
+}
+
+/* ── Hover/interaction transitions ─────────────── */
+.standard-layout .site-nav__brand,
+.standard-layout .site-nav__btn,
+.standard-layout .theme-toggle,
+.standard-layout .card-item,
+.standard-layout .about-card,
+.standard-layout .wizard-card,
+.standard-layout .test-card,
+.standard-layout .test-option,
+.standard-layout .test-btn,
+.standard-layout .spec-card,
+.standard-layout .spec-result-item,
+.standard-layout .spec-page-btn,
+.standard-layout .spec-toolbar,
+.standard-layout .auth-card {
+    transition:
+        transform var(--motion-fast) ease,
+        box-shadow var(--motion-fast) ease,
+        border-color var(--motion-fast) ease,
+        background var(--motion-fast) ease,
+        color var(--motion-fast) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .standard-layout .site-nav__brand:hover,
+    .standard-layout .site-nav__btn:hover,
+    .standard-layout .theme-toggle:hover {
+        transform: translateY(-2px);
+    }
+
+    .standard-layout .card-item:hover,
+    .standard-layout .about-card:hover,
+    .standard-layout .wizard-card:hover,
+    .standard-layout .test-card:hover,
+    .standard-layout .spec-card:hover,
+    .standard-layout .spec-toolbar:hover,
+    .standard-layout .auth-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-clay-hover);
+    }
+
+    .standard-layout .test-option:hover,
+    .standard-layout .spec-result-item:hover,
+    .standard-layout .spec-page-btn:hover {
+        transform: translateY(-2px);
+    }
+}
+
+.standard-layout .hero-actions .site-nav__btn:first-child {
+    animation: gentlePulse 3.8s ease-in-out infinite;
+}
+
+/* ── Keyframes ─────────────────────────────────── */
+@keyframes navDrop {
+    from {
+        opacity: 0;
+        transform: translateY(-16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pageSoftEnter {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        box-shadow: var(--shadow-glow);
+    }
+    50% {
+        box-shadow: 0 18px 40px rgba(59, 130, 246, 0.32);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .standard-layout .site-header,
+    .standard-layout .site-main,
+    .standard-layout .hero-actions .site-nav__btn:first-child,
+    .standard-layout [data-reveal] {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+}

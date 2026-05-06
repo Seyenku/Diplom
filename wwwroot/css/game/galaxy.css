@@ -1,0 +1,290 @@
+/* =============================================
+   Stellar Vocation — Galaxy Map
+   Galaxy header, 3D, nebula info, planet cards
+   ============================================= */
+
+.galaxy-map-screen {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+}
+
+.galaxy-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    justify-content: flex-end;
+    padding: 0.6rem 0.9rem;
+    background: linear-gradient(180deg, rgba(8, 16, 34, 0.84), rgba(5, 10, 26, 0.7));
+    border-bottom: 1px solid rgba(120, 147, 255, 0.2);
+}
+
+.galaxy-map-title {
+    font-size: 1.15rem;
+}
+
+.galaxy-small-btn {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.78rem;
+}
+
+.galaxy-actions {
+    display: flex;
+    gap: 0.35rem;
+    margin-left: auto;
+}
+
+.galaxy-content-panel {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.galaxy-3d-container {
+    position: relative;
+}
+
+.galaxy-3d-canvas-wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* ── Zoom control ──────────────────────────────── */
+.galaxy-zoom-control {
+    position: absolute;
+    top: 0.625rem;
+    right: 0.625rem;
+    background: rgba(5, 10, 26, 0.72);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    z-index: 5;
+}
+
+.galaxy-zoom-text {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.galaxy-zoom-value {
+    color: var(--color-text);
+}
+
+.galaxy-zoom-reset-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+}
+
+/* ── 3D tooltip ────────────────────────────────── */
+.galaxy-tooltip {
+    position: absolute;
+    z-index: 20;
+    pointer-events: none;
+    background: rgba(5, 10, 26, 0.9);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    max-width: 260px;
+    box-shadow: 0 0 12px rgba(79, 195, 247, 0.15);
+}
+
+.galaxy-tooltip-name {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    color: var(--color-text);
+    margin-bottom: 0.15rem;
+}
+
+.galaxy-tooltip-cat {
+    font-size: clamp(0.95rem, 0.18vw + 0.88rem, 1.08rem);
+    color: var(--color-text-muted);
+}
+
+.galaxy-tooltip-hint {
+    font-size: 0.8rem;
+    color: var(--color-primary);
+    margin-top: 0.3rem;
+    opacity: 0.7;
+}
+
+/* ── Nebula info panel ─────────────────────────── */
+.nebula-info-panel {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 10;
+    width: min(420px, 88vw);
+    max-height: calc(100% - 1.5rem);
+    overflow-y: auto;
+    background: rgba(5, 10, 26, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+    from { transform: translateX(-20px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+}
+
+.nebula-info-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.nebula-info-icon {
+    font-size: 2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.nebula-info-name {
+    font-family: var(--font-display);
+    font-size: clamp(1.12rem, 0.24vw + 1rem, 1.35rem);
+    letter-spacing: 0.05em;
+    color: var(--color-text);
+}
+
+.nebula-info-desc {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin-top: 0.2rem;
+}
+
+.nebula-info-stats {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.nebula-info-stat {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.nebula-fly-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+    min-height: 44px;
+    flex-shrink: 0;
+    line-height: 1.2;
+}
+
+.galaxy-nav-hint {
+    position: absolute;
+    bottom: 0.625rem;
+    right: 0.625rem;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: #8892b0;
+    pointer-events: none;
+    white-space: nowrap;
+    user-select: none;
+}
+
+/* ── Planet mini-cards ─────────────────────────── */
+.nebula-planet-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.nebula-planet-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--color-border);
+    border-radius: calc(var(--radius-sm) - 2px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nebula-planet-card:hover {
+    border-color: var(--accent, var(--color-primary));
+    background: rgba(15, 23, 42, 0.85);
+}
+
+.nebula-planet-card--open {
+    border-left: 3px solid var(--accent, var(--color-primary));
+}
+
+.nebula-planet-card--locked {
+    opacity: 0.55;
+}
+
+.nebula-planet-card--can-unlock {
+    border-left: 3px solid var(--accent, var(--color-primary));
+    opacity: 1;
+    animation: card-pulse-glow 2s ease-in-out infinite;
+}
+
+.nebula-planet-card--can-unlock .nebula-planet-cost {
+    color: var(--accent, var(--color-primary));
+    font-weight: 600;
+}
+
+@keyframes card-pulse-glow {
+    0%, 100% { box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.05); }
+    50%      { box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.12), 0 0 8px var(--accent, rgba(79, 195, 247, 0.3)); }
+}
+
+.nebula-planet-name {
+    font-size: 0.82rem;
+    color: var(--color-text);
+    flex: 1;
+    text-align: left;
+    margin-right: 0.5rem;
+}
+
+.nebula-planet-cost {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+/* Crystal badge (galaxy context override) */
+.crystal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.125rem 0.5rem;
+    background: rgba(79, 195, 247, 0.08);
+    border: 1px solid rgba(79, 195, 247, 0.15);
+    border-radius: 0.25rem;
+    font-size: 0.68rem;
+    color: var(--color-text-muted);
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 768px) {
+    .galaxy-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .nebula-info-panel {
+        width: 90vw;
+        top: 0.5rem;
+        left: 0.5rem;
+    }
+}

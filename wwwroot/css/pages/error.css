@@ -1,0 +1,101 @@
+/* ===========================================
+   KosmosCore — Error Page
+   =========================================== */
+
+.error-page-container {
+    text-align: center;
+    margin-top: 100px;
+}
+
+.error-icon {
+    color: #ef4444;
+    margin-bottom: 30px;
+}
+
+.error-icon svg {
+    animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.error-title {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 40px;
+    color: var(--color-text-primary);
+    margin-bottom: 20px;
+}
+
+.error-text {
+    font-size: 18px;
+    color: var(--color-text-muted);
+    margin-bottom: 40px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.error-request-id {
+    background: var(--color-bg-primary);
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 1px solid var(--section-border);
+    margin-bottom: 40px;
+}
+
+.error-request-label {
+    color: var(--color-text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.error-request-code {
+    margin-left: 8px;
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+.error-home-link {
+    padding: 14px 32px;
+    font-size: 16px;
+}
+
+/* ── Dev alert ─────────────────────────────────── */
+.dev-alert {
+    margin-top: 60px;
+    text-align: left;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.dev-alert__title {
+    margin-bottom: 12px;
+    color: #d97706;
+    font-family: var(--font-heading);
+    font-weight: 700;
+}
+
+.dev-alert__icon {
+    margin-right: 8px;
+    vertical-align: text-bottom;
+}
+
+.dev-alert__text {
+    margin-bottom: 8px;
+    color: #92400e;
+    font-size: 14px;
+}
+
+.dev-alert__note {
+    margin: 0;
+    color: #b45309;
+    font-size: 13px;
+}

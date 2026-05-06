@@ -1,0 +1,39 @@
+/* ===========================================
+   KosmosCore — Clay Surface System
+   Neumorphism / clay-style card base
+   =========================================== */
+
+.clay-surface,
+.hero-content,
+.about-card,
+.card-item,
+.wizard-card,
+.spec-toolbar,
+.spec-empty--compact,
+.spec-result-panel,
+.spec-card,
+.spec-stats-chart {
+    background: var(--clay-card-bg, linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(247, 251, 255, 0.88)));
+    border: var(--clay-card-border, 1px solid var(--clay-border));
+    border-radius: var(--clay-card-radius, 30px);
+    box-shadow: var(--clay-card-shadow, var(--shadow-clay));
+    backdrop-filter: var(--clay-card-blur, none);
+    -webkit-backdrop-filter: var(--clay-card-blur, none);
+}
+
+[data-theme="dark"] .clay-surface,
+[data-theme="dark"] .hero-content,
+[data-theme="dark"] .about-card,
+[data-theme="dark"] .card-item,
+[data-theme="dark"] .wizard-card,
+[data-theme="dark"] .test-side__panel,
+[data-theme="dark"] .test-card,
+[data-theme="dark"] .spec-toolbar,
+[data-theme="dark"] .spec-empty--compact,
+[data-theme="dark"] .spec-result-panel,
+[data-theme="dark"] .spec-card,
+[data-theme="dark"] .spec-stats-chart {
+    --clay-card-bg: linear-gradient(145deg, rgba(24, 34, 52, 0.92), rgba(15, 23, 42, 0.88));
+    --clay-card-border: 1px solid var(--clay-border);
+    --clay-card-shadow: var(--shadow-clay);
+}

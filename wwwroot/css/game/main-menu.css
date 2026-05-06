@@ -1,0 +1,121 @@
+/* =============================================
+   Stellar Vocation — Main Menu
+   ============================================= */
+
+.main-menu-screen {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.2rem;
+    padding: 2.2rem;
+    position: relative;
+}
+
+.main-menu-heading {
+    text-align: center;
+}
+
+.main-menu-subtitle {
+    margin-bottom: 0.6rem;
+    font-size: clamp(0.82rem, 0.4vw, 1.02rem);
+    letter-spacing: 0.26em;
+}
+
+.main-menu-title {
+    font-size: clamp(2.4rem, 5.3vw, 5rem);
+    line-height: 1.05;
+}
+
+.main-menu-description {
+    color: var(--color-text-muted);
+    margin-top: 1rem;
+    max-width: 680px;
+    font-size: clamp(1rem, 0.5vw, 1.22rem);
+    line-height: 1.65;
+}
+
+.main-menu-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: min(420px, 92vw);
+}
+
+.main-menu-version {
+    position: absolute;
+    bottom: 1.5rem;
+    color: var(--color-text-muted);
+    font-size: clamp(0.8rem, 0.25vw, 0.95rem);
+    opacity: 0.5;
+}
+
+/* ── Lore Cards ────────────────────────────────── */
+.lore-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    width: min(980px, 94vw);
+}
+
+.lore-card {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: clamp(0.95rem, 1.1vw, 1.35rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.lore-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 16px rgba(79, 195, 247, 0.1);
+}
+
+.lore-card-icon {
+    font-size: clamp(2.5rem, 1vw + 2rem, 3.3rem);
+    line-height: 1;
+}
+
+.lore-card-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.12rem, 0.24vw + 1rem, 1.35rem);
+    letter-spacing: 0.05em;
+    color: var(--color-text);
+}
+
+.lore-card-text {
+    font-size: clamp(0.98rem, 0.2vw + 0.92rem, 1.14rem);
+    color: var(--color-text-muted);
+    line-height: 1.6;
+}
+
+/* ── CTA Button ────────────────────────────────── */
+.btn-cta-university {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.9rem 1.8rem;
+    background: linear-gradient(135deg, #818cf8, #4fc3f7);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #020612;
+    font-family: var(--font-display);
+    font-size: clamp(1rem, 0.22vw + 0.92rem, 1.2rem);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-cta-university:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(79, 195, 247, 0.3);
+}
