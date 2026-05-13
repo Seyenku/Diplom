@@ -21,6 +21,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IUserRepository,        UserRepository>();
 builder.Services.AddScoped<IPlanetRepository,      PlanetRepository>();
 builder.Services.AddScoped<ISpecRepository,        SpecRepository>();
+builder.Services.AddScoped<ITelemetryRepository,   TelemetryRepository>();
 
 // --- Services ---
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();

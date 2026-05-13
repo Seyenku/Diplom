@@ -14,6 +14,7 @@ export const Screen = Object.freeze({
     GALAXY_MAP:       'galaxy-map',
     PLANET_DETAIL:    'planet-detail',
     MINIGAME:         'minigame',
+    MINIGAME_MEDICINE:'minigame-medicine',
     SHIP_UPGRADE:     'ship-upgrade',
     VOCATION_CONST:   'vocation-constellation',
     ACHIEVEMENTS:     'achievements',
@@ -264,6 +265,10 @@ declare global {
         };
         _flightScreen: {
             restart: () => void;
+        };
+        _miniGameMedicine: {
+            submitDiagnosis: () => void;
+            returnToPlanet: () => void;
         };
     }
 }

@@ -11,7 +11,7 @@ public class TelemetryEventDto
 {
     public string  SessionId  { get; init; } = string.Empty;
     public string  ActionType { get; init; } = string.Empty;
-    public int?    TargetId   { get; init; }
+    public string? TargetId   { get; init; }
     public string? CreatedAt  { get; init; }
     public string? Details    { get; init; }
 }

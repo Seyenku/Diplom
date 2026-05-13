@@ -1,134 +1,375 @@
 /* =============================================
-   Stellar Vocation — Achievements & Stats
+   Stellar Vocation — Achievements & Progress
+   Redesigned with Bootstrap 5 grid
    ============================================= */
 
-.achievements-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 0.75rem;
+/* ── Header ────────────────────────────────────── */
+.ach-player-name {
+    font-family: var(--font-display);
+    font-size: clamp(0.9rem, 0.2vw + 0.82rem, 1.05rem);
+    color: var(--color-text-muted);
+    letter-spacing: 0.04em;
 }
 
-.stats-card {
-    background: rgba(15, 23, 42, 0.5);
+.ach-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid;
+}
+
+.ach-rank-badge[data-rank="cadet"]    { color: #94a3b8; border-color: rgba(148,163,184,0.3); background: rgba(148,163,184,0.08); }
+.ach-rank-badge[data-rank="navigator"]{ color: #4fc3f7; border-color: rgba(79,195,247,0.3);  background: rgba(79,195,247,0.08); }
+.ach-rank-badge[data-rank="captain"]  { color: #a78bfa; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.08); }
+.ach-rank-badge[data-rank="admiral"]  { color: #fbbf24; border-color: rgba(251,191,36,0.3);  background: rgba(251,191,36,0.08);
+    text-shadow: 0 0 12px rgba(251,191,36,0.4);
+}
+
+/* ── Stat Cards ────────────────────────────────── */
+.ach-stat-card {
+    background:
+        linear-gradient(160deg, rgba(255,255,255,0.04), transparent 50%),
+        linear-gradient(180deg, rgba(16,26,50,0.88), rgba(8,15,30,0.85));
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: 1rem;
+    border-radius: var(--radius);
+    backdrop-filter: blur(10px);
+    padding: clamp(1rem, 1.8vw, 1.5rem);
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.3rem;
-    transition: border-color 0.3s ease;
+    gap: 0.35rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
-.stats-card:hover {
-    border-color: rgba(79, 195, 247, 0.3);
+.ach-stat-card:hover {
+    border-color: rgba(79,195,247,0.35);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 16px rgba(79,195,247,0.08);
+    transform: translateY(-2px);
 }
 
-.stats-card-icon {
-    font-size: 1.5rem;
-    line-height: 1;
+.ach-stat-icon {
+    width: 2.8rem;
+    height: 2.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(255,255,255,0.06), transparent 70%),
+                rgba(15,23,42,0.6);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 0 18px var(--glow, rgba(79,195,247,0.15)),
+                inset 0 1px 0 rgba(255,255,255,0.05);
     margin-bottom: 0.15rem;
 }
 
-.stats-card-value {
+.ach-stat-value {
     font-family: var(--font-display);
-    font-size: 1.4rem;
+    font-size: clamp(1.5rem, 0.5vw + 1.2rem, 1.9rem);
+    font-weight: 800;
     color: var(--color-primary);
+    letter-spacing: 0.02em;
 }
 
-.stats-card-value--accent  { color: var(--color-accent, #818cf8); }
-.stats-card-value--crystal { color: #c084fc; }
-.stats-card-value--orange  { color: #fb923c; }
-.stats-card-value--green   { color: #4ade80; }
-
-.stats-card-label {
+.ach-stat-label {
     font-size: 0.72rem;
     color: var(--color-text-muted);
+    letter-spacing: 0.03em;
 }
 
-.achievements-section-title {
+/* Stagger appear animation */
+.ach-stat-appear {
+    animation: achStatFadeIn 0.5s ease both;
+    animation-delay: calc(var(--delay, 0) * 0.1s);
+}
+
+@keyframes achStatFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Section Titles ────────────────────────────── */
+.ach-section-title {
     font-family: var(--font-display);
     font-size: 0.82rem;
-    letter-spacing: 0.06em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     color: var(--color-text-muted);
+    text-transform: uppercase;
 }
 
-.achievements-section-desc {
-    font-size: 0.78rem;
+.ach-section-desc {
+    font-size: 0.75rem;
     color: var(--color-text-muted);
-    opacity: 0.7;
+    opacity: 0.65;
+    margin: 0.15rem 0 0;
 }
 
-/* ── Achievement badges ────────────────────────── */
-.achievements-badge-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 0.75rem;
+/* ── Chart Cards ───────────────────────────────── */
+.ach-chart-card {
+    padding: clamp(1.2rem, 2vw, 1.8rem);
 }
 
-.achievement-badge {
+/* ── Crystal Progress Bars ─────────────────────── */
+.ach-crystal-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.ach-crystal-header {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
-    background: rgba(15, 23, 42, 0.5);
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.ach-crystal-name {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.ach-crystal-count {
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.ach-crystal-pct {
+    font-size: 0.68rem;
+    color: var(--color-text-muted);
+    margin-left: 0.25rem;
+}
+
+.ach-crystal-track {
+    height: 8px;
+    background: rgba(15,23,42,0.7);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.ach-crystal-fill {
+    height: 100%;
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 0 8px var(--bar-color, rgba(79,195,247,0.4));
+}
+
+/* ── Radar Chart ───────────────────────────────── */
+.ach-radar-wrap {
+    min-height: 320px;
+}
+
+.ach-radar-svg {
+    width: min(340px, 85vw);
+    height: auto;
+    margin-top: 0.5rem;
+    filter: drop-shadow(0 0 12px rgba(79,195,247,0.08));
+}
+
+/* ── Counter Badge ─────────────────────────────── */
+.ach-counter-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--color-primary);
+    background: rgba(79,195,247,0.08);
+    border: 1px solid rgba(79,195,247,0.2);
+}
+
+/* ── Achievement Badges ────────────────────────── */
+.ach-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem 1.15rem;
+    background:
+        linear-gradient(160deg, rgba(255,255,255,0.03), transparent 45%),
+        rgba(15,23,42,0.55);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    opacity: 0.35;
+    border-radius: var(--radius);
+    backdrop-filter: blur(8px);
     transition: all 0.3s ease;
 }
 
-.achievement-badge--earned {
+.ach-badge--locked {
+    opacity: 0.4;
+}
+
+.ach-badge--locked .ach-badge-icon {
+    filter: grayscale(1) brightness(0.6);
+}
+
+.ach-badge--earned {
     opacity: 1;
-    border-color: rgba(79, 195, 247, 0.2);
-    background: rgba(79, 195, 247, 0.04);
+    border-color: rgba(79,195,247,0.22);
+    background:
+        linear-gradient(160deg, rgba(79,195,247,0.04), transparent 45%),
+        rgba(15,23,42,0.65);
 }
 
-.achievement-badge--earned:hover {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 12px rgba(79, 195, 247, 0.1);
+.ach-badge--earned:hover {
+    border-color: rgba(79,195,247,0.45);
+    box-shadow: 0 0 20px rgba(79,195,247,0.1), 0 8px 24px rgba(0,0,0,0.25);
+    transform: translateY(-1px);
 }
 
-.achievement-badge-icon {
-    font-size: 1.6rem;
-    line-height: 1;
+.ach-badge-icon {
+    width: 2.8rem;
+    height: 2.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    border-radius: 14px;
+    background: rgba(15,23,42,0.5);
+    border: 1px solid rgba(255,255,255,0.05);
     flex-shrink: 0;
 }
 
-.achievement-badge-info {
+.ach-badge--earned .ach-badge-icon {
+    background: radial-gradient(circle at 40% 40%, rgba(79,195,247,0.12), rgba(15,23,42,0.6) 70%);
+    border-color: rgba(79,195,247,0.15);
+    box-shadow: 0 0 12px rgba(79,195,247,0.1);
+}
+
+.ach-badge-info {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
     min-width: 0;
+    flex: 1;
 }
 
-.achievement-badge-title {
-    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
-    font-weight: 600;
-    color: var(--color-text);
-}
-
-.achievement-badge-desc {
-    font-size: 0.72rem;
-    color: var(--color-text-muted);
-    line-height: 1.4;
-}
-
-.achievement-badge-check {
-    margin-left: auto;
-    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
-    color: #4ade80;
+.ach-badge-title {
+    font-family: var(--font-display);
+    font-size: clamp(0.85rem, 0.15vw + 0.8rem, 0.95rem);
     font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: 0.02em;
+}
+
+.ach-badge-desc {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    line-height: 1.45;
+}
+
+.ach-badge-status {
     flex-shrink: 0;
+    font-size: 1rem;
+    width: 1.8rem;
+    text-align: center;
+}
+
+.ach-badge-check {
+    color: #4ade80;
+    font-weight: 800;
+    text-shadow: 0 0 10px rgba(74,222,128,0.3);
+}
+
+.ach-badge-lock {
+    color: rgba(148,163,184,0.4);
+    font-size: 0.85rem;
+}
+
+/* ── CTA Card ──────────────────────────────────── */
+.ach-cta-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 1.5rem;
+    background:
+        linear-gradient(135deg, rgba(167,139,250,0.06), rgba(79,195,247,0.04)),
+        linear-gradient(180deg, rgba(16,26,50,0.88), rgba(8,15,30,0.85));
+    border: 1px solid rgba(167,139,250,0.2);
+    border-radius: var(--radius);
+    transition: all 0.3s ease;
+}
+
+.ach-cta-card:hover {
+    border-color: rgba(167,139,250,0.45);
+    box-shadow: 0 0 24px rgba(167,139,250,0.1), 0 8px 24px rgba(0,0,0,0.25);
+    transform: translateY(-1px);
+}
+
+.ach-cta-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.ach-cta-title {
+    font-family: var(--font-display);
+    font-size: clamp(0.95rem, 0.2vw + 0.88rem, 1.1rem);
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: 0.03em;
+}
+
+.ach-cta-desc {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 0.1rem;
+}
+
+.ach-cta-arrow {
+    font-size: 1.5rem;
+    color: var(--color-accent);
+    transition: transform 0.2s ease;
+}
+
+.ach-cta-card:hover .ach-cta-arrow {
+    transform: translateX(4px);
 }
 
 /* ── Responsive ────────────────────────────────── */
-@media (max-width: 768px) {
-    .achievements-stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+@media (max-width: 991px) {
+    .ach-radar-wrap {
+        min-height: 280px;
     }
-    .achievements-badge-grid {
-        grid-template-columns: 1fr;
+    .ach-radar-svg {
+        width: min(300px, 80vw);
+    }
+}
+
+@media (max-width: 575px) {
+    .ach-stat-card {
+        padding: 0.85rem;
+    }
+    .ach-stat-icon {
+        width: 2.2rem;
+        height: 2.2rem;
+        font-size: 1.1rem;
+    }
+    .ach-cta-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    .ach-cta-arrow {
+        transform: rotate(90deg);
+    }
+    .ach-cta-card:hover .ach-cta-arrow {
+        transform: rotate(90deg) translateX(4px);
     }
 }

@@ -18,10 +18,11 @@ namespace KosmosCore.Pages;
 ///  - OnPostSaveProgress()   → запись прогресса в game_saves
 /// </summary>
 [IgnoreAntiforgeryToken]
-public class GameModel(IPlanetRepository planets, IMiniGameService miniGameService, ILogger<GameModel> logger) : PageModel
+public class GameModel(IPlanetRepository planets, IMiniGameService miniGameService, ITelemetryRepository telemetry, ILogger<GameModel> logger) : PageModel
 {
     private readonly IPlanetRepository _planets = planets;
     private readonly IMiniGameService _miniGameService = miniGameService;
+    private readonly ITelemetryRepository _telemetry = telemetry;
     private readonly ILogger<GameModel> _logger = logger;
 
     /// <summary>JSON-строка начальных данных для клиентского bootstrapping.</summary>
@@ -70,6 +71,7 @@ public class GameModel(IPlanetRepository planets, IMiniGameService miniGameServi
             "galaxy-map"             => "_ScreenGalaxyMap",
             "planet-detail"          => "_ScreenPlanetDetail",
             "minigame"               => "_ScreenMiniGame",
+            "minigame-medicine"       => "_ScreenMiniGameMedicine",
             "ship-upgrade"           => "_ScreenShipUpgrade",
             "vocation-constellation" => "_ScreenVocationConstellation",
             "achievements"           => "_ScreenAchievements",
@@ -111,16 +113,49 @@ public class GameModel(IPlanetRepository planets, IMiniGameService miniGameServi
     // ──────────────────────────────────────────────
     //  POST /game?handler=Telemetry
     // ──────────────────────────────────────────────
-    public IActionResult OnPostTelemetry([FromBody] TelemetryBatchDto? batch)
+    public async Task<IActionResult> OnPostTelemetry([FromBody] TelemetryBatchDto? batch)
     {
         if (batch?.Events is null || batch.Events.Count == 0)
             return new JsonResult(new { ok = true, count = 0 }, JsonOptions);
 
-        // Логируем события (в будущем → TelemetryRepository → ActionLogs / PlayerSessions)
-        foreach (var evt in batch.Events)
+        // Группируем события по сессиям
+        foreach (var sessionGroup in batch.Events.GroupBy(e => e.SessionId))
         {
-            _logger.LogInformation("[Telemetry] {Session} | {Action} | target={Target} | {Details}",
-                evt.SessionId, evt.ActionType, evt.TargetId, evt.Details);
+            if (!Guid.TryParse(sessionGroup.Key, out var sessionId)) continue;
+
+            var startEvt = sessionGroup.FirstOrDefault(e => e.ActionType == "SESSION_START");
+            var deviceType = "desktop";
+            if (startEvt != null && !string.IsNullOrEmpty(startEvt.Details))
+            {
+                try {
+                    using var doc = JsonDocument.Parse(startEvt.Details);
+                    if (doc.RootElement.TryGetProperty("deviceType", out var dt))
+                        deviceType = dt.GetString() ?? "desktop";
+                } catch {}
+            }
+            
+            var firstEventTimeStr = sessionGroup.First().CreatedAt;
+            var startTime = DateTime.TryParse(firstEventTimeStr, out var st) ? st : DateTime.UtcNow;
+
+            await _telemetry.EnsureSessionExistsAsync(sessionId, deviceType, startTime);
+
+            var logsToInsert = sessionGroup.Select(e => new ActionLog
+            {
+                SessionId = sessionId,
+                ActionType = e.ActionType ?? "UNKNOWN",
+                TargetId = e.TargetId,
+                CreatedAt = DateTime.TryParse(e.CreatedAt, out var ct) ? ct : DateTime.UtcNow,
+                Details = e.Details ?? "{}"
+            }).ToList();
+
+            await _telemetry.InsertActionLogsAsync(logsToInsert);
+
+            var endEvt = sessionGroup.FirstOrDefault(e => e.ActionType == "SESSION_END");
+            if (endEvt != null)
+            {
+                var endTime = DateTime.TryParse(endEvt.CreatedAt, out var et) ? et : DateTime.UtcNow;
+                await _telemetry.UpdateSessionEndAsync(sessionId, endTime);
+            }
         }
 
         return new JsonResult(new { ok = true, count = batch.Events.Count }, JsonOptions);

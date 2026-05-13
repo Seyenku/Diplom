@@ -211,7 +211,7 @@ CREATE TABLE ActionLogs (
     Id BIGINT IDENTITY(1,1) PRIMARY KEY,
     SessionId UNIQUEIDENTIFIER NOT NULL,
     ActionType NVARCHAR(50) NOT NULL,
-    TargetId INT, -- ID объекта (например, планеты). Не связываем жестким FK для сохранения истории
+    TargetId NVARCHAR(100), -- ID объекта (например, планеты или экрана). Не связываем жестким FK для сохранения истории
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     Details NVARCHAR(MAX), -- JSON с параметрами события
     CONSTRAINT FK_ActionLogs_Sessions FOREIGN KEY (SessionId) REFERENCES PlayerSessions(SessionId) ON DELETE CASCADE

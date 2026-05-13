@@ -8,6 +8,7 @@
 
 import * as THREE from 'three';
 import { getStore, transition, Screen, dispatch, on, off } from '../stateManager.js';
+import type { ScreenId } from '../types.js';
 import { switchScene, registerSceneBuilder, getBaseCamera, addStarfield } from '../threeScene.js';
 
 // ── Scene Builder ───────────────────────────────────────────────────────────
@@ -29,12 +30,13 @@ import { playSfx } from '../audioManager.js';
 
 // ── Цветовая схема кластеров (из clusterConfig.ts) ──────────────────────────────
 
-const CLUSTER_META: Record<string, { label: string; color: number; emoji: string }> =
+const CLUSTER_META: Record<string, { label: string; shortLabel: string; color: number; emoji: string }> =
     Object.fromEntries(
         Object.entries(CLUSTER_MAP).map(([k, c]) => [k, {
-            label: `${c.icon} ${c.shortLabel}`,
-            color: c.color,
-            emoji: c.crystalEmoji,
+            label:      `${c.icon} ${c.shortLabel}`,
+            shortLabel: c.shortLabel,
+            color:      c.color,
+            emoji:      c.crystalEmoji,
         }])
     );
 
@@ -53,7 +55,8 @@ let _currentPlanet: PlanetDto | null = null;
 function _refreshUI(): void {
     const store = getStore();
     if (!store.player || !_currentPlanet) return;
-    _updateUnlockButton(_currentPlanet, store.player);
+    const discovered = (store.player?.discoveredPlanets ?? []).includes(_currentPlanet.id) || _currentPlanet.isStarterVisible;
+    _updateUnlockButton(_currentPlanet, store.player, discovered);
     _renderPlayerCrystals(_currentPlanet, store);
 }
 
@@ -69,34 +72,43 @@ function _unsubscribeFromStoreChanges(): void {
 
 window._planetDetail = {
     startMiniGame() {
-        transition(Screen.MINIGAME);
-    },
-    unlockPlanet(planetId: string) {
         const store = getStore();
+        const planetId = store.sessionData?.planetId;
         const catalog = (store.sessionData?.catalog ?? []) as PlanetDto[];
         const planet = catalog.find(p => p.id === planetId);
         if (!planet) return;
 
-        const crystalType = planet.crystalType as CrystalType;
-        const cost = planet.unlockCost ?? 0;
-        const playerCrystals = ((store.player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
+        const discovered = (store.player?.discoveredPlanets ?? []).includes(planet.id) || planet.isStarterVisible;
 
-        if (playerCrystals < cost) {
-            playSfx('ui_error');
-            alert(`Недостаточно кристаллов. Нужно: ${cost}, есть: ${playerCrystals}.`);
-            return;
+        // Если планета ещё не открыта — списываем кристаллы за попытку
+        if (!discovered) {
+            const crystalType = planet.crystalType as CrystalType;
+            const cost = planet.unlockCost ?? 0;
+            const bal = ((store.player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
+            if (bal < cost) {
+                playSfx('ui_error');
+                alert(`Недостаточно кристаллов для попытки открытия.\nНужно: ${cost}, есть: ${bal}.`);
+                return;
+            }
+            dispatch('SPEND_CRYSTALS', { spent: { [crystalType]: cost } as Record<CrystalType, number> });
         }
 
-        // Тратим кристаллы
-        dispatch('SPEND_CRYSTALS', { spent: { [crystalType]: cost } as Record<CrystalType, number> });
-        // Открываем планету
-        dispatch('DISCOVER_PLANET', { planetId });
-
-        // Обновляем UI
-        _updateUnlockButton(planet, getStore().player!);
-        playSfx('planet_unlock');
-    }
+        // Маршрутизация по кластеру
+        const targetScreen = _getMiniGameScreen(planet.clusterId);
+        transition(targetScreen);
+    },
+    // unlockPlanet больше не нужна — открытие происходит через мини-игру
+    unlockPlanet(_planetId: string) { /* noop */ }
 };
+
+function _getMiniGameScreen(clusterId: string): ScreenId {
+    switch (clusterId) {
+        case 'medicine': return Screen.MINIGAME_MEDICINE;
+        // TODO: case 'programming': return Screen.MINIGAME_PROGRAMMING;
+        // TODO: case 'geology':     return Screen.MINIGAME_GEOLOGY;
+        default:         return Screen.MINIGAME;
+    }
+}
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -120,16 +132,25 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _set('planet-description', planet.description);
     _renderPlayerCrystals(planet, store);
 
-    // Навыки
-    _renderList('hard-skills-list', planet.hardSkills ?? [], '🔧');
-    _renderList('soft-skills-list', planet.softSkills ?? [], '✨');
-    _renderList('risks-list', planet.risks ?? [], '⚠️');
+    // Определяем статус открытия
+    const discovered = (store.player?.discoveredPlanets ?? []).includes(planet.id) || planet.isStarterVisible;
+
+    // Навыки — скрываем до открытия планеты
+    if (discovered) {
+        _renderList('hard-skills-list', planet.hardSkills ?? [], '🔧');
+        _renderList('soft-skills-list', planet.softSkills ?? [], '✨');
+        _renderList('risks-list', planet.risks ?? [], '⚠️');
+    } else {
+        _renderLockedList('hard-skills-list');
+        _renderLockedList('soft-skills-list');
+        _renderLockedList('risks-list');
+    }
 
     // Кристаллы (стоимость открытия)
     _renderUnlockCost(planet);
 
     // Кнопка открытия / мини-игры
-    _updateUnlockButton(planet, store.player!);
+    _updateUnlockButton(planet, store.player!, discovered);
 
     // Запоминаем текущую планету и подписываемся на изменения баланса
     _currentPlanet = planet;
@@ -291,6 +312,15 @@ function _renderList(listId: string, items: string[], icon: string): void {
         : `<li class="planet-skill-item" style="opacity:0.5;">— нет данных</li>`;
 }
 
+function _renderLockedList(listId: string): void {
+    const el = document.getElementById(listId);
+    if (!el) return;
+    el.innerHTML = `
+        <li class="planet-skill-item planet-skill-locked">🔒 Скрыто до открытия</li>
+        <li class="planet-skill-item planet-skill-locked">🔒 ??????????</li>
+        <li class="planet-skill-item planet-skill-locked">🔒 ??????????</li>`;
+}
+
 function _renderUnlockCost(planet: PlanetDto): void {
     const el = document.getElementById('crystal-requirements');
     if (!el) return;
@@ -311,36 +341,43 @@ function _renderUnlockCost(planet: PlanetDto): void {
     </div>`;
 }
 
-function _updateUnlockButton(planet: PlanetDto, player: NonNullable<Parameters<typeof init>[0]['player']>): void {
+function _updateUnlockButton(
+    planet: PlanetDto,
+    player: NonNullable<Parameters<typeof init>[0]['player']>,
+    discovered: boolean
+): void {
     const btn = document.getElementById('btn-play-minigame') as HTMLButtonElement | null;
     if (!btn) return;
 
-    const discovered = (player?.discoveredPlanets ?? []).includes(planet.id) || planet.isStarterVisible;
     const cost = planet.unlockCost ?? 0;
     const crystalType = planet.crystalType as CrystalType;
     const playerCrystals = ((player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
+    const emoji = CLUSTER_META[crystalType]?.emoji ?? '💎';
 
     if (discovered) {
+        // Планета открыта — просто «пробная посадка» (старая мини-игра)
         btn.disabled = false;
         btn.style.opacity = '1';
         btn.title = '';
         btn.textContent = '🎮 Пробная посадка';
         btn.onclick = () => window._planetDetail?.startMiniGame();
     } else if (playerCrystals >= cost) {
+        // Достаточно кристаллов — предлагаем исследование
         btn.disabled = false;
         btn.style.opacity = '1';
-        btn.title = '';
-        btn.textContent = `🔓 Открыть планету — ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
-        btn.onclick = () => window._planetDetail?.unlockPlanet(planet.id);
+        btn.title = `Потратить ${cost} ${emoji} и начать исследование`;
+        btn.textContent = `🚀 Исследовать — ${cost} ${emoji}`;
+        btn.onclick = () => window._planetDetail?.startMiniGame();
     } else {
+        // Недостаточно кристаллов
         btn.disabled = false;
         btn.style.opacity = '0.5';
         btn.title = `Нужно ещё ${cost - playerCrystals} кристаллов`;
-        btn.textContent = `🔒 Открыть планету — ${cost} ${(CLUSTER_META[crystalType]?.emoji ?? '💎')}`;
+        btn.textContent = `🔒 Исследовать — ${cost} ${emoji}`;
         btn.onclick = () => {
             const meta = CLUSTER_META[crystalType];
-            const label = meta?.label?.split(' ').slice(1).join(' ') ?? 'этого типа';
-            alert(`Недостаточно кристаллов ${label}!\nНужно: ${cost}, есть: ${playerCrystals}.\nСоберите кристаллы в полёте через карту галактики.`);
+            const label = meta?.shortLabel ?? 'этого типа';
+            alert(`Недостаточно кристаллов «${label}»!\nНужно: ${cost}, есть: ${playerCrystals}.\nСоберите кристаллы в полёте через карту галактики.`);
         };
     }
 }

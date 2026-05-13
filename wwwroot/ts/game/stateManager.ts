@@ -164,6 +164,11 @@ let _activeModule: ScreenModule | null = null;
 export async function transition(screenId: ScreenId, payload: Partial<SessionData> = {}, skipPushState = false, isBack = false): Promise<void> {
     if (screenId === _store.currentScreen && Object.keys(payload).length === 0) return;
 
+    // Если переходим к настройкам без сохраненной сессии (нет игрока) -> перенаправляем на создание персонажа
+    if (screenId === Screen.SETTINGS && !_store.player) {
+        screenId = Screen.CHAR_CREATION;
+    }
+
     // Уничтожаем текущий модуль
     try { _activeModule?.destroy?.(); } catch (e) { console.error(e); }
     _activeModule = null;

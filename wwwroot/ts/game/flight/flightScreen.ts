@@ -86,13 +86,19 @@ const COMBO_TIMEOUT = 2.5;
 const WAVE_SPEED_MULT  = [1.0, 1.35, 1.8];
 const WAVE_SPAWN_MULT  = [1.0, 1.4, 2.0];
 
-type FlightState = 'idle' | 'countdown' | 'playing' | 'results';
+// Разгон: базовая длительность и бонус от апгрейда
+const BASE_ACCEL_DURATION_S = 3.0;
+const SPEED_BONUS_ACCEL_REDUCTION = 0.25; // каждый уровень speedBonus сокращает разгон на 25%
+
+type FlightState = 'idle' | 'accelerating' | 'playing' | 'results';
 
 // ── Локальное состояние ──────────────────────────
 let _state: FlightState = 'idle';
 let _animId: number | null = null;
 let _elapsed = 0;
 let _lastTime = 0;
+let _throttle = 0;           // 0.0 → 1.0 during acceleration
+let _accelDuration = BASE_ACCEL_DURATION_S;
 let _currentWave = 0;
 
 let _shield = BASE_SHIELD;
@@ -132,7 +138,7 @@ window._flightScreen = {
         const res = document.getElementById('flight-results');
         if (hud) hud.classList.remove('hidden');
         if (res) res.classList.add('hidden');
-        _startCountdown();
+        _startAccelerating();
     }
 };
 
@@ -155,6 +161,9 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _maxShield = BASE_SHIELD * (1 + _shieldBonus * 0.25);
     _shield = _maxShield;
 
+    // Длительность разгона зависит от speedBonus (каждый уровень -25%, мин 1.5с)
+    _accelDuration = Math.max(1.5, BASE_ACCEL_DURATION_S * (1 - _speedBonus * SPEED_BONUS_ACCEL_REDUCTION));
+
     const shipColor = store.player?.shipColor ?? '#4fc3f7';
     _shipModel = await loadShipGroup(shipColor);
     
@@ -166,7 +175,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     onQualityChange(_onQualityChanged);
 
     playMusic('ambient_flight');
-    _startCountdown();
+    _startAccelerating();
 }
 
 export function destroy(): void {
@@ -204,38 +213,50 @@ function _onQualityChanged(): void {
     _initSubsystems();
 }
 
-function _startCountdown(): void {
+function _startAccelerating(): void {
     _cleanupState();
-    _state = 'countdown';
-    
-    const el = document.getElementById('flight-countdown');
-    if (el) {
-        el.classList.remove('hidden');
-        el.textContent = '3';
-        playSfx('ui_click');
-        setTimeout(() => { if (_state === 'countdown') { el.textContent = '2'; playSfx('ui_click'); } }, 1000);
-        setTimeout(() => { if (_state === 'countdown') { el.textContent = '1'; playSfx('ui_click'); } }, 2000);
-        setTimeout(() => {
-            if (_state === 'countdown') {
-                el.classList.add('hidden');
-                _startPlaying();
-            }
-        }, 3000);
-    } else {
-        _startPlaying();
-    }
-}
+    _state = 'accelerating';
+    _throttle = 0;
 
-function _startPlaying(): void {
-    _state = 'playing';
+    // Показываем HUD сразу
+    const hudEl = document.getElementById('flight-hud');
+    if (hudEl) hudEl.classList.remove('hidden');
+
+    // Показываем оверлей разгона
+    const accelEl = document.getElementById('flight-accel-overlay');
+    if (accelEl) {
+        accelEl.classList.remove('hidden');
+        accelEl.classList.remove('fade-out');
+    }
+
+    playSfx('ui_click');
     _lastTime = performance.now();
     if (_animId) cancelAnimationFrame(_animId);
     _animId = requestAnimationFrame(_gameLoop);
     _updateUi();
 }
 
+function _finishAcceleration(): void {
+    _state = 'playing';
+    _throttle = 1;
+
+    // Плавный fade-out оверлея разгона
+    const accelEl = document.getElementById('flight-accel-overlay');
+    if (accelEl) {
+        accelEl.classList.add('fade-out');
+        setTimeout(() => accelEl.classList.add('hidden'), 600);
+    }
+
+    playSfx('ui_click');
+}
+
+/** easeInQuad: плавный старт, ускоряющийся к концу */
+function _easeInQuad(t: number): number {
+    return t * t;
+}
+
 function _gameLoop(now: number): void {
-    if (_state !== 'playing' && _state !== 'results') return;
+    if (_state !== 'accelerating' && _state !== 'playing' && _state !== 'results') return;
 
     let rawDt = (now - _lastTime) / 1000;
     rawDt = Math.min(rawDt, 0.1);
@@ -247,6 +268,45 @@ function _gameLoop(now: number): void {
     const timeScale = _hitStunRemaining > 0 ? 0.2 : 1.0;
     const dt = rawDt * timeScale;
 
+    // ── Фаза разгона ─────────────────────────────
+    if (_state === 'accelerating') {
+        const rawThrottle = Math.min(1, _throttle + rawDt / _accelDuration);
+        _throttle = rawThrottle;
+        const easedThrottle = _easeInQuad(_throttle);
+
+        // Корабль управляем во время разгона
+        if (_shipModel) {
+            const speedBonusMult = 1 + _speedBonus * 0.3;
+            updateShipPhysics(_shipModel, _velocity, dt, FLIGHT_SHIP_CONFIG, 1.0, speedBonusMult);
+        }
+
+        // Обновляем UI индикатор разгона
+        Ui.updateAccelIndicator(easedThrottle);
+
+        // VFX масштабируются с throttle
+        if (_vfxState) {
+            updateVfx(_vfxState, dt, rawDt, false, 0, _maxShield, _maxShield, 0, 0, _shipModel, getProfile(), false, easedThrottle);
+        }
+
+        // Рендер
+        const scene = window.__threeScene;
+        const cam = (window as any).__threeCamera as THREE.PerspectiveCamera | undefined;
+        if (_composer) {
+            _composer.render();
+        } else if (globalRenderer && scene && cam) {
+            globalRenderer.render(scene, cam);
+        }
+
+        // Переход к playing при полном разгоне
+        if (_throttle >= 1) {
+            _finishAcceleration();
+        }
+
+        _animId = requestAnimationFrame(_gameLoop);
+        return;
+    }
+
+    // ── Фаза игры ────────────────────────────────
     if (_state === 'playing') {
         _elapsed += dt;
 
@@ -322,7 +382,7 @@ function _gameLoop(now: number): void {
     }
 
     if (_vfxState) {
-        updateVfx(_vfxState, dt, rawDt, isBoostPressed(), _hitStunRemaining, _shield, _maxShield, _elapsed, _currentWave, _shipModel, getProfile(), _state === 'playing');
+        updateVfx(_vfxState, dt, rawDt, isBoostPressed(), _hitStunRemaining, _shield, _maxShield, _elapsed, _currentWave, _shipModel, getProfile(), _state === 'playing', 1.0);
     }
 
     const scene = window.__threeScene;
@@ -445,6 +505,7 @@ function _cleanupState(): void {
     _iFramesRemaining = 0;
     _hitStunRemaining = 0;
     _velocity.set(0, 0);
+    _throttle = 0;
 
     const scene = window.__threeScene;
     if (scene) {

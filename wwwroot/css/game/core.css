@@ -29,8 +29,8 @@
 }
 
 html {
-    /* Применяем пользовательский масштаб к корню, чтобы все rem-единицы (отступы, шрифты компонентов) масштабировались честно. Базовый размер 10px взят из Bootstrap. */
-    font-size: calc(10px * var(--user-ui-scale)) !important;
+    /* Базовый rem = 13px (бывший 10px × 1.3). Пользовательский масштаб UI регулирует ±30%. */
+    font-size: calc(13px * var(--user-ui-scale)) !important;
 }
 
 /* ── Reset ──────────────────────────────────────── */
@@ -46,8 +46,8 @@ html {
 .game-page-container {
     color: var(--color-text);
     font-family: var(--font-body);
-    /* Адаптивный размер шрифта: ~16px на 1366×768, ~19px на 1920×1080, макс 24px */
-    font-size: calc(clamp(16px, 0.5vw + 0.95vh + 8px, 26px) * var(--user-ui-scale));
+    /* Адаптивный размер шрифта: ~21px на 1366×768, ~25px на 1920×1080, макс 34px */
+    font-size: calc(clamp(21px, 0.65vw + 1.24vh + 10px, 34px) * var(--user-ui-scale));
     -webkit-font-smoothing: antialiased;
 }
 

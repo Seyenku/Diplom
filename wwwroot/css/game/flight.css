@@ -3,32 +3,58 @@
    HUD, Countdown, Results, Effects
    ============================================= */
 
-/* ── Countdown overlay ─────────────────────────── */
-.flight-countdown-overlay {
+/* ── Acceleration overlay ──────────────────────── */
+.flight-accel-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(2, 6, 18, 0.88);
+    background: rgba(2, 6, 18, 0.65);
+    backdrop-filter: blur(4px);
     z-index: 30;
-    gap: 1rem;
+    gap: 1.2rem;
+    transition: opacity 0.5s ease;
 }
 
-.countdown-number {
+.flight-accel-overlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.flight-accel-label {
     font-family: var(--font-display);
-    font-size: 8rem;
+    font-size: clamp(1.6rem, 3vw, 2.8rem);
     font-weight: 800;
+    letter-spacing: 0.14em;
     color: var(--color-primary);
-    text-shadow: 0 0 40px rgba(79, 195, 247, 0.5),
-                 0 0 80px rgba(79, 195, 247, 0.2);
-    animation: countPulse 1s ease-in-out infinite;
+    text-shadow: 0 0 24px rgba(79, 195, 247, 0.5),
+                 0 0 60px rgba(79, 195, 247, 0.2);
+    animation: accelPulse 1.2s ease-in-out infinite;
 }
 
-@keyframes countPulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50%      { transform: scale(1.15); opacity: 0.85; }
+.flight-accel-track {
+    width: min(320px, 60vw);
+    height: 6px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.flight-accel-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-primary), #818cf8);
+    box-shadow: 0 0 12px rgba(79, 195, 247, 0.5);
+    transition: width 0.08s linear;
+}
+
+@keyframes accelPulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.04); }
 }
 
 .countdown-subtitle {

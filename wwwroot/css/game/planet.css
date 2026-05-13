@@ -177,6 +177,35 @@
     font-weight: bold;
 }
 
+/* ── Locked skills (planet not yet discovered) ── */
+.planet-skill-locked {
+    color: #334155;
+    font-style: italic;
+    filter: blur(2px);
+    user-select: none;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.planet-skill-locked::before {
+    content: "";
+    display: none;
+}
+
+.planet-skills-locked-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.85rem;
+    background: rgba(248, 113, 113, 0.07);
+    border: 1px dashed rgba(248, 113, 113, 0.25);
+    border-radius: var(--radius-sm);
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-style: italic;
+    margin-bottom: 0.35rem;
+}
+
 /* ── Crystal requirements ──────────────────────── */
 .crystal-req-container {
     display: flex;

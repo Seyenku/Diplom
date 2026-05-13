@@ -1,7 +1,7 @@
 /**
- * screenAchievements.ts — Достижения, Radar Chart и аналитика прогресса
+ * screenAchievements.ts — Прогресс навигатора (redesign)
  *
- * Перестроено на 3-кластерную систему (programming / medicine / geology).
+ * Radar Chart + Crystal Progress Bars + Achievement Badges + Rank System
  */
 
 import { getStore } from '../stateManager.js';
@@ -30,6 +30,27 @@ const ACHIEVEMENTS_DEF: AchievementDef[] = [
     { id: 'explorer-5',       icon: '🗺', title: 'Исследователь',      desc: 'Открыл 5 планет.' },
 ];
 
+// ── Ранги ────────────────────────────────────────────────────────────────────
+
+interface Rank {
+    key: string;
+    label: string;
+    minCrystals: number;
+}
+
+const RANKS: Rank[] = [
+    { key: 'admiral',   label: 'Адмирал',    minCrystals: 300 },
+    { key: 'captain',   label: 'Капитан',    minCrystals: 150 },
+    { key: 'navigator', label: 'Навигатор',  minCrystals: 50 },
+    { key: 'cadet',     label: 'Кадет',      minCrystals: 0 },
+];
+
+function _getRank(totalCrystals: number): Rank {
+    return RANKS.find(r => totalCrystals >= r.minCrystals) ?? RANKS[RANKS.length - 1];
+}
+
+// ── Window API ──────────────────────────────────────────────────────────────
+
 window._achievements = {
     exportStats() {
         const store = getStore();
@@ -46,6 +67,8 @@ window._achievements = {
     }
 };
 
+// ── Init ────────────────────────────────────────────────────────────────────
+
 export async function init(store: Readonly<GameStore>): Promise<void> {
     const player  = store.player ?? {} as NonNullable<typeof store.player>;
     const badges  = new Set(player.badges ?? []);
@@ -53,22 +76,35 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     const stats   = player.stats ?? {};
     const planets = (player.discoveredPlanets ?? []).length;
 
-    // Статистика
+    // Compute totals
+    const totalCr = Object.values(crystals).reduce((a, b) => a + (b as number), 0);
+
+    // Stats (без дубликатов — убран "Сканирования" т.к. = планетам)
     _set('stat-planets',         String(planets));
-    _set('stat-scans',           String(stats.scans ?? 0));
     _set('stat-minigames',       String(stats.miniGamesPlayed ?? 0));
     _set('stat-flights',         String(stats.flights ?? 0));
+    _set('stat-total-crystals',  String(stats.totalCrystalsEarned ?? totalCr));
 
-    const totalCr = Object.values(crystals).reduce((a, b) => a + (b as number), 0);
-    _set('stat-total-crystals', String(stats.totalCrystalsEarned ?? totalCr));
+    // Player name & rank
+    _set('ach-player-name', player.name || 'Навигатор');
+    const rank = _getRank(stats.totalCrystalsEarned ?? totalCr);
+    const rankEl = document.getElementById('ach-rank');
+    if (rankEl) {
+        rankEl.textContent = rank.label;
+        rankEl.setAttribute('data-rank', rank.key);
+    }
 
-    // Авто-выдача достижений на основе прогресса
+    // Auto-check achievements
     _autoCheckAchievements(player, badges);
 
-    // Рендер
+    // Render
+    _renderCrystalBars(crystals);
     _renderRadarChart(crystals);
-    _renderActivityChart(crystals);
     _renderAchievements(badges);
+
+    // Achievements counter
+    const earned = ACHIEVEMENTS_DEF.filter(a => badges.has(a.id)).length;
+    _set('ach-counter', `${earned} / ${ACHIEVEMENTS_DEF.length}`);
 }
 
 export function destroy(): void {}
@@ -95,6 +131,45 @@ function _autoCheckAchievements(
     if (clustersWithCrystals >= CLUSTERS.length) badges.add('all-clusters');
     if (((stats as Record<string, number>).flights ?? 0) >= 10) badges.add('flight-10');
     if ((player!.appliedUpgrades ?? []).length > 0) badges.add('upgrade-1');
+}
+
+// ── Crystal Progress Bars ───────────────────────────────────────────────────
+
+function _renderCrystalBars(crystals: Partial<Record<CrystalType, number>>): void {
+    const container = document.getElementById('ach-crystal-bars');
+    if (!container) return;
+
+    const entries = CLUSTERS.map(c => ({
+        ...c,
+        value: (crystals as Record<string, number>)[c.crystalType] ?? 0,
+    }));
+    const total = entries.reduce((s, e) => s + e.value, 0) || 1;
+
+    container.innerHTML = entries.map(e => {
+        const pct = Math.round((e.value / total) * 100);
+        return `<div class="ach-crystal-row">
+            <div class="ach-crystal-header">
+                <span class="ach-crystal-name" style="color:${e.colorHex};">
+                    ${e.icon} ${e.shortLabel}
+                </span>
+                <span>
+                    <span class="ach-crystal-count">${e.value}</span>
+                    <span class="ach-crystal-pct">(${pct}%)</span>
+                </span>
+            </div>
+            <div class="ach-crystal-track">
+                <div class="ach-crystal-fill" style="--bar-color:${e.colorHex}; background:linear-gradient(90deg, ${e.colorHex}, ${e.colorHex}cc);" data-width="${pct}%"></div>
+            </div>
+        </div>`;
+    }).join('');
+
+    // Animate bars on load
+    requestAnimationFrame(() => {
+        container.querySelectorAll('.ach-crystal-fill').forEach(bar => {
+            const el = bar as HTMLElement;
+            el.style.width = el.dataset.width ?? '0%';
+        });
+    });
 }
 
 // ── Radar Chart (SVG) — 3 кластера ──────────────────────────────────────────
@@ -178,38 +253,6 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
     svg.innerHTML = html;
 }
 
-// ── Bar Chart — 3 кластера ──────────────────────────────────────────────────
-
-function _renderActivityChart(crystals: Partial<Record<CrystalType, number>>): void {
-    const svg = document.getElementById('activity-chart');
-    if (!svg) return;
-
-    const entries = CLUSTERS.map(c => ({
-        ...c,
-        value: (crystals as Record<string, number>)[c.crystalType] ?? 0,
-    }));
-    const max = Math.max(...entries.map(e => e.value), 1);
-    const w = 600, h = 140, padding = 24;
-    const barW = Math.floor((w - padding * 2) / entries.length) - 12;
-
-    let html = '';
-
-    entries.forEach((e, i) => {
-        const barH = Math.max(4, Math.round(((h - 40 - padding) * e.value) / max));
-        const x = padding + i * (barW + 12);
-        const y = h - 28 - barH;
-
-        // Бар с цветом кластера
-        html += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${e.colorHex}" opacity="0.85"/>`;
-        // Подпись кластера
-        html += `<text x="${x + barW / 2}" y="${h - 8}" text-anchor="middle" font-size="11" fill="#64748b" font-family="var(--font-body)">${e.icon} ${e.shortLabel}</text>`;
-        // Значение
-        html += `<text x="${x + barW / 2}" y="${y - 6}" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="var(--font-display)">${e.value}</text>`;
-    });
-
-    svg.innerHTML = html;
-}
-
 // ── Achievements Grid ───────────────────────────────────────────────────────
 
 function _renderAchievements(earnedBadges: Set<string>): void {
@@ -218,13 +261,20 @@ function _renderAchievements(earnedBadges: Set<string>): void {
 
     grid.innerHTML = ACHIEVEMENTS_DEF.map(a => {
         const earned = earnedBadges.has(a.id);
-        return `<div class="achievement-badge ${earned ? 'achievement-badge--earned' : ''}">
-            <div class="achievement-badge-icon">${a.icon}</div>
-            <div class="achievement-badge-info">
-                <div class="achievement-badge-title">${a.title}</div>
-                <div class="achievement-badge-desc">${a.desc}</div>
+        return `<div class="col">
+            <div class="ach-badge ${earned ? 'ach-badge--earned' : 'ach-badge--locked'}">
+                <div class="ach-badge-icon">${a.icon}</div>
+                <div class="ach-badge-info">
+                    <div class="ach-badge-title">${a.title}</div>
+                    <div class="ach-badge-desc">${a.desc}</div>
+                </div>
+                <div class="ach-badge-status">
+                    ${earned
+                        ? '<span class="ach-badge-check">✓</span>'
+                        : '<span class="ach-badge-lock">🔒</span>'
+                    }
+                </div>
             </div>
-            ${earned ? '<div class="achievement-badge-check">✓</div>' : ''}
         </div>`;
     }).join('');
 }

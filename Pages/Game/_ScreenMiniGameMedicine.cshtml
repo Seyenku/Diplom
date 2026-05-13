@@ -1,0 +1,197 @@
+<!-- _ScreenMiniGameMedicine.cshtml — Мини-игра «Диагностика капитана» (Туманность Целителей) -->
+<div class="screen" id="screen-minigame-medicine">
+
+    <!-- Шапка -->
+    <header class="med-header">
+        <div class="med-header-title">⚕ Туманность Целителей — Диагностика</div>
+        <div class="med-header-info">
+            <div class="med-header-stat">
+                <p>ФАЗА</p>
+                <p id="med-phase-label" style="color:#f87171;">Кат-сцена</p>
+            </div>
+            <div class="med-header-stat">
+                <p>КАПИТАН</p>
+                <p id="med-captain-hp" style="color:#f87171;">⚠ Ранен</p>
+            </div>
+            <button class="btn-game btn-secondary" style="padding:0.375rem 0.75rem;font-size:0.8rem;"
+                    onclick="window._miniGameMedicine?.returnToPlanet()">
+                ← Выйти
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════
+         ФАЗА 1: КАТ-СЦЕНА (3D)
+         ═══════════════════════════════════════════════ -->
+    <div id="med-phase-cutscene" style="flex:1;position:relative;overflow:hidden;">
+
+        <!-- 3D WebGL Canvas -->
+        <canvas id="med-cutscene-canvas" style="width:100%;height:100%;display:block;"></canvas>
+
+        <!-- UI-оверлей поверх 3D (pointer-events: none, чтобы не перехватывать) -->
+        <div id="med-cutscene-ui" style="
+            position:absolute;inset:0;
+            display:flex;flex-direction:column;
+            align-items:center;justify-content:flex-end;
+            padding:2.5rem 2rem;gap:1.25rem;
+            pointer-events:none;
+            background: linear-gradient(to top, rgba(2,7,16,0.85) 0%, transparent 45%);
+        ">
+            <!-- Текст -->
+            <div class="med-cutscene-text" style="text-align:center;max-width:560px;">
+                <h2 id="med-cutscene-headline" style="font-size:clamp(1.1rem,1.5vw + 0.8rem,1.7rem);margin-bottom:0.35rem;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.8);">
+                    Приближение к планете...
+                </h2>
+                <p id="med-cutscene-subtext" style="font-size:clamp(0.85rem,0.3vw + 0.78rem,1rem);color:rgba(203,213,225,0.85);line-height:1.5;text-shadow:0 1px 8px rgba(0,0,0,0.7);">
+                    Корабль выходит на орбиту Туманности Целителей
+                </p>
+            </div>
+
+            <!-- Алерт при столкновении -->
+            <div id="med-cutscene-alert" class="med-cutscene-alert hidden"
+                 style="pointer-events:none;">
+                ⚠️ ВНИМАНИЕ! Столкновение с астероидом!
+            </div>
+
+            <!-- Прогресс-бар -->
+            <div class="med-cutscene-progress" style="width:min(340px,80vw);">
+                <div id="med-cutscene-progress-bar" class="med-cutscene-progress-bar" style="width:0%;"></div>
+            </div>
+        </div>
+
+        <!-- Вспышка при ударе -->
+        <div id="med-hit-flash" style="
+            position:absolute;inset:0;
+            background:#fff;
+            opacity:0;
+            pointer-events:none;
+            transition:opacity 0.3s ease-out;
+        "></div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════
+         ФАЗА 2: ДИАГНОСТИКА
+         ═══════════════════════════════════════════════ -->
+    <div id="med-phase-diagnosis" class="hidden">
+
+        <!-- Колонка 1: Портрет капитана -->
+        <div class="med-captain-col">
+            <div class="med-captain-frame">
+                <img id="med-captain-img"
+                     src="/images/captain_portrait.png"
+                     alt="Капитан корабля"
+                     class="med-captain-img"
+                     onerror="this.style.display='none';" />
+                <!-- Фоллбэк если картинка не загрузилась -->
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:5rem;z-index:-1;">🧑‍🚀</div>
+                <div class="med-captain-overlay"></div>
+            </div>
+
+            <div class="med-captain-status">
+                <p class="med-captain-status-label">Статус</p>
+                <p class="med-captain-status-value" id="med-status-text">⚠ Требует лечения</p>
+            </div>
+
+            <div class="med-captain-status" style="margin-top:0.25rem;">
+                <p class="med-captain-status-label">Симптомы</p>
+                <p id="med-symptoms-text" style="font-size:0.82rem;color:#cbd5e1;margin-top:0.15rem;line-height:1.4;font-style:italic;">Загрузка...</p>
+            </div>
+        </div>
+
+        <!-- Колонка 2: Показатели здоровья -->
+        <div class="med-vitals-col">
+            <p class="med-vitals-title">📊 Показатели здоровья</p>
+
+            <!-- Пульс -->
+            <div id="vital-pulse" class="med-vital-card">
+                <span class="med-vital-icon">❤️</span>
+                <div class="med-vital-info">
+                    <span class="med-vital-name">Пульс</span>
+                    <div class="med-vital-bar">
+                        <div id="vital-pulse-bar" class="med-vital-bar-fill normal" style="width:75%;"></div>
+                    </div>
+                </div>
+                <span id="vital-pulse-val" class="med-vital-value normal">75 уд/мин</span>
+            </div>
+
+            <!-- Давление -->
+            <div id="vital-pressure" class="med-vital-card">
+                <span class="med-vital-icon">🩸</span>
+                <div class="med-vital-info">
+                    <span class="med-vital-name">Давление</span>
+                    <div class="med-vital-bar">
+                        <div id="vital-pressure-bar" class="med-vital-bar-fill normal" style="width:75%;"></div>
+                    </div>
+                </div>
+                <span id="vital-pressure-val" class="med-vital-value normal">120/80</span>
+            </div>
+
+            <!-- Температура -->
+            <div id="vital-temp" class="med-vital-card">
+                <span class="med-vital-icon">🌡️</span>
+                <div class="med-vital-info">
+                    <span class="med-vital-name">Температура</span>
+                    <div class="med-vital-bar">
+                        <div id="vital-temp-bar" class="med-vital-bar-fill normal" style="width:60%;"></div>
+                    </div>
+                </div>
+                <span id="vital-temp-val" class="med-vital-value normal">36.6 °C</span>
+            </div>
+
+            <!-- Сатурация O₂ -->
+            <div id="vital-o2" class="med-vital-card">
+                <span class="med-vital-icon">💨</span>
+                <div class="med-vital-info">
+                    <span class="med-vital-name">Сатурация O₂</span>
+                    <div class="med-vital-bar">
+                        <div id="vital-o2-bar" class="med-vital-bar-fill normal" style="width:98%;"></div>
+                    </div>
+                </div>
+                <span id="vital-o2-val" class="med-vital-value normal">98%</span>
+            </div>
+
+            <!-- Описание нормы -->
+            <div style="padding:0.65rem 0.85rem;background:rgba(15,23,42,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);margin-top:auto;">
+                <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.4rem;">Нормальные значения</p>
+                <p style="font-size:0.78rem;color:#64748b;line-height:1.5;">
+                    ❤️ 60–100 уд/мин &nbsp;|&nbsp; 🩸 120/80 мм рт.ст.<br>
+                    🌡️ 36.0–37.2 °C &nbsp;|&nbsp; 💨 95–100%
+                </p>
+            </div>
+        </div>
+
+        <!-- Колонка 3: Выбор диагноза -->
+        <div class="med-diagnosis-col">
+            <p class="med-diagnosis-title">🩺 Поставьте диагноз</p>
+
+            <div class="med-diagnosis-list" id="med-diagnosis-list">
+                <!-- Заполняется через JS -->
+            </div>
+
+            <button id="med-submit-btn" class="med-submit-btn" disabled
+                    onclick="window._miniGameMedicine?.submitDiagnosis()">
+                💊 Назначить лечение
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         ФАЗА 3: РЕЗУЛЬТАТ
+         ═══════════════════════════════════════════════ -->
+    <div id="med-phase-result" class="hidden">
+        <div id="med-result-icon" class="med-result-icon">✅</div>
+        <h2 id="med-result-title" class="med-result-title success">Диагноз верный!</h2>
+        <p id="med-result-text" class="med-result-text">Капитан получил необходимое лечение и возвращается в строй.</p>
+        <div id="med-result-correct-wrap" class="med-result-correct hidden">
+            Правильный диагноз: <strong id="med-result-correct-name"></strong>
+        </div>
+        <div class="med-result-actions">
+            <button id="med-btn-return" class="btn-game btn-primary"
+                    onclick="window._miniGameMedicine?.returnToPlanet()">
+                ← Вернуться к планете
+            </button>
+        </div>
+    </div>
+
+</div>

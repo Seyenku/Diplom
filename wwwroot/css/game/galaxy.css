@@ -123,6 +123,7 @@
     width: min(420px, 88vw);
     max-height: calc(100% - 1.5rem);
     overflow-y: auto;
+    overflow-x: hidden;
     background: rgba(5, 10, 26, 0.88);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);

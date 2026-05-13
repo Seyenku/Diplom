@@ -112,6 +112,20 @@ export function showResults(state: FlightUiState): void {
     }
 }
 
+export function updateAccelIndicator(throttle: number): void {
+    const bar = document.getElementById('flight-accel-bar');
+    if (bar) {
+        const pct = Math.min(100, throttle * 100);
+        bar.style.width = `${pct}%`;
+    }
+
+    const label = document.getElementById('flight-accel-label');
+    if (label) {
+        const pctText = Math.round(throttle * 100);
+        label.textContent = pctText < 100 ? `УСКОРЕНИЕ ${pctText}%` : 'ПОЛНАЯ ТЯГА';
+    }
+}
+
 function _setText(id: string, v: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = v;

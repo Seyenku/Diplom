@@ -84,12 +84,14 @@ export function updateVfx(
     currentWave: number,
     shipModel: THREE.Group | null,
     profile: QualityProfile,
-    isPlaying: boolean
+    isPlaying: boolean,
+    throttle: number = 1.0
 ): void {
-    // Dynamic FOV
+    // Dynamic FOV — ramps with throttle during acceleration
     const cam = (window as any).__threeCamera as THREE.PerspectiveCamera | undefined;
     if (profile.flightDynamicFOV && cam) {
-        state.targetFOV = boosting ? 72 : (hitStunRemaining > 0 ? 52 : 60);
+        const baseFov = 50 + throttle * 10; // 50° at standstill → 60° at full throttle
+        state.targetFOV = boosting ? baseFov + 12 : (hitStunRemaining > 0 ? baseFov - 8 : baseFov);
         const delta = (state.targetFOV - cam.fov) * Math.min(1, rawDt * 4);
         if (Math.abs(delta) > 0.01) {
             cam.fov += delta;
@@ -105,10 +107,10 @@ export function updateVfx(
     }
 
     if (state.speedLinesMesh && state.speedLinesGeo) {
-        _updateSpeedLines(state, dt, boosting, currentWave);
+        _updateSpeedLines(state, dt, boosting, currentWave, throttle);
     }
     if (state.engineTrailPoints && state.engineTrailPositions && state.engineTrailAlphas) {
-        _updateEngineTrail(state, dt, boosting, shipModel);
+        _updateEngineTrail(state, dt, boosting, shipModel, throttle);
     }
     if (state.shieldMesh && state.shieldMesh.material) {
         const mat = state.shieldMesh.material as THREE.ShaderMaterial;
@@ -116,7 +118,7 @@ export function updateVfx(
         mat.uniforms.time.value = elapsed;
     }
 
-    _updateParallaxDust(state, dt, boosting, currentWave);
+    _updateParallaxDust(state, dt, boosting, currentWave, throttle);
 
     if (profile.flightDamageOverlay) {
         _updateDamageOverlay(shield, maxShield, isPlaying);
@@ -182,19 +184,19 @@ function _initSpeedLines(state: FlightVfxState, count: number, scene: THREE.Scen
     scene.add(state.speedLinesMesh);
 }
 
-function _updateSpeedLines(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number): void {
+function _updateSpeedLines(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number): void {
     const geo = state.speedLinesGeo!;
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const arr = pos.array as Float32Array;
     
     // Fallback to array bounds if wave is larger than mult list
     const mult = WAVE_SPEED_MULT[currentWave] ?? WAVE_SPEED_MULT[WAVE_SPEED_MULT.length - 1];
-    const speed = (boosting ? 80 : 30) * mult * dt;
-    const lineLen = boosting ? 3.0 : 0.8;
+    const speed = (boosting ? 80 : 30) * mult * dt * throttle;
+    const lineLen = (boosting ? 3.0 : 0.8) * throttle;
 
     if (state.speedLinesMesh) {
         const mat = state.speedLinesMesh.material as THREE.LineBasicMaterial;
-        const targetOp = boosting ? 0.5 : 0.2;
+        const targetOp = (boosting ? 0.5 : 0.2) * throttle;
         mat.opacity += (targetOp - mat.opacity) * 0.1;
     }
 
@@ -241,11 +243,11 @@ function _initEngineTrail(state: FlightVfxState, scene: THREE.Scene): void {
     scene.add(state.engineTrailPoints);
 }
 
-function _updateEngineTrail(state: FlightVfxState, dt: number, boosting: boolean, shipModel: THREE.Group | null): void {
+function _updateEngineTrail(state: FlightVfxState, dt: number, boosting: boolean, shipModel: THREE.Group | null, throttle: number): void {
     if (!shipModel) return;
     const pos = state.engineTrailPositions!;
     const alphas = state.engineTrailAlphas!;
-    const trailSpeed = (boosting ? 15 : 8) * dt;
+    const trailSpeed = (boosting ? 15 : 8) * dt * throttle;
 
     for (let i = ENGINE_TRAIL_COUNT - 1; i > 0; i--) {
         pos[i * 3]     = pos[(i - 1) * 3]     + (Math.random() - 0.5) * 0.1;
@@ -256,7 +258,7 @@ function _updateEngineTrail(state: FlightVfxState, dt: number, boosting: boolean
     pos[0] = shipModel.position.x + (Math.random() - 0.5) * 0.2;
     pos[1] = shipModel.position.y - 0.15 + (Math.random() - 0.5) * 0.1;
     pos[2] = shipModel.position.z + 0.8;
-    alphas[0] = boosting ? 1.0 : 0.6;
+    alphas[0] = (boosting ? 1.0 : 0.6) * throttle;
 
     const mat = state.engineTrailPoints!.material as THREE.PointsMaterial;
     mat.size = boosting ? 0.45 : 0.3;
@@ -316,13 +318,13 @@ function _triggerShieldRipple(state: FlightVfxState, hitPos: THREE.Vector3, elap
     mat.uniforms.hitPoint.value.copy(hitPos);
 }
 
-function _updateParallaxDust(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number): void {
+function _updateParallaxDust(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number): void {
     const boostMult = boosting ? 1.5 : 1.0;
     const waveMult = WAVE_SPEED_MULT[currentWave] ?? WAVE_SPEED_MULT[WAVE_SPEED_MULT.length - 1];
     
     for (let l = 0; l < state.dustLayers.length; l++) {
         const layer = state.dustLayers[l];
-        const speed = BASE_OBJ_SPEED * layer.speedMult * waveMult * dt * boostMult;
+        const speed = BASE_OBJ_SPEED * layer.speedMult * waveMult * dt * boostMult * throttle;
         const pos = layer.points.geometry.attributes.position as THREE.BufferAttribute;
         const arr = pos.array as Float32Array;
         const count = arr.length / 3;
