@@ -6,38 +6,13 @@
 .galaxy-map-screen {
     width: 100%;
     height: 100%;
-    display: grid;
-    grid-template-rows: auto 1fr;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
-.galaxy-header {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-    justify-content: flex-end;
-    padding: 0.6rem 0.9rem;
-    background: linear-gradient(180deg, rgba(8, 16, 34, 0.84), rgba(5, 10, 26, 0.7));
-    border-bottom: 1px solid rgba(120, 147, 255, 0.2);
-}
-
-.galaxy-map-title {
-    font-size: 1.15rem;
-}
-
-.galaxy-small-btn {
-    padding: 0.375rem 0.875rem;
-    font-size: 0.78rem;
-}
-
-.galaxy-actions {
-    display: flex;
-    gap: 0.35rem;
-    margin-left: auto;
-}
-
 .galaxy-content-panel {
+    flex: 1;
     overflow: hidden;
     min-height: 0;
 }
@@ -50,36 +25,6 @@
     width: 100%;
     height: 100%;
     position: relative;
-}
-
-/* ── Zoom control ──────────────────────────────── */
-.galaxy-zoom-control {
-    position: absolute;
-    top: 0.625rem;
-    right: 0.625rem;
-    background: rgba(5, 10, 26, 0.72);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    padding: 0.5rem 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    z-index: 5;
-}
-
-.galaxy-zoom-text {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-}
-
-.galaxy-zoom-value {
-    color: var(--color-text);
-}
-
-.galaxy-zoom-reset-btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.7rem;
 }
 
 /* ── 3D tooltip ────────────────────────────────── */
@@ -279,10 +224,6 @@
 
 /* ── Responsive ────────────────────────────────── */
 @media (max-width: 768px) {
-    .galaxy-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
     .nebula-info-panel {
         width: 90vw;
         top: 0.5rem;

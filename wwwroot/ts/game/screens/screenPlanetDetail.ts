@@ -104,8 +104,8 @@ window._planetDetail = {
 function _getMiniGameScreen(clusterId: string): ScreenId {
     switch (clusterId) {
         case 'medicine': return Screen.MINIGAME_MEDICINE;
-        // TODO: case 'programming': return Screen.MINIGAME_PROGRAMMING;
-        // TODO: case 'geology':     return Screen.MINIGAME_GEOLOGY;
+        case 'programming': return Screen.MINIGAME_PROGRAMMING;
+        case 'geology': return Screen.MINIGAME_GEOLOGY;
         default:         return Screen.MINIGAME;
     }
 }

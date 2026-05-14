@@ -1,0 +1,526 @@
+/* =============================================
+   Stellar Vocation — Mini-Game: Programming
+   Туманность Кибернетики — Диагностика систем
+   ============================================= */
+
+/* ── Общий экран ─────────────────────────────── */
+#screen-minigame-programming {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #020710;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    overflow: hidden;
+}
+
+/* ── Шапка мини-игры ─────────────────────────── */
+.prog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: rgba(5, 10, 26, 0.9);
+    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.prog-header-title {
+    font-size: clamp(0.85rem, 0.3vw + 0.75rem, 1.05rem);
+    letter-spacing: 0.08em;
+    color: #4fc3f7;
+    text-transform: uppercase;
+}
+
+.prog-header-info {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.prog-header-stat {
+    text-align: right;
+}
+
+.prog-header-stat p:first-child {
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.prog-header-stat p:last-child {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    line-height: 1.1;
+}
+
+/* ── Фаза: кат-сцена ─────────────────────────── */
+#prog-phase-cutscene {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 300px;
+}
+
+#prog-cutscene-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#prog-cutscene-ui {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 2.5rem 2rem;
+    gap: 1.25rem;
+    pointer-events: none;
+    background: linear-gradient(to top, rgba(2, 7, 16, 0.88) 0%, transparent 50%);
+}
+
+.prog-cutscene-text {
+    text-align: center;
+    max-width: 560px;
+}
+
+.prog-cutscene-text h2 {
+    font-size: clamp(1.1rem, 1.5vw + 0.8rem, 1.7rem);
+    margin-bottom: 0.35rem;
+    color: #fff;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+    line-height: 1.25;
+}
+
+.prog-cutscene-text p {
+    font-size: clamp(0.85rem, 0.3vw + 0.78rem, 1rem);
+    color: rgba(203, 213, 225, 0.9);
+    line-height: 1.55;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.7);
+}
+
+.prog-cutscene-alert {
+    z-index: 1;
+    padding: 0.85rem 1.5rem;
+    background: rgba(79, 195, 247, 0.1);
+    border: 1px solid rgba(79, 195, 247, 0.5);
+    border-radius: var(--radius);
+    color: #4fc3f7;
+    font-size: clamp(0.9rem, 0.3vw + 0.8rem, 1.1rem);
+    font-weight: 600;
+    text-align: center;
+    animation: prog-alert-pulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes prog-alert-pulse {
+    from { box-shadow: 0 0 8px rgba(79, 195, 247, 0.3); }
+    to   { box-shadow: 0 0 28px rgba(79, 195, 247, 0.8); }
+}
+
+.prog-cutscene-progress {
+    z-index: 1;
+    width: min(320px, 80vw);
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.prog-cutscene-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4fc3f7, #818cf8);
+    border-radius: 4px;
+    transition: width 0.5s linear;
+}
+
+/* ── Фаза: диагностика (3 колонки) ──────────── */
+#prog-phase-diagnosis {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1fr;
+    gap: 1.25rem;
+    padding: 1rem 1.5rem;
+    overflow: hidden;
+}
+
+.prog-section-title {
+    font-size: clamp(0.78rem, 0.2vw + 0.72rem, 0.9rem);
+    letter-spacing: 0.1em;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+/* ── Колонка: системные метрики ───────────────── */
+.prog-metrics-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+}
+
+.prog-metric-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    transition: border-color 0.3s ease;
+}
+
+.prog-metric-card.critical {
+    border-color: rgba(248, 113, 113, 0.5);
+    background: rgba(248, 113, 113, 0.07);
+}
+
+.prog-metric-card.warning {
+    border-color: rgba(250, 204, 21, 0.4);
+    background: rgba(250, 204, 21, 0.05);
+}
+
+.prog-metric-card.normal {
+    border-color: rgba(79, 195, 247, 0.2);
+}
+
+.prog-metric-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.prog-metric-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.prog-metric-name {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.prog-metric-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.prog-metric-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+}
+
+.prog-metric-value {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: clamp(0.88rem, 0.5vw + 0.76rem, 1.1rem);
+    font-weight: 700;
+    text-align: right;
+    min-width: 78px;
+    letter-spacing: -0.02em;
+}
+
+.prog-metric-value.critical { color: #f87171; }
+.prog-metric-value.warning  { color: #facc15; }
+.prog-metric-value.normal   { color: #4fc3f7; }
+
+.prog-metric-bar-fill.critical { background: linear-gradient(90deg, #dc2626, #f87171); }
+.prog-metric-bar-fill.warning  { background: linear-gradient(90deg, #ca8a04, #facc15); }
+.prog-metric-bar-fill.normal   { background: linear-gradient(90deg, #0284c7, #4fc3f7); }
+
+/* Пульсация критических значений */
+.prog-metric-value.critical {
+    animation: prog-critical-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes prog-critical-pulse {
+    from { opacity: 1; }
+    to   { opacity: 0.55; }
+}
+
+/* ── Колонка: терминал логов ──────────────────── */
+.prog-logs-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow: hidden;
+}
+
+.prog-terminal {
+    flex: 1;
+    background: #000d1a;
+    border: 1px solid rgba(79, 195, 247, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1rem;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: clamp(0.72rem, 0.2vw + 0.66rem, 0.85rem);
+    color: #4ade80;
+    line-height: 1.6;
+    position: relative;
+    box-shadow: inset 0 0 20px rgba(79, 195, 247, 0.05), 0 0 15px rgba(79, 195, 247, 0.08);
+    min-height: 0;
+}
+
+/* Мигающий курсор после последней строки */
+.prog-terminal::after {
+    content: '█';
+    animation: prog-cursor-blink 0.8s step-end infinite;
+    color: #4ade80;
+    opacity: 0.8;
+}
+
+@keyframes prog-cursor-blink {
+    50% { opacity: 0; }
+}
+
+.prog-log-line {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    flex-wrap: wrap;
+    animation: prog-log-appear 0.25s ease-out both;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    padding-bottom: 0.15rem;
+    margin-bottom: 0.15rem;
+}
+
+@keyframes prog-log-appear {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.prog-log-time {
+    color: #475569;
+    font-size: 0.7em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.prog-log-level {
+    font-size: 0.7em;
+    font-weight: 700;
+    padding: 0.05em 0.3em;
+    border-radius: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+}
+
+.prog-log-level.error {
+    color: #fca5a5;
+    background: rgba(220, 38, 38, 0.2);
+}
+
+.prog-log-level.warn {
+    color: #fde68a;
+    background: rgba(202, 138, 4, 0.18);
+}
+
+.prog-log-level.info {
+    color: #7dd3fc;
+    background: rgba(14, 165, 233, 0.15);
+}
+
+.prog-log-level.ok {
+    color: #4ade80;
+    background: rgba(22, 163, 74, 0.18);
+}
+
+.prog-log-line.success {
+    color: #86efac;
+}
+
+.prog-log-separator {
+    height: 1px;
+    background: rgba(79, 195, 247, 0.2);
+    margin: 0.4rem 0;
+}
+
+/* ── Колонка: выбор патча ─────────────────────── */
+.prog-patch-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    overflow-y: auto;
+}
+
+.prog-patch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    flex: 1;
+}
+
+.prog-patch-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.65rem 0.85rem;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.prog-patch-option:hover {
+    background: rgba(20, 30, 55, 0.85);
+    border-color: rgba(79, 195, 247, 0.35);
+}
+
+.prog-patch-option.selected {
+    background: rgba(79, 195, 247, 0.08);
+    border-color: rgba(79, 195, 247, 0.6);
+    box-shadow: 0 0 12px rgba(79, 195, 247, 0.15);
+}
+
+.prog-patch-radio {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.25);
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.prog-patch-option.selected .prog-patch-radio {
+    border-color: #4fc3f7;
+    background: #4fc3f7;
+    box-shadow: 0 0 8px rgba(79, 195, 247, 0.6);
+}
+
+.prog-patch-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.prog-patch-name {
+    font-size: clamp(0.82rem, 0.2vw + 0.78rem, 0.92rem);
+    color: var(--color-text);
+    line-height: 1.3;
+}
+
+.prog-patch-command {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.72rem;
+    color: #4ade80;
+    opacity: 0.8;
+    letter-spacing: 0.02em;
+}
+
+.prog-submit-btn {
+    margin-top: auto;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(135deg, rgba(3, 105, 161, 0.85), rgba(79, 195, 247, 0.6));
+    border: 1px solid rgba(79, 195, 247, 0.5);
+    border-radius: var(--radius);
+    color: #fff;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: clamp(0.88rem, 0.2vw + 0.82rem, 1rem);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.prog-submit-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(3, 105, 161, 1), rgba(79, 195, 247, 0.85));
+    box-shadow: 0 4px 20px rgba(79, 195, 247, 0.3);
+    transform: translateY(-1px);
+}
+
+.prog-submit-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* ── Фаза: результат ─────────────────────────── */
+#prog-phase-result {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.prog-result-icon {
+    font-size: clamp(3rem, 5vw, 5.5rem);
+    line-height: 1;
+    animation: prog-result-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes prog-result-pop {
+    from { transform: scale(0.2); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+.prog-result-title {
+    font-size: clamp(1.4rem, 2vw + 1rem, 2rem);
+    font-family: var(--font-display);
+}
+
+.prog-result-title.success { color: #4ade80; }
+.prog-result-title.failure { color: #f87171; }
+
+.prog-result-text {
+    max-width: 480px;
+    color: var(--color-text-muted);
+    font-size: clamp(0.88rem, 0.3vw + 0.8rem, 1rem);
+    line-height: 1.6;
+}
+
+.prog-result-correct {
+    padding: 0.65rem 1.2rem;
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+    border-radius: var(--radius-sm);
+    color: #4ade80;
+    font-size: 0.88rem;
+}
+
+.prog-result-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* ── Утилиты ─────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* ── Responsive ──────────────────────────────── */
+@media (max-width: 900px) {
+    #prog-phase-diagnosis {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+        overflow-y: auto;
+    }
+
+    .prog-logs-col {
+        min-height: 180px;
+    }
+
+    .prog-terminal {
+        min-height: 150px;
+    }
+}

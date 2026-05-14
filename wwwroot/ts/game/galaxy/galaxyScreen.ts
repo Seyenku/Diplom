@@ -194,10 +194,7 @@ function _init3DMap(): void {
     _cameraState = new GalaxyCamera({
         camera: _rendererState.camera,
         domElement: _rendererState.renderer.domElement,
-        onZoomUIUpdate: (pct) => {
-            const el = document.getElementById('galaxy-zoom-percent');
-            if (el) el.textContent = `${pct}%`;
-        },
+        onZoomUIUpdate: () => { /* индикатор масштаба удалён из UI */ },
         onRaycastMove: (mouse) => {
             _mousePosition.copy(mouse);
             _mouseMovedSinceLastRaycast = true;

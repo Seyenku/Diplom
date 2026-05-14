@@ -15,6 +15,8 @@ export const Screen = Object.freeze({
     PLANET_DETAIL:    'planet-detail',
     MINIGAME:         'minigame',
     MINIGAME_MEDICINE:'minigame-medicine',
+    MINIGAME_PROGRAMMING:'minigame-programming',
+    MINIGAME_GEOLOGY:    'minigame-geology',
     SHIP_UPGRADE:     'ship-upgrade',
     VOCATION_CONST:   'vocation-constellation',
     ACHIEVEMENTS:     'achievements',
@@ -252,10 +254,7 @@ declare global {
             exportPdf: () => void;
             showPath: () => void;
         };
-        _achievements: {
-            exportStats: () => void;
-        };
-        _settings: {
+_settings: {
             update: (key: string, value: string | number | boolean) => void;
             saveAndApply: () => void;
             startBind?: (action: string) => void;
@@ -268,6 +267,14 @@ declare global {
         };
         _miniGameMedicine: {
             submitDiagnosis: () => void;
+            returnToPlanet: () => void;
+        };
+        _miniGameProgramming: {
+            submitPatch: () => void;
+            returnToPlanet: () => void;
+        };
+        _miniGameGeology: {
+            submitMethod: () => void;
             returnToPlanet: () => void;
         };
     }

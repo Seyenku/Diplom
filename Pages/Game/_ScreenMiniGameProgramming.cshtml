@@ -1,0 +1,180 @@
+<!-- _ScreenMiniGameProgramming.cshtml — Мини-игра «Диагностика систем» (Туманность Кибернетики) -->
+<div class="screen" id="screen-minigame-programming">
+
+    <!-- Шапка -->
+    <header class="prog-header">
+        <div class="prog-header-title">💻 Туманность Кибернетики — Диагностика систем</div>
+        <div class="prog-header-info">
+            <div class="prog-header-stat">
+                <p>ФАЗА</p>
+                <p id="prog-phase-label" style="color:#4fc3f7;">Кат-сцена</p>
+            </div>
+            <div class="prog-header-stat">
+                <p>КОМПЬЮТЕР</p>
+                <p id="prog-computer-status" style="color:#f87171;">⚡ Offline</p>
+            </div>
+            <button class="btn-game btn-secondary" style="padding:0.375rem 0.75rem;font-size:0.8rem;"
+                    onclick="window._miniGameProgramming?.returnToPlanet()">
+                ← Выйти
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════
+         ФАЗА 1: КАТ-СЦЕНА (3D)
+         ═══════════════════════════════════════════════ -->
+    <div id="prog-phase-cutscene" style="flex:1;position:relative;overflow:hidden;">
+
+        <!-- 3D WebGL Canvas -->
+        <canvas id="prog-cutscene-canvas" style="width:100%;height:100%;display:block;"></canvas>
+
+        <!-- UI-оверлей поверх 3D -->
+        <div id="prog-cutscene-ui" style="
+            position:absolute;inset:0;
+            display:flex;flex-direction:column;
+            align-items:center;justify-content:flex-end;
+            padding:2.5rem 2rem;gap:1.25rem;
+            pointer-events:none;
+            background: linear-gradient(to top, rgba(2,7,16,0.85) 0%, transparent 45%);
+        ">
+            <div class="prog-cutscene-text" style="text-align:center;max-width:560px;">
+                <h2 id="prog-cutscene-headline" style="font-size:clamp(1.1rem,1.5vw + 0.8rem,1.7rem);margin-bottom:0.35rem;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.8);">
+                    Приближение к планете...
+                </h2>
+                <p id="prog-cutscene-subtext" style="font-size:clamp(0.85rem,0.3vw + 0.78rem,1rem);color:rgba(203,213,225,0.85);line-height:1.5;text-shadow:0 1px 8px rgba(0,0,0,0.7);">
+                    Корабль выходит на орбиту Туманности Кибернетики
+                </p>
+            </div>
+
+            <!-- Алерт при обнаружении бури -->
+            <div id="prog-cutscene-alert" class="prog-cutscene-alert hidden"
+                 style="pointer-events:none;">
+                ⚡ ВНИМАНИЕ! Обнаружена электромагнитная буря!
+            </div>
+
+            <!-- Прогресс-бар -->
+            <div class="prog-cutscene-progress" style="width:min(340px,80vw);">
+                <div id="prog-cutscene-progress-bar" class="prog-cutscene-progress-bar" style="width:0%;"></div>
+            </div>
+        </div>
+
+        <!-- Вспышка при сбое (голубая) -->
+        <div id="prog-hit-flash" style="
+            position:absolute;inset:0;
+            background: radial-gradient(ellipse at center, #4fc3f7 0%, #0ea5e9 40%, transparent 70%);
+            opacity:0;
+            pointer-events:none;
+            transition:opacity 0.25s ease-out;
+        "></div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════
+         ФАЗА 2: ДИАГНОСТИКА (Terminal UI)
+         ═══════════════════════════════════════════════ -->
+    <div id="prog-phase-diagnosis" class="hidden">
+
+        <!-- Колонка 1: Системные метрики -->
+        <div class="prog-metrics-col">
+            <p class="prog-section-title">📟 Системные метрики</p>
+
+            <!-- CPU -->
+            <div id="metric-cpu" class="prog-metric-card">
+                <span class="prog-metric-icon">🔲</span>
+                <div class="prog-metric-info">
+                    <span class="prog-metric-name">CPU</span>
+                    <div class="prog-metric-bar">
+                        <div id="metric-cpu-bar" class="prog-metric-bar-fill normal" style="width:25%;"></div>
+                    </div>
+                </div>
+                <span id="metric-cpu-val" class="prog-metric-value normal">25%</span>
+            </div>
+
+            <!-- RAM -->
+            <div id="metric-ram" class="prog-metric-card">
+                <span class="prog-metric-icon">💾</span>
+                <div class="prog-metric-info">
+                    <span class="prog-metric-name">RAM</span>
+                    <div class="prog-metric-bar">
+                        <div id="metric-ram-bar" class="prog-metric-bar-fill normal" style="width:30%;"></div>
+                    </div>
+                </div>
+                <span id="metric-ram-val" class="prog-metric-value normal">3.2 GB</span>
+            </div>
+
+            <!-- Network -->
+            <div id="metric-net" class="prog-metric-card">
+                <span class="prog-metric-icon">📡</span>
+                <div class="prog-metric-info">
+                    <span class="prog-metric-name">Network</span>
+                    <div class="prog-metric-bar">
+                        <div id="metric-net-bar" class="prog-metric-bar-fill normal" style="width:20%;"></div>
+                    </div>
+                </div>
+                <span id="metric-net-val" class="prog-metric-value normal">120 ms</span>
+            </div>
+
+            <!-- Disk I/O -->
+            <div id="metric-disk" class="prog-metric-card">
+                <span class="prog-metric-icon">💿</span>
+                <div class="prog-metric-info">
+                    <span class="prog-metric-name">Disk I/O</span>
+                    <div class="prog-metric-bar">
+                        <div id="metric-disk-bar" class="prog-metric-bar-fill normal" style="width:40%;"></div>
+                    </div>
+                </div>
+                <span id="metric-disk-val" class="prog-metric-value normal">45 MB/s</span>
+            </div>
+
+            <!-- Нормальные значения -->
+            <div style="padding:0.65rem 0.85rem;background:rgba(15,23,42,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);margin-top:auto;">
+                <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.4rem;">Норма</p>
+                <p style="font-size:0.78rem;color:#64748b;line-height:1.6;font-family:monospace;">
+                    🔲 CPU: 10–40% &nbsp;|&nbsp; 💾 RAM: 2–6 GB<br>
+                    📡 Net: 50–200 ms &nbsp;|&nbsp; 💿 I/O: 20–80 MB/s
+                </p>
+            </div>
+        </div>
+
+        <!-- Колонка 2: Журнал ошибок -->
+        <div class="prog-logs-col">
+            <p class="prog-section-title">📋 Журнал ошибок</p>
+            <div id="prog-log-output" class="prog-terminal">
+                <!-- Строки логов вставляются через JS -->
+            </div>
+        </div>
+
+        <!-- Колонка 3: Выбор патча -->
+        <div class="prog-patch-col">
+            <p class="prog-section-title">🔧 Применить патч</p>
+
+            <div id="prog-patch-list" class="prog-patch-list">
+                <!-- Radio-карточки патчей вставляются через JS -->
+            </div>
+
+            <button id="prog-submit-btn" class="prog-submit-btn" disabled
+                    onclick="window._miniGameProgramming?.submitPatch()">
+                ▶ Применить патч
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         ФАЗА 3: РЕЗУЛЬТАТ
+         ═══════════════════════════════════════════════ -->
+    <div id="prog-phase-result" class="hidden">
+        <div id="prog-result-icon" class="prog-result-icon">✅</div>
+        <h2 id="prog-result-title" class="prog-result-title success">Патч применён!</h2>
+        <p id="prog-result-text" class="prog-result-text">Системы восстановлены.</p>
+        <div id="prog-result-correct-wrap" class="prog-result-correct hidden">
+            Правильный патч: <strong id="prog-result-correct-name"></strong>
+        </div>
+        <div class="prog-result-actions">
+            <button id="prog-btn-return" class="btn-game btn-primary"
+                    onclick="window._miniGameProgramming?.returnToPlanet()">
+                ← Вернуться к планете
+            </button>
+        </div>
+    </div>
+
+</div>

@@ -39,6 +39,8 @@ import * as GalaxyMap     from './galaxy/galaxyScreen.js';
 import * as PlanetDetail  from './screens/screenPlanetDetail.js';
 import * as MiniGame      from './screens/screenMiniGame.js';
 import * as MiniGameMed   from './screens/screenMiniGameMedicine.js';
+import * as MiniGameProg  from './screens/screenMiniGameProgramming.js';
+import * as MiniGameGeo   from './screens/screenMiniGameGeology.js';
 import * as ShipUpgrade   from './screens/screenShipUpgrade.js';
 import * as VocationConst from './screens/screenVocationConstellation.js';
 import * as Achievements  from './screens/screenAchievements.js';
@@ -82,6 +84,27 @@ import * as OfflineError  from './screens/screenOfflineError.js';
 
             // Заставляем 3d-сцену перерисоваться после изменения размера контейнера
             setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        });
+    }
+
+    // 0a. Системное меню (бургер с «На главную» / «Полный экран»)
+    const sysMenu = document.getElementById('game-sys-menu');
+    const sysToggle = document.getElementById('btn-sys-toggle');
+    if (sysMenu && sysToggle) {
+        const setCollapsed = (collapsed: boolean): void => {
+            sysMenu.dataset.collapsed = collapsed ? 'true' : 'false';
+            sysToggle.setAttribute('aria-expanded', String(!collapsed));
+        };
+        sysToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setCollapsed(sysMenu.dataset.collapsed !== 'true');
+        });
+        document.addEventListener('click', (e) => {
+            if (sysMenu.dataset.collapsed === 'true') return;
+            if (!sysMenu.contains(e.target as Node)) setCollapsed(true);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sysMenu.dataset.collapsed !== 'true') setCollapsed(true);
         });
     }
 
@@ -146,6 +169,8 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     registerScreen(Screen.PLANET_DETAIL,  PlanetDetail);
     registerScreen(Screen.MINIGAME,          MiniGame);
     registerScreen(Screen.MINIGAME_MEDICINE,  MiniGameMed);
+    registerScreen(Screen.MINIGAME_PROGRAMMING, MiniGameProg);
+    registerScreen(Screen.MINIGAME_GEOLOGY,     MiniGameGeo);
     registerScreen(Screen.SHIP_UPGRADE,   ShipUpgrade);
     registerScreen(Screen.VOCATION_CONST, VocationConst);
     registerScreen(Screen.ACHIEVEMENTS,   Achievements);

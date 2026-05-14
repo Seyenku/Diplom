@@ -134,6 +134,17 @@ on('ADD_BADGE', (s, { badge }) => {
     if (!s.player.badges.includes(badge)) s.player.badges.push(badge);
 });
 
+const NAVBAR_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
+    Screen.HUD, Screen.GALAXY_MAP, Screen.PLANET_DETAIL,
+    Screen.SHIP_UPGRADE, Screen.ACHIEVEMENTS, Screen.SETTINGS,
+    Screen.VOCATION_CONST, Screen.GUIDE,
+]);
+
+const SYS_MENU_HIDDEN_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
+    Screen.MINIGAME, Screen.MINIGAME_MEDICINE, Screen.MINIGAME_PROGRAMMING, Screen.MINIGAME_GEOLOGY,
+    Screen.FLIGHT, Screen.CHAR_CREATION, Screen.ONBOARDING,
+]);
+
 on('SCREEN_CHANGED', () => {
     const btns = document.querySelectorAll<HTMLElement>('.nav-btn[data-screen]');
     btns.forEach(btn => {
@@ -142,11 +153,24 @@ on('SCREEN_CHANGED', () => {
     });
 
     const gameNavbar = document.getElementById('game-navbar');
-    if (gameNavbar) {
-        const hideOnScreen = _store.currentScreen === Screen.MAIN_MENU;
-        gameNavbar.classList.toggle('hidden', hideOnScreen);
+    const navbarVisible = !!_store.currentScreen && NAVBAR_SCREENS.has(_store.currentScreen);
+    if (gameNavbar) gameNavbar.classList.toggle('hidden', !navbarVisible);
+    document.body.classList.toggle('has-navbar', navbarVisible);
+
+    // Кнопка «Назад» в навбаре актуальна только на карте галактики;
+    // на остальных экранах принудительно прячем
+    if (_store.currentScreen !== Screen.GALAXY_MAP) {
+        document.getElementById('nav-btn-back')?.classList.add('hidden');
     }
-    
+
+    const sysMenu = document.getElementById('game-sys-menu');
+    if (sysMenu && _store.currentScreen) {
+        sysMenu.classList.toggle('hidden', SYS_MENU_HIDDEN_SCREENS.has(_store.currentScreen));
+        // Сбрасываем раскрытое состояние при смене экрана
+        sysMenu.dataset.collapsed = 'true';
+        document.getElementById('btn-sys-toggle')?.setAttribute('aria-expanded', 'false');
+    }
+
     // Звук перехода (кроме первой загрузки)
     if (_store.previousScreen) {
         playSfx('screen_transition');

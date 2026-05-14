@@ -23,7 +23,7 @@ export function hideTooltip(): void {
 }
 
 export function showBackButton(show: boolean): void {
-    const btn = document.getElementById('btn-galaxy-back');
+    const btn = document.getElementById('nav-btn-back');
     if (btn) btn.classList.toggle('hidden', !show);
 }
 

@@ -72,6 +72,8 @@ public class GameModel(IPlanetRepository planets, IMiniGameService miniGameServi
             "planet-detail"          => "_ScreenPlanetDetail",
             "minigame"               => "_ScreenMiniGame",
             "minigame-medicine"       => "_ScreenMiniGameMedicine",
+            "minigame-programming"    => "_ScreenMiniGameProgramming",
+            "minigame-geology"         => "_ScreenMiniGameGeology",
             "ship-upgrade"           => "_ScreenShipUpgrade",
             "vocation-constellation" => "_ScreenVocationConstellation",
             "achievements"           => "_ScreenAchievements",

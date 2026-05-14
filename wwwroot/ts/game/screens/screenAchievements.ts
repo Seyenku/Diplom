@@ -1,11 +1,11 @@
 /**
- * screenAchievements.ts — Прогресс навигатора (redesign)
+ * screenAchievements.ts — Прогресс навигатора
  *
  * Radar Chart + Crystal Progress Bars + Achievement Badges + Rank System
  */
 
-import { getStore } from '../stateManager.js';
-import { GameStore, CrystalType } from '../types.js';
+import { getStore, dispatch } from '../stateManager.js';
+import { GameStore, CrystalType, PlayerState } from '../types.js';
 import { CLUSTERS } from '../clusterConfig.js';
 
 // ── Определения достижений ──────────────────────────────────────────────────
@@ -17,7 +17,7 @@ interface AchievementDef {
     desc: string;
 }
 
-const ACHIEVEMENTS_DEF: AchievementDef[] = [
+const ACHIEVEMENTS_DEF: readonly AchievementDef[] = [
     { id: 'first-scan',       icon: '🔭', title: 'Первый сканер',      desc: 'Запустил первое сканирование туманности.' },
     { id: 'first-planet',     icon: '🌍', title: 'Первое открытие',    desc: 'Открыл свою первую профессию-планету.' },
     { id: 'minigame-3',       icon: '🎮', title: 'Мини-игрок',         desc: 'Прошёл 3 мини-игры.' },
@@ -38,99 +38,196 @@ interface Rank {
     minCrystals: number;
 }
 
-const RANKS: Rank[] = [
+// Отсортирован по убыванию minCrystals — find() возвращает наивысший достигнутый ранг
+const RANKS: readonly Rank[] = [
     { key: 'admiral',   label: 'Адмирал',    minCrystals: 300 },
     { key: 'captain',   label: 'Капитан',    minCrystals: 150 },
-    { key: 'navigator', label: 'Навигатор',  minCrystals: 50 },
-    { key: 'cadet',     label: 'Кадет',      minCrystals: 0 },
-];
+    { key: 'navigator', label: 'Навигатор',  minCrystals: 50  },
+    { key: 'cadet',     label: 'Кадет',      minCrystals: 0   },
+].slice().sort((a, b) => b.minCrystals - a.minCrystals);
 
 function _getRank(totalCrystals: number): Rank {
     return RANKS.find(r => totalCrystals >= r.minCrystals) ?? RANKS[RANKS.length - 1];
 }
 
-// ── Window API ──────────────────────────────────────────────────────────────
+// ── Утилиты ──────────────────────────────────────────────────────────────────
 
-window._achievements = {
-    exportStats() {
-        const store = getStore();
-        const data = {
-            player: store.player,
-            exportDate: new Date().toISOString(),
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `stellar-vocation-stats-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-    }
-};
+function _escapeHtml(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
-// ── Init ────────────────────────────────────────────────────────────────────
+function _set(id: string, v: string): void {
+    const el = document.getElementById(id);
+    if (el) el.textContent = v;
+}
+
+interface PlayerStats {
+    miniGamesPlayed?: number;
+    flights?: number;
+    totalCrystalsEarned?: number;
+    scans?: number;
+    [key: string]: number | undefined;
+}
+
+interface PlayerSnapshot {
+    name?: string;
+    badges?: string[];
+    crystals?: Partial<Record<CrystalType, number>>;
+    stats?: PlayerStats;
+    discoveredPlanets?: string[];
+    appliedUpgrades?: string[];
+}
+
+interface AggregatedTotals {
+    totalCr: number;
+    clustersWithCrystals: number;
+    planetsCount: number;
+}
+
+function _aggregate(player: PlayerSnapshot): AggregatedTotals {
+    const crystals = player.crystals ?? {};
+    const totalCr = (Object.values(crystals) as number[]).reduce((a, b) => a + (b ?? 0), 0);
+    const clustersWithCrystals = CLUSTERS.filter(c => (crystals[c.crystalType] ?? 0) > 0).length;
+    const planetsCount = (player.discoveredPlanets ?? []).length;
+    return { totalCr, clustersWithCrystals, planetsCount };
+}
+
+// ── Жизненный цикл ──────────────────────────────────────────────────────────
+
+let _previousTitle: string | null = null;
+let _cleanupListeners: Array<() => void> = [];
+let _hasMounted = false;
 
 export async function init(store: Readonly<GameStore>): Promise<void> {
-    const player  = store.player ?? {} as NonNullable<typeof store.player>;
-    const badges  = new Set(player.badges ?? []);
+    _previousTitle = document.title;
+    document.title = 'Прогресс — Stellar Vocation';
+
+    const player = (store.player ?? {}) as PlayerSnapshot;
+    const badges = new Set(player.badges ?? []);
     const crystals = player.crystals ?? {};
-    const stats   = player.stats ?? {};
-    const planets = (player.discoveredPlanets ?? []).length;
+    const stats = player.stats ?? {};
+    const totals = _aggregate(player);
 
-    // Compute totals
-    const totalCr = Object.values(crystals).reduce((a, b) => a + (b as number), 0);
+    // Статы
+    _set('stat-planets',        String(totals.planetsCount));
+    _set('stat-minigames',      String(stats.miniGamesPlayed ?? 0));
+    _set('stat-flights',        String(stats.flights ?? 0));
+    _set('stat-total-crystals', String(stats.totalCrystalsEarned ?? totals.totalCr));
 
-    // Stats (без дубликатов — убран "Сканирования" т.к. = планетам)
-    _set('stat-planets',         String(planets));
-    _set('stat-minigames',       String(stats.miniGamesPlayed ?? 0));
-    _set('stat-flights',         String(stats.flights ?? 0));
-    _set('stat-total-crystals',  String(stats.totalCrystalsEarned ?? totalCr));
-
-    // Player name & rank
+    // Имя и ранг
     _set('ach-player-name', player.name || 'Навигатор');
-    const rank = _getRank(stats.totalCrystalsEarned ?? totalCr);
+    const rank = _getRank(stats.totalCrystalsEarned ?? totals.totalCr);
     const rankEl = document.getElementById('ach-rank');
     if (rankEl) {
         rankEl.textContent = rank.label;
         rankEl.setAttribute('data-rank', rank.key);
     }
 
-    // Auto-check achievements
-    _autoCheckAchievements(player, badges);
+    // Авто-проверка достижений с persist в стор
+    _autoCheckAchievements(player, badges, totals);
 
     // Render
     _renderCrystalBars(crystals);
     _renderRadarChart(crystals);
     _renderAchievements(badges);
 
-    // Achievements counter
+    // Счётчик
     const earned = ACHIEVEMENTS_DEF.filter(a => badges.has(a.id)).length;
     _set('ach-counter', `${earned} / ${ACHIEVEMENTS_DEF.length}`);
+
+    // Stagger анимация — только при первом монтировании за сессию
+    if (_hasMounted) {
+        document.querySelectorAll('.ach-stat-appear').forEach(el => el.classList.add('ach-no-stagger'));
+    }
+    _hasMounted = true;
+
+    // Обработчики
+    _bindActions();
 }
 
-export function destroy(): void {}
+export function destroy(): void {
+    if (_previousTitle !== null) {
+        document.title = _previousTitle;
+        _previousTitle = null;
+    }
+    _cleanupListeners.forEach(fn => fn());
+    _cleanupListeners = [];
 
-// ── Авто-проверка достижений ────────────────────────────────────────────────
+    const grid = document.getElementById('achievements-grid');
+    if (grid) grid.innerHTML = '';
+    const bars = document.getElementById('ach-crystal-bars');
+    if (bars) bars.innerHTML = '';
+    const svg = document.getElementById('radar-chart');
+    if (svg) {
+        // Сохраняем title/desc внутри svg
+        svg.querySelectorAll(':scope > :not(title):not(desc)').forEach(n => n.remove());
+    }
+}
+
+// ── Обработчики через делегирование ─────────────────────────────────────────
+
+function _bindActions(): void {
+    const exportBtn = document.querySelector<HTMLButtonElement>('[data-action="export-stats"]');
+    if (exportBtn) {
+        const handler = (): void => _exportStats();
+        exportBtn.addEventListener('click', handler);
+        _cleanupListeners.push(() => exportBtn.removeEventListener('click', handler));
+    }
+}
+
+function _exportStats(): void {
+    const store = getStore();
+    const data = {
+        player: store.player,
+        exportDate: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stellar-vocation-stats-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Откладываем revoke, чтобы браузер успел инициировать загрузку
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+// ── Авто-проверка достижений (с persist) ────────────────────────────────────
 
 function _autoCheckAchievements(
-    player: NonNullable<Parameters<typeof init>[0]['player']>,
-    badges: Set<string>
+    player: PlayerSnapshot,
+    badges: Set<string>,
+    totals: AggregatedTotals
 ): void {
-    const stats   = player!.stats ?? {};
-    const crystals = player!.crystals ?? {};
-    const planets = (player!.discoveredPlanets ?? []).length;
-    const totalCr = Object.values(crystals).reduce((a, b) => a + (b as number), 0);
-    const clustersWithCrystals = CLUSTERS.filter(c =>
-        (crystals[c.crystalType as keyof typeof crystals] as number) > 0
-    ).length;
+    const stats = player.stats ?? {};
+    const newBadges: string[] = [];
 
-    if ((stats as Record<string, number>).scans > 0)           badges.add('first-scan');
-    if (planets > 0)               badges.add('first-planet');
-    if (planets >= 5)              badges.add('explorer-5');
-    if (((stats as Record<string, number>).miniGamesPlayed ?? 0) >= 3) badges.add('minigame-3');
-    if (totalCr >= 100)            badges.add('crystals-100');
-    if (clustersWithCrystals >= CLUSTERS.length) badges.add('all-clusters');
-    if (((stats as Record<string, number>).flights ?? 0) >= 10) badges.add('flight-10');
-    if ((player!.appliedUpgrades ?? []).length > 0) badges.add('upgrade-1');
+    const tryAdd = (id: string, condition: boolean): void => {
+        if (condition && !badges.has(id)) {
+            badges.add(id);
+            newBadges.push(id);
+        }
+    };
+
+    tryAdd('first-scan',   (stats.scans ?? 0) > 0);
+    tryAdd('first-planet', totals.planetsCount > 0);
+    tryAdd('explorer-5',   totals.planetsCount >= 5);
+    tryAdd('minigame-3',   (stats.miniGamesPlayed ?? 0) >= 3);
+    tryAdd('crystals-100', totals.totalCr >= 100);
+    tryAdd('all-clusters', totals.clustersWithCrystals >= CLUSTERS.length);
+    tryAdd('flight-10',    (stats.flights ?? 0) >= 10);
+    tryAdd('upgrade-1',    (player.appliedUpgrades ?? []).length > 0);
+
+    // Персистим новые ачивки в стор
+    for (const badge of newBadges) {
+        dispatch('ADD_BADGE', { badge });
+    }
 }
 
 // ── Crystal Progress Bars ───────────────────────────────────────────────────
@@ -140,39 +237,37 @@ function _renderCrystalBars(crystals: Partial<Record<CrystalType, number>>): voi
     if (!container) return;
 
     const entries = CLUSTERS.map(c => ({
-        ...c,
-        value: (crystals as Record<string, number>)[c.crystalType] ?? 0,
+        colorHex: c.colorHex,
+        icon: c.icon,
+        shortLabel: c.shortLabel,
+        value: crystals[c.crystalType] ?? 0,
     }));
     const total = entries.reduce((s, e) => s + e.value, 0) || 1;
 
     container.innerHTML = entries.map(e => {
         const pct = Math.round((e.value / total) * 100);
+        const label = _escapeHtml(`${e.icon} ${e.shortLabel}`);
+        const color = _escapeHtml(e.colorHex);
         return `<div class="ach-crystal-row">
             <div class="ach-crystal-header">
-                <span class="ach-crystal-name" style="color:${e.colorHex};">
-                    ${e.icon} ${e.shortLabel}
-                </span>
+                <span class="ach-crystal-name" style="color:${color};">${label}</span>
                 <span>
                     <span class="ach-crystal-count">${e.value}</span>
                     <span class="ach-crystal-pct">(${pct}%)</span>
                 </span>
             </div>
-            <div class="ach-crystal-track">
-                <div class="ach-crystal-fill" style="--bar-color:${e.colorHex}; background:linear-gradient(90deg, ${e.colorHex}, ${e.colorHex}cc);" data-width="${pct}%"></div>
+            <div class="ach-crystal-track"
+                 role="progressbar"
+                 aria-label="${_escapeHtml(e.shortLabel)}: ${pct}%"
+                 aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+                <div class="ach-crystal-fill"
+                     style="--bar-color:${color}; --target-width:${pct}%; background:linear-gradient(90deg, ${color}, ${color}cc);"></div>
             </div>
         </div>`;
     }).join('');
-
-    // Animate bars on load
-    requestAnimationFrame(() => {
-        container.querySelectorAll('.ach-crystal-fill').forEach(bar => {
-            const el = bar as HTMLElement;
-            el.style.width = el.dataset.width ?? '0%';
-        });
-    });
 }
 
-// ── Radar Chart (SVG) — 3 кластера ──────────────────────────────────────────
+// ── Radar Chart (SVG) ───────────────────────────────────────────────────────
 
 function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void {
     const svg = document.getElementById('radar-chart');
@@ -182,13 +277,12 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
     const n = CLUSTERS.length;
     const angleStep = (Math.PI * 2) / n;
 
-    // Максимальное значение для нормализации
-    const values = CLUSTERS.map(c => (crystals as Record<string, number>)[c.crystalType] ?? 0);
+    const values = CLUSTERS.map(c => crystals[c.crystalType] ?? 0);
     const max = Math.max(...values, 1);
 
     let html = '';
 
-    // Концентрические кольца (фон)
+    // Концентрические кольца
     for (let ring = 1; ring <= 4; ring++) {
         const r = (ring / 4) * maxR;
         const pts: string[] = [];
@@ -199,18 +293,19 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
         html += `<polygon points="${pts.join(' ')}" fill="none" stroke="rgba(79,195,247,0.08)" stroke-width="1"/>`;
     }
 
-    // Оси
+    // Оси + подписи
     for (let i = 0; i < n; i++) {
         const angle = i * angleStep - Math.PI / 2;
         const ex = cx + Math.cos(angle) * maxR;
         const ey = cy + Math.sin(angle) * maxR;
         html += `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="rgba(79,195,247,0.1)" stroke-width="1"/>`;
 
-        // Подписи
         const lx = cx + Math.cos(angle) * (maxR + 28);
         const ly = cy + Math.sin(angle) * (maxR + 28);
+        const label = _escapeHtml(`${CLUSTERS[i].icon} ${CLUSTERS[i].shortLabel}`);
+        const color = _escapeHtml(CLUSTERS[i].colorHex);
         html += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle"
-                       font-size="12" fill="${CLUSTERS[i].colorHex}" font-family="var(--font-display)">${CLUSTERS[i].icon} ${CLUSTERS[i].shortLabel}</text>`;
+                       font-size="12" fill="${color}" font-family="var(--font-display)">${label}</text>`;
     }
 
     // Полигон данных
@@ -222,7 +317,6 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
         dataPts.push(`${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`);
     }
 
-    // Градиент
     html += `<defs>
         <linearGradient id="radarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#4fc3f7" stop-opacity="0.3"/>
@@ -232,16 +326,16 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
 
     html += `<polygon points="${dataPts.join(' ')}" fill="url(#radarGrad)" stroke="#4fc3f7" stroke-width="2" stroke-linejoin="round"/>`;
 
-    // Точки на вершинах
+    // Точки + значения
     for (let i = 0; i < n; i++) {
         const angle = i * angleStep - Math.PI / 2;
         const v = values[i] / max;
         const r = v * maxR;
         const px = cx + Math.cos(angle) * r;
         const py = cy + Math.sin(angle) * r;
-        html += `<circle cx="${px}" cy="${py}" r="5" fill="${CLUSTERS[i].colorHex}" stroke="#020612" stroke-width="2"/>`;
+        const color = _escapeHtml(CLUSTERS[i].colorHex);
+        html += `<circle cx="${px}" cy="${py}" r="5" fill="${color}" stroke="#020612" stroke-width="2"/>`;
 
-        // Значения
         if (values[i] > 0) {
             const vx = cx + Math.cos(angle) * (r + 16);
             const vy = cy + Math.sin(angle) * (r + 16);
@@ -250,7 +344,10 @@ function _renderRadarChart(crystals: Partial<Record<CrystalType, number>>): void
         }
     }
 
+    // Сохраняем существующие title/desc, заменяем только графику
+    const existingMeta = svg.querySelectorAll(':scope > title, :scope > desc');
     svg.innerHTML = html;
+    existingMeta.forEach(node => svg.insertBefore(node, svg.firstChild));
 }
 
 // ── Achievements Grid ───────────────────────────────────────────────────────
@@ -261,27 +358,24 @@ function _renderAchievements(earnedBadges: Set<string>): void {
 
     grid.innerHTML = ACHIEVEMENTS_DEF.map(a => {
         const earned = earnedBadges.has(a.id);
-        return `<div class="col">
-            <div class="ach-badge ${earned ? 'ach-badge--earned' : 'ach-badge--locked'}">
-                <div class="ach-badge-icon">${a.icon}</div>
+        const stateClass = earned ? 'ach-badge--earned' : 'ach-badge--locked';
+        const statusText = earned ? 'Получено' : 'Не получено';
+        const statusIcon = earned
+            ? '<span class="ach-badge-check" aria-hidden="true">✓</span>'
+            : '<span class="ach-badge-lock" aria-hidden="true">🔒</span>';
+        return `<li class="col">
+            <article class="ach-badge ${stateClass}"
+                     aria-label="${_escapeHtml(a.title)}. ${_escapeHtml(a.desc)} ${statusText}.">
+                <div class="ach-badge-icon" aria-hidden="true">${_escapeHtml(a.icon)}</div>
                 <div class="ach-badge-info">
-                    <div class="ach-badge-title">${a.title}</div>
-                    <div class="ach-badge-desc">${a.desc}</div>
+                    <div class="ach-badge-title">${_escapeHtml(a.title)}</div>
+                    <div class="ach-badge-desc">${_escapeHtml(a.desc)}</div>
                 </div>
                 <div class="ach-badge-status">
-                    ${earned
-                        ? '<span class="ach-badge-check">✓</span>'
-                        : '<span class="ach-badge-lock">🔒</span>'
-                    }
+                    ${statusIcon}
+                    <span class="visually-hidden">${statusText}</span>
                 </div>
-            </div>
-        </div>`;
+            </article>
+        </li>`;
     }).join('');
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function _set(id: string, v: string): void {
-    const el = document.getElementById(id);
-    if (el) el.textContent = v;
 }

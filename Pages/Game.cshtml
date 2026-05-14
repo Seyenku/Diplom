@@ -29,30 +29,11 @@
         .site-header, .site-footer { display: none !important; }
         main.container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; height: 100vh; }
         .game-page-container { height: 100vh; width: 100vw; display: flex; flex-direction: column; background: #020710; }
-        .game-header { position: absolute; z-index: 100; top: max(0.75rem, env(safe-area-inset-top)); right: max(0.75rem, env(safe-area-inset-right)); left: auto; gap: 0.55rem; pointer-events: none; }
-        .game-header h2 { display: none; }
-        .btn-game-sys { pointer-events: auto; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(99, 102, 241, 0.3); color: #fff; padding: 0.55rem 1rem; border-radius: 0.5rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; font-family: 'Tektur', sans-serif; font-size: clamp(0.82rem, 0.25vw + 0.7rem, 1rem); }
-        .btn-game-sys:hover { background: rgba(15, 23, 42, 0.9); border-color: #4fc3f7; color: #4fc3f7; }
-        #game-root { height: 100vh !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; flex-grow: 1; }
+        #game-root { position: relative; height: 100vh !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; flex-grow: 1; }
     </style>
 }
 
 <div class="game-page-container">
-    <div class="game-header d-flex justify-content-end align-items-center">
-        <a href="~/" class="btn-game-sys">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
-            </svg>
-            На главную
-        </a>
-        <button id="btn-fullscreen-toggle" class="btn-game-sys">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707m4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707m0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707m-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707"/>
-            </svg>
-            На весь экран
-        </button>
-    </div>
-
     <!-- Корневой контейнер игры -->
     <div id="game-root">
         <!-- Оверлей перехода между экранами -->
@@ -63,14 +44,37 @@
         <!-- Three.js Canvas -->
         <canvas id="game-canvas" aria-hidden="true"></canvas>
 
+        <!-- Внутриигровая навигация (оверлей поверх канваса) -->
+        @await Html.PartialAsync("~/Pages/Game/_GameNavbar.cshtml")
+
+        <!-- Системное меню: бургер с «На главную» и «Полный экран» -->
+        <div id="game-sys-menu" class="game-sys-menu" data-collapsed="true">
+            <button id="btn-sys-toggle" class="btn-sys-toggle" aria-label="Системное меню" aria-expanded="false" type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
+                </svg>
+            </button>
+            <div class="game-sys-menu-items">
+                <a href="~/" class="btn-game-sys">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+                    </svg>
+                    На главную
+                </a>
+                <button id="btn-fullscreen-toggle" class="btn-game-sys" type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707m4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707m0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707m-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707"/>
+                    </svg>
+                    На весь экран
+                </button>
+            </div>
+        </div>
+
         <!-- Контейнер активного экрана -->
         <section id="screen-container"
                  role="main"
                  tabindex="-1"
                  aria-label="Активный экран игры">
-            <!-- Внутриигровая навигация -->
-            @await Html.PartialAsync("~/Pages/Game/_GameNavbar.cshtml")
-            
             <!-- Динамический контент экрана -->
             <div id="screen-dynamic-content" tabindex="-1"></div>
         </section>

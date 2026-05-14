@@ -1,0 +1,95 @@
+/* =============================================
+   Stellar Vocation — Системное меню (бургер)
+   ============================================= */
+
+.game-sys-menu {
+    position: absolute;
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+.game-sys-menu.hidden {
+    display: none;
+}
+
+.btn-sys-toggle {
+    pointer-events: auto;
+    width: 2.6rem;
+    height: 2.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 0.5rem;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-sys-toggle:hover {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: #4fc3f7;
+    color: #4fc3f7;
+}
+
+.game-sys-menu[data-collapsed="false"] .btn-sys-toggle {
+    border-color: #4fc3f7;
+    color: #4fc3f7;
+    background: rgba(15, 23, 42, 0.9);
+}
+
+.game-sys-menu-items {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    pointer-events: auto;
+}
+
+.game-sys-menu[data-collapsed="true"] .game-sys-menu-items {
+    display: none;
+}
+
+.btn-game-sys {
+    pointer-events: auto;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #fff;
+    padding: 0.55rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    font-family: 'Tektur', sans-serif;
+    font-size: clamp(0.82rem, 0.25vw + 0.7rem, 1rem);
+    white-space: nowrap;
+}
+
+.btn-game-sys:hover {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: #4fc3f7;
+    color: #4fc3f7;
+}
+
+/* В фуллскрине системное меню полностью скрыто */
+body.game-fullscreen .game-sys-menu {
+    display: none;
+}
+
+/* Пустой контейнер экрана не должен перехватывать клики у канваса */
+#screen-dynamic-content:empty {
+    pointer-events: none;
+}

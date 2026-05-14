@@ -1,97 +1,109 @@
-<!-- _ScreenAchievements.cshtml — Прогресс навигатора (redesign) -->
-<div class="screen" id="screen-achievements"
-     style="width:100%;min-height:100vh;display:flex;flex-direction:column;padding:1.5rem;gap:0;">
-
+<!-- _ScreenAchievements.cshtml — Прогресс навигатора -->
+<main class="screen ach-screen" id="screen-achievements" aria-labelledby="ach-title">
     <div class="container-fluid px-0">
 
         <!-- ═══ Header ═══════════════════════════════════════════ -->
-        <div class="ach-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+        <header class="ach-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
             <div>
-                <h1 class="game-title" style="font-size:1.5rem;margin:0;">🏆 Прогресс навигатора</h1>
-                <div class="d-flex align-items-center gap-2 mt-1">
+                <h1 id="ach-title" class="game-title ach-title">
+                    <span aria-hidden="true">🏆</span> Прогресс навигатора
+                </h1>
+                <p class="ach-subline">
                     <span id="ach-player-name" class="ach-player-name">Навигатор</span>
-                    <span id="ach-rank" class="ach-rank-badge">Кадет</span>
-                </div>
+                    <span id="ach-rank" class="ach-rank-badge" aria-live="polite">Кадет</span>
+                </p>
             </div>
-            <button id="btn-export-stats" class="btn-game btn-secondary" onclick="window._achievements?.exportStats()" style="font-size:0.78rem;">
-                📥 Экспорт
+            <button id="btn-export-stats" type="button"
+                    class="btn-game btn-secondary ach-export-btn"
+                    data-action="export-stats">
+                <span aria-hidden="true">📥</span> Экспорт
             </button>
-        </div>
+        </header>
 
         <!-- ═══ Stats Row ════════════════════════════════════════ -->
-        <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+        <section aria-label="Сводная статистика" class="row row-cols-2 row-cols-md-4 g-3 mb-4">
             <div class="col ach-stat-appear" style="--delay:0">
-                <div class="ach-stat-card">
-                    <div class="ach-stat-icon" style="--glow:#4fc3f7;">🌍</div>
-                    <div id="stat-planets" class="ach-stat-value">0</div>
-                    <div class="ach-stat-label">Открыто планет</div>
-                </div>
+                <dl class="ach-stat-card">
+                    <div class="ach-stat-icon" style="--glow:#4fc3f7;" aria-hidden="true">🌍</div>
+                    <dd id="stat-planets" class="ach-stat-value">0</dd>
+                    <dt class="ach-stat-label">Открыто планет</dt>
+                </dl>
             </div>
             <div class="col ach-stat-appear" style="--delay:1">
-                <div class="ach-stat-card">
-                    <div class="ach-stat-icon" style="--glow:#c084fc;">🎮</div>
-                    <div id="stat-minigames" class="ach-stat-value">0</div>
-                    <div class="ach-stat-label">Мини-игр</div>
-                </div>
+                <dl class="ach-stat-card">
+                    <div class="ach-stat-icon" style="--glow:#c084fc;" aria-hidden="true">🎮</div>
+                    <dd id="stat-minigames" class="ach-stat-value">0</dd>
+                    <dt class="ach-stat-label">Мини-игр</dt>
+                </dl>
             </div>
             <div class="col ach-stat-appear" style="--delay:2">
-                <div class="ach-stat-card">
-                    <div class="ach-stat-icon" style="--glow:#fb923c;">💎</div>
-                    <div id="stat-total-crystals" class="ach-stat-value">0</div>
-                    <div class="ach-stat-label">Кристаллов</div>
-                </div>
+                <dl class="ach-stat-card">
+                    <div class="ach-stat-icon" style="--glow:#fb923c;" aria-hidden="true">💎</div>
+                    <dd id="stat-total-crystals" class="ach-stat-value">0</dd>
+                    <dt class="ach-stat-label">Кристаллов</dt>
+                </dl>
             </div>
             <div class="col ach-stat-appear" style="--delay:3">
-                <div class="ach-stat-card">
-                    <div class="ach-stat-icon" style="--glow:#4ade80;">🚀</div>
-                    <div id="stat-flights" class="ach-stat-value">0</div>
-                    <div class="ach-stat-label">Полётов</div>
-                </div>
+                <dl class="ach-stat-card">
+                    <div class="ach-stat-icon" style="--glow:#4ade80;" aria-hidden="true">🚀</div>
+                    <dd id="stat-flights" class="ach-stat-value">0</dd>
+                    <dt class="ach-stat-label">Полётов</dt>
+                </dl>
             </div>
-        </div>
+        </section>
 
         <!-- ═══ Charts Row ═══════════════════════════════════════ -->
-        <div class="row g-3 mb-4">
+        <section aria-label="Графики прогресса" class="row g-3 mb-4">
             <!-- Crystal Distribution (progress bars) -->
             <div class="col-lg-5">
-                <div class="game-card ach-chart-card h-100">
-                    <h3 class="ach-section-title">💎 КРИСТАЛЛЫ ПО НАПРАВЛЕНИЯМ</h3>
+                <article class="game-card ach-chart-card h-100">
+                    <h2 class="ach-section-title">
+                        <span aria-hidden="true">💎</span> Кристаллы по направлениям
+                    </h2>
                     <div id="ach-crystal-bars" class="d-flex flex-column gap-3 mt-3">
                         <!-- JS renders bars -->
                     </div>
-                </div>
+                </article>
             </div>
             <!-- Radar Chart -->
             <div class="col-lg-7">
-                <div class="game-card ach-chart-card ach-radar-wrap h-100 d-flex flex-column align-items-center justify-content-center">
-                    <h3 class="ach-section-title">🕸️ ПРОФИЛЬ НАВИГАТОРА</h3>
+                <article class="game-card ach-chart-card ach-radar-wrap h-100 d-flex flex-column align-items-center justify-content-center">
+                    <h2 class="ach-section-title">
+                        <span aria-hidden="true">🕸️</span> Профиль навигатора
+                    </h2>
                     <p class="ach-section-desc">Распределение кристаллов по направлениям</p>
-                    <svg id="radar-chart" viewBox="0 0 400 400" class="ach-radar-svg"></svg>
-                </div>
+                    <svg id="radar-chart" viewBox="0 0 400 400" class="ach-radar-svg"
+                         role="img" aria-labelledby="radar-title radar-desc">
+                        <title id="radar-title">Радар профиля навигатора</title>
+                        <desc id="radar-desc">Полярная диаграмма распределения собранных кристаллов по трём туманностям</desc>
+                    </svg>
+                </article>
             </div>
-        </div>
+        </section>
 
         <!-- ═══ Achievements ═════════════════════════════════════ -->
-        <div class="mb-4">
+        <section aria-labelledby="ach-list-title" class="mb-4">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                <h2 class="ach-section-title m-0">🏅 ДОСТИЖЕНИЯ</h2>
-                <span id="ach-counter" class="ach-counter-badge">0 / 10</span>
+                <h2 id="ach-list-title" class="ach-section-title m-0">
+                    <span aria-hidden="true">🏅</span> Достижения
+                </h2>
+                <span id="ach-counter" class="ach-counter-badge" aria-live="polite">0 / 10</span>
             </div>
-            <div id="achievements-grid" class="row row-cols-1 row-cols-sm-2 g-3">
+            <ul id="achievements-grid" class="row row-cols-1 row-cols-sm-2 g-3 ach-grid-reset">
                 <!-- JS renders badges -->
-            </div>
-        </div>
+            </ul>
+        </section>
 
         <!-- ═══ CTA Footer ═══════════════════════════════════════ -->
-        <div class="ach-cta-card" data-spa="goto" data-screen="vocation-constellation" style="cursor:pointer;">
-            <div class="d-flex align-items-center gap-3">
-                <span class="ach-cta-icon">🌠</span>
-                <div>
-                    <div class="ach-cta-title">Созвездие Призвания</div>
-                    <div class="ach-cta-desc">Посмотри, к какой профессии ты ближе всего</div>
-                </div>
-            </div>
-            <span class="ach-cta-arrow">→</span>
-        </div>
+        <button type="button" class="ach-cta-card" data-spa="goto" data-screen="vocation-constellation">
+            <span class="d-flex align-items-center gap-3">
+                <span class="ach-cta-icon" aria-hidden="true">🌠</span>
+                <span class="ach-cta-text">
+                    <span class="ach-cta-title">Созвездие Призвания</span>
+                    <span class="ach-cta-desc">Посмотри, к какой профессии ты ближе всего</span>
+                </span>
+            </span>
+            <span class="ach-cta-arrow" aria-hidden="true">→</span>
+        </button>
     </div>
-</div>
+</main>

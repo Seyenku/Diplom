@@ -3,6 +3,7 @@
    ============================================= */
 @import "core.css";
 @import "navbar.css";
+@import "sys-menu.css";
 @import "guide.css";
 @import "main-menu.css";
 @import "flight.css";
@@ -10,3 +11,5 @@
 @import "planet.css";
 @import "achievements.css";
 @import "minigame-medicine.css";
+@import "minigame-programming.css";
+@import "minigame-geology.css";

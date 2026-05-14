@@ -1,15 +1,6 @@
 <!-- _ScreenGalaxyMap.cshtml — Звёздная карта: 3 туманности -->
 <div class="screen galaxy-map-screen" id="screen-galaxy-map">
 
-    <!-- ═══ Шапка ═══ -->
-    <header class="galaxy-header">
-        <div class="galaxy-actions">
-            <button id="btn-galaxy-back" class="btn-game btn-secondary galaxy-small-btn hidden" onclick="window._galaxyMap?.backToOverview()">
-                ← Назад
-            </button>
-        </div>
-    </header>
-
     <!-- ═══ Контент: 3D Вид ═══ -->
     <div id="galaxy-3d-container" class="galaxy-content-panel galaxy-3d-container">
         <div id="galaxy-3d-canvas-wrap" class="galaxy-3d-canvas-wrap">
@@ -19,12 +10,6 @@
                 <div id="galaxy-tooltip-name" class="galaxy-tooltip-name"></div>
                 <div id="galaxy-tooltip-cat" class="galaxy-tooltip-cat"></div>
                 <div id="galaxy-tooltip-hint" class="galaxy-tooltip-hint">ЛКМ — выбрать</div>
-            </div>
-
-            <!-- Индикатор масштабирования камеры -->
-            <div class="galaxy-zoom-control">
-                <span class="galaxy-zoom-text">Масштаб: <strong id="galaxy-zoom-percent" class="galaxy-zoom-value">61%</strong></span>
-                <button type="button" class="btn-game btn-secondary galaxy-zoom-reset-btn" onclick="event.stopPropagation(); window._galaxyMap?.resetCamera()">Сброс</button>
             </div>
 
             <!-- Панель выбранного региона / туманности -->
