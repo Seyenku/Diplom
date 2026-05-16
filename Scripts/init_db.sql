@@ -137,8 +137,6 @@ CREATE TABLE Programs (
     FormId INT NOT NULL,
     YearsEduc FLOAT NOT NULL,
     Description NVARCHAR(MAX),
-    Disciplines NVARCHAR(MAX),          -- Читаемые дисциплины
-    Spheres NVARCHAR(MAX),              -- Сферы трудоустройства
     CONSTRAINT FK_Programs_BaseSpec FOREIGN KEY (SpecCode) REFERENCES BaseSpecializations(Code) ON DELETE CASCADE,
     CONSTRAINT FK_Programs_EduForms FOREIGN KEY (FormId) REFERENCES EduForms(Id)
 );
@@ -159,6 +157,40 @@ CREATE TABLE Program_Subjects_Map (
     PRIMARY KEY (ProgramId, SubjectId),
     CONSTRAINT FK_ProgSubj_Prog FOREIGN KEY (ProgramId) REFERENCES Programs(Id) ON DELETE CASCADE,
     CONSTRAINT FK_ProgSubj_Subj FOREIGN KEY (SubjectId) REFERENCES Subjects(Id) ON DELETE CASCADE
+);
+GO
+
+-- Справочник учебных дисциплин
+CREATE TABLE Disciplines (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(255) NOT NULL UNIQUE
+);
+GO
+
+-- Связь: Программы <-> Дисциплины (Многие-ко-многим)
+CREATE TABLE Program_Disciplines_Map (
+    ProgramId INT NOT NULL,
+    DisciplineId INT NOT NULL,
+    PRIMARY KEY (ProgramId, DisciplineId),
+    CONSTRAINT FK_ProgDisc_Prog FOREIGN KEY (ProgramId) REFERENCES Programs(Id) ON DELETE CASCADE,
+    CONSTRAINT FK_ProgDisc_Disc FOREIGN KEY (DisciplineId) REFERENCES Disciplines(Id) ON DELETE CASCADE
+);
+GO
+
+-- Справочник сфер трудоустройства
+CREATE TABLE Spheres (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(255) NOT NULL UNIQUE
+);
+GO
+
+-- Связь: Программы <-> Сферы трудоустройства (Многие-ко-многим)
+CREATE TABLE Program_Spheres_Map (
+    ProgramId INT NOT NULL,
+    SphereId INT NOT NULL,
+    PRIMARY KEY (ProgramId, SphereId),
+    CONSTRAINT FK_ProgSph_Prog FOREIGN KEY (ProgramId) REFERENCES Programs(Id) ON DELETE CASCADE,
+    CONSTRAINT FK_ProgSph_Sph FOREIGN KEY (SphereId) REFERENCES Spheres(Id) ON DELETE CASCADE
 );
 GO
 

@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Ars\\\\source\\\\repos\\\\KosmosCore\" -Recurse -Name)",
+      "Bash(xargs grep -l \"направления\\\\|дисциплины\\\\|сферы\\\\|spheres\\\\|disciplines\\\\|directions\")",
+      "Bash(xargs grep -l \"CREATE TABLE\")",
+      "Bash(dotnet build *)",
+      "PowerShell(dotnet build KosmosCore.csproj -nologo -v q 2>&1)"
     ]
   }
 }

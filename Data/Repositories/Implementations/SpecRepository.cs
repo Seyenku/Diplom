@@ -21,7 +21,6 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
 
         try
         {
-            // 1. Основной запрос: программы + специальности + формы обучения + экзамены + профессии
             const string sqlPrograms = @"
                 SELECT
                     bs.Code,
@@ -30,8 +29,18 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
                     ef.Name        AS EduForm,
                     p.YearsEduc,
                     p.Description,
-                    p.Disciplines,
-                    p.Spheres,
+                    ISNULL((
+                        SELECT STRING_AGG(d.Name, ', ')
+                        FROM dbo.Program_Disciplines_Map pdm
+                        JOIN dbo.Disciplines d ON pdm.DisciplineId = d.Id
+                        WHERE pdm.ProgramId = p.Id
+                    ), '') AS Disciplines,
+                    ISNULL((
+                        SELECT STRING_AGG(sp.Name, ', ')
+                        FROM dbo.Program_Spheres_Map psm2
+                        JOIN dbo.Spheres sp ON psm2.SphereId = sp.Id
+                        WHERE psm2.ProgramId = p.Id
+                    ), '') AS Spheres,
                     ISNULL((
                         SELECT STRING_AGG(s.Name, ', ')
                         FROM dbo.Program_Subjects_Map psm
@@ -59,7 +68,6 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
                 return empty;
             }
 
-            // 2. Загружаем всю статистику приёма
             const string sqlStats = @"
                 SELECT ProgramId, Year, Price, BudgetPlaces, MinPassingScore, AvgEgeScore
                 FROM dbo.AdmissionStats
@@ -68,7 +76,6 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
             var stats = (await db.QueryAsync<AdmissionStatsRow>(
                 new CommandDefinition(sqlStats, cancellationToken: ct))).ToList();
 
-            // 3. Группируем статистику по ProgramId
             var statsByProgram = stats.GroupBy(s => s.ProgramId)
                 .ToDictionary(
                     g => g.Key,
@@ -82,7 +89,6 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
                     }).ToList()
                 );
 
-            // 4. Привязываем историю приёма к каждой программе
             foreach (var program in programs)
             {
                 if (statsByProgram.TryGetValue(program.ProgramId, out var history))
@@ -100,7 +106,6 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
         }
     }
 
-    /// <summary>Внутренний класс для маппинга строк AdmissionStats через Dapper.</summary>
     public async Task<IReadOnlyList<EduForm>> GetEduFormsAsync(CancellationToken ct = default)
     {
         const string sql = "SELECT Id, Name FROM dbo.EduForms ORDER BY Id";
@@ -111,37 +116,59 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
 
     public async Task CreateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default)
     {
-        const string sql = @"
-            IF NOT EXISTS (SELECT 1 FROM dbo.BaseSpecializations WHERE Code = @Code)
-                INSERT INTO dbo.BaseSpecializations (Code, Title) VALUES (@Code, @Title);
-            ELSE
-                UPDATE dbo.BaseSpecializations SET Title = @Title WHERE Code = @Code;
+        EnsureOpen();
+        using var tx = db.BeginTransaction();
 
-            INSERT INTO dbo.Programs (SpecCode, FormId, YearsEduc, Description, Disciplines, Spheres)
-            VALUES (@Code, @FormId, @YearsEduc, @Description, @Disciplines, @Spheres);";
+        await UpsertBaseSpecAsync(direction.Code, direction.Title, tx, ct);
 
-        await db.ExecuteAsync(new CommandDefinition(sql, direction, cancellationToken: ct));
+        const string sqlInsertProgram = @"
+            INSERT INTO dbo.Programs (SpecCode, FormId, YearsEduc, Description)
+            VALUES (@Code, @FormId, @YearsEduc, @Description);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+        var programId = await db.ExecuteScalarAsync<int>(new CommandDefinition(
+            sqlInsertProgram,
+            new { direction.Code, direction.FormId, direction.YearsEduc, direction.Description },
+            tx, cancellationToken: ct));
+
+        await SyncDisciplinesAsync(programId, direction.Disciplines, tx, ct);
+        await SyncSpheresAsync(programId, direction.Spheres, tx, ct);
+
+        tx.Commit();
         cache.Remove(CacheKey);
     }
 
     public async Task UpdateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default)
     {
-        const string sql = @"
-            IF NOT EXISTS (SELECT 1 FROM dbo.BaseSpecializations WHERE Code = @Code)
-                INSERT INTO dbo.BaseSpecializations (Code, Title) VALUES (@Code, @Title);
-            ELSE
-                UPDATE dbo.BaseSpecializations SET Title = @Title WHERE Code = @Code;
+        EnsureOpen();
+        using var tx = db.BeginTransaction();
 
+        await UpsertBaseSpecAsync(direction.Code, direction.Title, tx, ct);
+
+        const string sqlUpdateProgram = @"
             UPDATE dbo.Programs
-               SET SpecCode = @Code,
-                   FormId = @FormId,
-                   YearsEduc = @YearsEduc,
-                   Description = @Description,
-                   Disciplines = @Disciplines,
-                   Spheres = @Spheres
+               SET SpecCode    = @Code,
+                   FormId      = @FormId,
+                   YearsEduc   = @YearsEduc,
+                   Description = @Description
              WHERE Id = @ProgramId;";
 
-        await db.ExecuteAsync(new CommandDefinition(sql, direction, cancellationToken: ct));
+        await db.ExecuteAsync(new CommandDefinition(
+            sqlUpdateProgram,
+            new { direction.Code, direction.FormId, direction.YearsEduc, direction.Description, direction.ProgramId },
+            tx, cancellationToken: ct));
+
+        await db.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM dbo.Program_Disciplines_Map WHERE ProgramId = @ProgramId;",
+            new { direction.ProgramId }, tx, cancellationToken: ct));
+        await db.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM dbo.Program_Spheres_Map WHERE ProgramId = @ProgramId;",
+            new { direction.ProgramId }, tx, cancellationToken: ct));
+
+        await SyncDisciplinesAsync(direction.ProgramId, direction.Disciplines, tx, ct);
+        await SyncSpheresAsync(direction.ProgramId, direction.Spheres, tx, ct);
+
+        tx.Commit();
         cache.Remove(CacheKey);
     }
 
@@ -151,6 +178,60 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
         await db.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId }, cancellationToken: ct));
         cache.Remove(CacheKey);
     }
+
+    private void EnsureOpen()
+    {
+        if (db.State != ConnectionState.Open) db.Open();
+    }
+
+    private async Task UpsertBaseSpecAsync(string code, string title, IDbTransaction tx, CancellationToken ct)
+    {
+        const string sql = @"
+            IF NOT EXISTS (SELECT 1 FROM dbo.BaseSpecializations WHERE Code = @Code)
+                INSERT INTO dbo.BaseSpecializations (Code, Title) VALUES (@Code, @Title);
+            ELSE
+                UPDATE dbo.BaseSpecializations SET Title = @Title WHERE Code = @Code;";
+        await db.ExecuteAsync(new CommandDefinition(sql, new { Code = code, Title = title }, tx, cancellationToken: ct));
+    }
+
+    private async Task SyncDisciplinesAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
+    {
+        const string sql = @"
+            DECLARE @Id INT;
+            SELECT @Id = Id FROM dbo.Disciplines WHERE Name = @Name;
+            IF @Id IS NULL
+            BEGIN
+                INSERT INTO dbo.Disciplines (Name) VALUES (@Name);
+                SET @Id = CAST(SCOPE_IDENTITY() AS INT);
+            END
+            IF NOT EXISTS (SELECT 1 FROM dbo.Program_Disciplines_Map WHERE ProgramId = @ProgramId AND DisciplineId = @Id)
+                INSERT INTO dbo.Program_Disciplines_Map (ProgramId, DisciplineId) VALUES (@ProgramId, @Id);";
+
+        foreach (var name in Normalize(names))
+            await db.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
+    }
+
+    private async Task SyncSpheresAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
+    {
+        const string sql = @"
+            DECLARE @Id INT;
+            SELECT @Id = Id FROM dbo.Spheres WHERE Name = @Name;
+            IF @Id IS NULL
+            BEGIN
+                INSERT INTO dbo.Spheres (Name) VALUES (@Name);
+                SET @Id = CAST(SCOPE_IDENTITY() AS INT);
+            END
+            IF NOT EXISTS (SELECT 1 FROM dbo.Program_Spheres_Map WHERE ProgramId = @ProgramId AND SphereId = @Id)
+                INSERT INTO dbo.Program_Spheres_Map (ProgramId, SphereId) VALUES (@ProgramId, @Id);";
+
+        foreach (var name in Normalize(names))
+            await db.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
+    }
+
+    private static IEnumerable<string> Normalize(IEnumerable<string> names) =>
+        names.Select(n => n?.Trim() ?? string.Empty)
+             .Where(n => n.Length > 0)
+             .Distinct(StringComparer.OrdinalIgnoreCase);
 
     private class AdmissionStatsRow
     {

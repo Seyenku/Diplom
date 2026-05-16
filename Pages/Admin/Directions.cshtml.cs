@@ -59,8 +59,8 @@ public class DirectionsModel(ISpecRepository specRepository) : PageModel
             FormId = Input.FormId,
             YearsEduc = Input.YearsEduc,
             Description = Input.Description?.Trim(),
-            Disciplines = Input.Disciplines?.Trim(),
-            Spheres = Input.Spheres?.Trim()
+            Disciplines = SplitList(Input.Disciplines),
+            Spheres = SplitList(Input.Spheres)
         };
 
         if (dto.ProgramId > 0)
@@ -88,6 +88,14 @@ public class DirectionsModel(ISpecRepository specRepository) : PageModel
     {
         Directions = await specRepository.GetAllDirectionsAsync(ct);
         EduForms = await specRepository.GetEduFormsAsync(ct);
+    }
+
+    private static List<string> SplitList(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return new List<string>();
+        return raw.Split(new[] { ',', '\n', ';' }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                  .Distinct(StringComparer.OrdinalIgnoreCase)
+                  .ToList();
     }
 
     public class DirectionForm

@@ -141,7 +141,9 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     try {
         await initThreeScene('game-canvas');
     } catch (e) {
-        console.warn('[main] Three.js init failed, continuing without 3D:', e);
+        console.error('[main] WebGL недоступен:', e);
+        _showWebGLUnsupportedError(e);
+        return;
     }
 
     // 4. Глобальные оверлеи: HUD + Guide (независимо от экранов)
@@ -242,4 +244,39 @@ function _screenFromHash(hash: string): ScreenId | null {
     if (!hash || hash.length < 2) return null;
     const id = hash.slice(1) as ScreenId; // убираем #
     return (Object.values(Screen) as string[]).includes(id) ? id : null;
+}
+
+function _showWebGLUnsupportedError(err: unknown): void {
+    const root = document.getElementById('game-root');
+    if (!root) return;
+    const detail = err instanceof Error ? err.message : String(err);
+    root.innerHTML = `
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:2rem;">
+            <div style="max-width:560px;text-align:center;display:flex;flex-direction:column;gap:1.25rem;">
+                <div style="font-size:4rem;">🛰️</div>
+                <h1 class="game-title" style="font-size:1.5rem;color:#f87171;">WebGL недоступен</h1>
+                <p style="color:#cbd5e1;line-height:1.7;font-size:0.95rem;">
+                    Игра использует трёхмерную графику, но браузер не смог создать WebGL-контекст.
+                    Чаще всего это связано с настройками браузера или драйвером видеокарты.
+                </p>
+                <div style="background:rgba(5,10,26,0.6);border:1px solid #334155;border-radius:8px;padding:1rem;text-align:left;font-size:0.85rem;line-height:1.8;color:#cbd5e1;">
+                    <strong style="display:block;margin-bottom:0.5rem;color:#94a3b8;letter-spacing:0.08em;font-size:0.75rem;">ЧТО ПРОВЕРИТЬ:</strong>
+                    <ol style="padding-left:1.25rem;margin:0;display:flex;flex-direction:column;gap:0.25rem;">
+                        <li>Включи аппаратное ускорение в браузере (Настройки → Производительность).</li>
+                        <li>Обнови драйвер видеокарты до актуальной версии.</li>
+                        <li>В Firefox открой <code>about:support</code> и проверь раздел «Графика» — WebGL должен быть Hardware accelerated.</li>
+                        <li>Попробуй другой браузер (Chrome / Edge).</li>
+                    </ol>
+                </div>
+                <details style="text-align:left;">
+                    <summary style="cursor:pointer;color:#94a3b8;font-size:0.8rem;">Технические детали</summary>
+                    <pre style="background:rgba(5,10,26,0.8);border:1px solid #334155;border-radius:6px;padding:0.75rem;font-size:0.75rem;color:#94a3b8;overflow:auto;max-height:120px;margin-top:0.5rem;">${detail}</pre>
+                </details>
+                <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+                    <button class="btn-game btn-primary" onclick="location.reload()">↻ Перезагрузить</button>
+                    <a class="btn-game btn-secondary" href="/">🏠 На главную</a>
+                </div>
+            </div>
+        </div>
+    `;
 }
