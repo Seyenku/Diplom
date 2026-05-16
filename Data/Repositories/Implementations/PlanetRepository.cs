@@ -28,7 +28,6 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
                        c.DisplayName       AS ClusterDisplayName,
                        c.CrystalType       AS CrystalType,
                        p.Title             AS Title,
-                       p.TextureId         AS TextureId,
                        p.UnlockCost        AS UnlockCost,
                        p.Description       AS Description,
                        ISNULL((
@@ -99,8 +98,8 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
     public async Task CreatePlanetAsync(AdminPlanetInputDto planet, CancellationToken ct = default)
     {
         const string sql = @"
-            INSERT INTO dbo.Planets (ClusterId, Title, TextureId, UnlockCost, Description)
-            VALUES (@ClusterId, @Title, @TextureId, @UnlockCost, @Description);";
+            INSERT INTO dbo.Planets (ClusterId, Title, UnlockCost, Description)
+            VALUES (@ClusterId, @Title, @UnlockCost, @Description);";
 
         await db.ExecuteAsync(new CommandDefinition(sql, planet, cancellationToken: ct));
         cache.Remove(CacheKey);
@@ -112,7 +111,6 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
             UPDATE dbo.Planets
                SET ClusterId = @ClusterId,
                    Title = @Title,
-                   TextureId = @TextureId,
                    UnlockCost = @UnlockCost,
                    Description = @Description
              WHERE Id = @Id;";

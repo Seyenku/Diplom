@@ -34,7 +34,6 @@ public class PlanetsModel(IPlanetRepository planetRepository) : PageModel
             Id = planet.Id,
             ClusterId = planet.ClusterId,
             Title = planet.Title,
-            TextureId = planet.TextureId,
             UnlockCost = planet.UnlockCost,
             Description = planet.Description
         };
@@ -52,7 +51,6 @@ public class PlanetsModel(IPlanetRepository planetRepository) : PageModel
             Id = Input.Id,
             ClusterId = Input.ClusterId,
             Title = Input.Title.Trim(),
-            TextureId = Input.TextureId,
             UnlockCost = Input.UnlockCost,
             Description = Input.Description?.Trim()
         };
@@ -94,8 +92,6 @@ public class PlanetsModel(IPlanetRepository planetRepository) : PageModel
         [Required(ErrorMessage = "Укажите название планеты")]
         [StringLength(255)]
         public string Title { get; set; } = string.Empty;
-
-        public int? TextureId { get; set; }
 
         [Range(0, 9999, ErrorMessage = "Стоимость не может быть отрицательной")]
         public int UnlockCost { get; set; }

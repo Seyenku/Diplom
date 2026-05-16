@@ -39,14 +39,6 @@ CREATE TABLE GameSettings (
 );
 GO
 
--- Справочник текстур/ассетов для 3D-движка
-CREATE TABLE Textures (
-    Id INT IDENTITY(1,1) PRIMARY KEY,
-    FileName NVARCHAR(255) NOT NULL,
-    AssetType NVARCHAR(50) NOT NULL -- Например: 'Planet', 'Asteroid'
-);
-GO
-
 
 -- ==============================================================================
 -- 2. ИГРОВОЙ ЛОР (Справочник Галактики)
@@ -67,11 +59,9 @@ CREATE TABLE Planets (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     ClusterId INT NOT NULL,
     Title NVARCHAR(255) NOT NULL,
-    TextureId INT,
     UnlockCost INT NOT NULL DEFAULT 0,  -- стоимость открытия в кристаллах кластера
     Description NVARCHAR(MAX),
-    CONSTRAINT FK_Planets_Clusters FOREIGN KEY (ClusterId) REFERENCES Clusters(Id) ON DELETE CASCADE,
-    CONSTRAINT FK_Planets_Textures FOREIGN KEY (TextureId) REFERENCES Textures(Id) ON DELETE SET NULL
+    CONSTRAINT FK_Planets_Clusters FOREIGN KEY (ClusterId) REFERENCES Clusters(Id) ON DELETE CASCADE
 );
 GO
 

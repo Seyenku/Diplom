@@ -9,7 +9,6 @@ public class Planet
     public int    Id           { get; set; }
     public int    ClusterId    { get; set; }              // FK → Clusters
     public string Title        { get; set; } = string.Empty;
-    public int?   TextureId    { get; set; }              // FK → Textures (nullable)
     public int    UnlockCost   { get; set; }              // стоимость открытия в кристаллах кластера
     public string Description  { get; set; } = string.Empty;
 
