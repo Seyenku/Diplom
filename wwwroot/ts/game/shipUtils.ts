@@ -1,7 +1,7 @@
 /**
  * shipUtils.ts — Общие утилиты для работы с 3D-моделью корабля
  *
- * Извлечены из screenFlight.ts, screenMiniGame.ts и screenCharCreation.ts
+ * Извлечены из screenFlight.ts и screenCharCreation.ts
  * для устранения дублирования кода.
  */
 

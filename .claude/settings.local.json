@@ -6,7 +6,10 @@
       "Bash(xargs grep -l \"направления\\\\|дисциплины\\\\|сферы\\\\|spheres\\\\|disciplines\\\\|directions\")",
       "Bash(xargs grep -l \"CREATE TABLE\")",
       "Bash(dotnet build *)",
-      "PowerShell(dotnet build KosmosCore.csproj -nologo -v q 2>&1)"
+      "PowerShell(dotnet build KosmosCore.csproj -nologo -v q 2>&1)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\Ars\\\\source\\\\repos\\\\KosmosCore\\\\wwwroot\\\\ts\\\\game\\\\screens\\\\screenMiniGame.ts\" -ErrorAction Stop)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\Ars\\\\source\\\\repos\\\\KosmosCore\\\\Pages\\\\Game\\\\_ScreenMiniGame.cshtml\" -ErrorAction Stop)",
+      "Bash(Write-Host \"Deleted\")"
     ]
   }
 }

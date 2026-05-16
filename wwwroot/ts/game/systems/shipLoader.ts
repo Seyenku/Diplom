@@ -2,7 +2,7 @@
  * shipLoader.ts — Загрузка и настройка модели корабля
  *
  * Единая точка загрузки ship.glb с fallback-геометрией и настройкой цвета.
- * Используется в screenFlight и screenMiniGame.
+ * Используется в screenFlight.
  */
 
 import * as THREE from 'three';

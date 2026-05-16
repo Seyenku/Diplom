@@ -106,7 +106,7 @@ function _getMiniGameScreen(clusterId: string): ScreenId {
         case 'medicine': return Screen.MINIGAME_MEDICINE;
         case 'programming': return Screen.MINIGAME_PROGRAMMING;
         case 'geology': return Screen.MINIGAME_GEOLOGY;
-        default:         return Screen.MINIGAME;
+        default: throw new Error(`[PlanetDetail] Unknown clusterId: ${clusterId}`);
     }
 }
 

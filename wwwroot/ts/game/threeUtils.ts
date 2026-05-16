@@ -2,7 +2,7 @@
  * threeUtils.ts — Общие Three.js утилиты
  *
  * Извлечены из threeScene.ts, screenGalaxyMap.ts, screenPlanetDetail.ts,
- * screenMiniGame.ts, screenCharCreation.ts для устранения дублирования.
+ * screenCharCreation.ts для устранения дублирования.
  */
 
 import * as THREE from 'three';

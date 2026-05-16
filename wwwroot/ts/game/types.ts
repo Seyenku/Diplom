@@ -13,7 +13,6 @@ export const Screen = Object.freeze({
     FLIGHT:           'flight',
     GALAXY_MAP:       'galaxy-map',
     PLANET_DETAIL:    'planet-detail',
-    MINIGAME:         'minigame',
     MINIGAME_MEDICINE:'minigame-medicine',
     MINIGAME_PROGRAMMING:'minigame-programming',
     MINIGAME_GEOLOGY:    'minigame-geology',

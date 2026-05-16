@@ -70,7 +70,6 @@ public class GameModel(IPlanetRepository planets, IMiniGameService miniGameServi
             "flight"                 => "_ScreenFlight",
             "galaxy-map"             => "_ScreenGalaxyMap",
             "planet-detail"          => "_ScreenPlanetDetail",
-            "minigame"               => "_ScreenMiniGame",
             "minigame-medicine"       => "_ScreenMiniGameMedicine",
             "minigame-programming"    => "_ScreenMiniGameProgramming",
             "minigame-geology"         => "_ScreenMiniGameGeology",

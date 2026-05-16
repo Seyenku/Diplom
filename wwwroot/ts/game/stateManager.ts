@@ -141,7 +141,7 @@ const NAVBAR_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
 ]);
 
 const SYS_MENU_HIDDEN_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
-    Screen.MINIGAME, Screen.MINIGAME_MEDICINE, Screen.MINIGAME_PROGRAMMING, Screen.MINIGAME_GEOLOGY,
+    Screen.MINIGAME_MEDICINE, Screen.MINIGAME_PROGRAMMING, Screen.MINIGAME_GEOLOGY,
     Screen.FLIGHT, Screen.CHAR_CREATION, Screen.ONBOARDING,
 ]);
 
