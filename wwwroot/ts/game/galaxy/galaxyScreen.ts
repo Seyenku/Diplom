@@ -53,6 +53,7 @@ window._galaxyMap = {
         if (_planetsState && _rendererState) clearPlanetMeshes(_planetsState, _rendererState.scene);
         Ui.hideNebulaPanel();
         Ui.showBackButton(false);
+        dispatch('SET_SESSION', { regionId: undefined, planetId: undefined });
     },
 
     resetCamera() {
@@ -343,6 +344,8 @@ function _focusCluster(clusterId: ClusterType): void {
     const playerCrystals = ((store.player?.crystals ?? {}) as Record<string, number>)[clusterId] ?? 0;
     const cluster = _clusters.find(c => c.name === clusterId);
     const planetCount = _allPlanets.filter(p => p.clusterId === clusterId).length;
+
+    dispatch('SET_SESSION', { regionId: clusterId, planetId: undefined });
 
     buildPlanetsForCluster(_planetsState, _rendererState.scene, clusterId, _allPlanets, _discoveredIds, (s, c, soft) => {
         // Fallback for creating a quick texture, galaxyNebulae already has a better one but we need it here

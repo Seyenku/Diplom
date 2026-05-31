@@ -103,8 +103,7 @@ window._settings = {
         if (s.graphicsQuality) setQuality(s.graphicsQuality as QualityLevel);
         
         saveSettingsNow(); // Сохраняем в localStorage
-        playSfx('ui_success');
-        alert('Настройки сохранены.');
+        (window as any).showNotification('Настройки сохранены.', 'success');
     }
 };
 

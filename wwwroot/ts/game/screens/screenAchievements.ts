@@ -22,6 +22,7 @@ const ACHIEVEMENTS_DEF: readonly AchievementDef[] = [
     { id: 'first-planet',     icon: '🌍', title: 'Первое открытие',    desc: 'Открыл свою первую профессию-планету.' },
     { id: 'minigame-3',       icon: '🎮', title: 'Мини-игрок',         desc: 'Прошёл 3 мини-игры.' },
     { id: 'crystals-100',     icon: '💎', title: 'Коллекционер',       desc: 'Собрал 100 кристаллов суммарно.' },
+    { id: 'crystals-500',     icon: '💠', title: 'Кристалломан',       desc: 'Собрал 500 кристаллов суммарно.' },
     { id: 'perfect-run',      icon: '⭐', title: 'Идеальная посадка',  desc: 'Набрал максимум очков в мини-игре.' },
     { id: 'speed-master',     icon: '⚡', title: 'Мастер скорости',    desc: 'Прошёл мини-игру быстро с высоким счётом.' },
     { id: 'all-clusters',     icon: '🌌', title: 'Космический учёный', desc: 'Собирал кристаллы во всех 3 туманностях.' },
@@ -48,6 +49,20 @@ const RANKS: readonly Rank[] = [
 
 function _getRank(totalCrystals: number): Rank {
     return RANKS.find(r => totalCrystals >= r.minCrystals) ?? RANKS[RANKS.length - 1];
+}
+
+/** Прогресс между текущим и следующим рангом. Если игрок — Адмирал, возвращает 100%. */
+function _getRankProgress(totalCrystals: number): { current: number; next: number; pct: number } {
+    const currentRank = _getRank(totalCrystals);
+    // Ранги в RANKS отсортированы по убыванию — следующий = меньшее minCrystals больше текущего.
+    const ascending = [...RANKS].sort((a, b) => a.minCrystals - b.minCrystals);
+    const higher = ascending.find(r => r.minCrystals > currentRank.minCrystals);
+    if (!higher) {
+        return { current: totalCrystals, next: currentRank.minCrystals, pct: 100 };
+    }
+    const denom = Math.max(1, higher.minCrystals - currentRank.minCrystals);
+    const pct = Math.max(0, Math.min(100, ((totalCrystals - currentRank.minCrystals) / denom) * 100));
+    return { current: totalCrystals, next: higher.minCrystals, pct };
 }
 
 // ── Утилиты ──────────────────────────────────────────────────────────────────
@@ -120,12 +135,32 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _set('stat-total-crystals', String(stats.totalCrystalsEarned ?? totals.totalCr));
 
     // Имя и ранг
-    _set('ach-player-name', player.name || 'Навигатор');
-    const rank = _getRank(stats.totalCrystalsEarned ?? totals.totalCr);
+    const playerName = player.name || 'Навигатор';
+    _set('ach-player-name', playerName);
+    const totalCrystalsEarned = stats.totalCrystalsEarned ?? totals.totalCr;
+    const rank = _getRank(totalCrystalsEarned);
     const rankEl = document.getElementById('ach-rank');
     if (rankEl) {
         rankEl.textContent = rank.label;
         rankEl.setAttribute('data-rank', rank.key);
+    }
+
+    // Аватар: первая буква имени игрока
+    const avatarEl = document.getElementById('ach-avatar');
+    if (avatarEl) {
+        const initial = playerName.trim().charAt(0).toUpperCase();
+        avatarEl.textContent = initial || 'Н';
+    }
+
+    // Прогресс-бар к следующему рангу
+    const progress = _getRankProgress(totalCrystalsEarned);
+    _set('ach-rank-current', String(progress.current));
+    _set('ach-rank-next', String(progress.next));
+    const fillEl = document.getElementById('ach-rank-fill');
+    if (fillEl) {
+        (fillEl as HTMLElement).style.width = `${progress.pct}%`;
+        const track = fillEl.parentElement;
+        track?.setAttribute('aria-valuenow', String(Math.round(progress.pct)));
     }
 
     // Авто-проверка достижений с persist в стор
@@ -220,6 +255,7 @@ function _autoCheckAchievements(
     tryAdd('explorer-5',   totals.planetsCount >= 5);
     tryAdd('minigame-3',   (stats.miniGamesPlayed ?? 0) >= 3);
     tryAdd('crystals-100', totals.totalCr >= 100);
+    tryAdd('crystals-500', totals.totalCr >= 500);
     tryAdd('all-clusters', totals.clustersWithCrystals >= CLUSTERS.length);
     tryAdd('flight-10',    (stats.flights ?? 0) >= 10);
     tryAdd('upgrade-1',    (player.appliedUpgrades ?? []).length > 0);

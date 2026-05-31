@@ -1,0 +1,599 @@
+/* =====================================================================
+   Stellar Vocation — Ship Upgrade (Modern Shipyard)
+   ===================================================================== */
+
+.ship-screen {
+    width: 100%;
+    min-height: 100%;
+    padding: clamp(1rem, 2.5vw, 2rem);
+    background:
+        radial-gradient(1100px 600px at 20% -10%, rgba(79,195,247,0.10), transparent 60%),
+        radial-gradient(900px 480px at 110% 110%, rgba(167,139,250,0.10), transparent 60%);
+}
+
+.ship-shell {
+    max-width: 1240px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 1.8vw, 1.5rem);
+}
+
+/* ── Action bar ───────────────────────────────────────── */
+.ship-actionbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.ship-actionbar-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ship-pagetitle {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 1vw + 1.1rem, 2.1rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    margin: 0;
+    background: linear-gradient(90deg, #ffffff 0%, #a3b8d4 90%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+}
+
+.ship-pagesubtitle {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.02em;
+    margin: 0;
+}
+
+.ship-progress-counter {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #4fc3f7;
+    background: rgba(79,195,247,0.10);
+    border: 1px solid rgba(79,195,247,0.30);
+}
+
+/* ── Hero Stats Panel ─────────────────────────────────── */
+.ship-hero {
+    display: grid;
+    grid-template-columns: minmax(170px, 220px) 1fr;
+    gap: clamp(1rem, 2vw, 1.5rem);
+    align-items: stretch;
+    padding: clamp(1rem, 2vw, 1.5rem);
+    background: linear-gradient(180deg, rgba(20,30,55,0.65), rgba(8,15,30,0.85));
+    border: 1px solid rgba(99,102,241,0.20);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    isolation: isolate;
+    position: relative;
+}
+
+.ship-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px 320px at 0% 0%, rgba(79,195,247,0.10), transparent 60%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Hero craft pictogram with rings */
+.ship-hero-craft {
+    position: relative;
+    min-height: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    isolation: isolate;
+}
+
+.ship-hero-glow {
+    position: absolute;
+    inset: 12%;
+    background: radial-gradient(closest-side, rgba(79,195,247,0.45), transparent 70%);
+    filter: blur(20px);
+    z-index: -1;
+}
+
+.ship-hero-icon {
+    font-size: clamp(3.5rem, 7vw, 5rem);
+    line-height: 1;
+    filter: drop-shadow(0 6px 24px rgba(79,195,247,0.5));
+    animation: ship-float 6s ease-in-out infinite;
+}
+
+@keyframes ship-float {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50%      { transform: translateY(-8px) rotate(4deg); }
+}
+
+.ship-hero-rings {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.ship-hero-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    border: 1px dashed rgba(79,195,247,0.25);
+    transform: translate(-50%, -50%);
+}
+
+.ship-hero-ring--1 {
+    width: 70%;
+    aspect-ratio: 1 / 1;
+    animation: ship-ring-rot 20s linear infinite;
+}
+
+.ship-hero-ring--2 {
+    width: 95%;
+    aspect-ratio: 1 / 1;
+    border-style: dotted;
+    border-color: rgba(167,139,250,0.25);
+    animation: ship-ring-rot 28s linear infinite reverse;
+}
+
+@keyframes ship-ring-rot {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Stats sub-grid */
+.ship-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    align-content: center;
+}
+
+.ship-stat {
+    background: rgba(8,15,30,0.55);
+    border: 1px solid rgba(99,102,241,0.18);
+    border-radius: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 250ms ease, transform 250ms ease;
+}
+
+.ship-stat::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%);
+    pointer-events: none;
+}
+
+.ship-stat:hover {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    transform: translateY(-1px);
+}
+
+.ship-stat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.ship-stat-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.ship-stat-name {
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.ship-stat-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.ship-stat-value {
+    font-family: var(--font-display);
+    font-size: clamp(1.3rem, 0.6vw + 1.1rem, 1.7rem);
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.ship-stat-cap {
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.04em;
+}
+
+.ship-stat-track {
+    height: 6px;
+    background: rgba(8,15,30,0.7);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(99,102,241,0.15);
+}
+
+.ship-stat-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #fff 0%));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Upgrade Tracks ───────────────────────────────────── */
+.ship-tracks {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.75rem, 1.5vw, 1.2rem);
+}
+
+.ship-tracks-loading {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: 2rem;
+    font-size: 0.85rem;
+}
+
+.ship-track {
+    background: linear-gradient(180deg, rgba(20,30,55,0.55), rgba(8,15,30,0.75));
+    border: 1px solid rgba(99,102,241,0.20);
+    border-radius: 1.25rem;
+    padding: clamp(0.9rem, 1.6vw, 1.25rem);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.ship-track::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(500px 260px at 100% 0%, color-mix(in srgb, var(--cat-color, #4fc3f7) 10%, transparent), transparent 60%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.ship-track-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.ship-track-head-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ship-track-icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    border-radius: 0.6rem;
+    background: color-mix(in srgb, var(--cat-color, #4fc3f7) 15%, rgba(8,15,30,0.6));
+    border: 1px solid color-mix(in srgb, var(--cat-color, #4fc3f7) 35%, transparent);
+}
+
+.ship-track-title {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.ship-track-sub {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    letter-spacing: 0.03em;
+}
+
+.ship-track-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.05em;
+}
+
+.ship-track-progress-dots {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.ship-track-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(99,102,241,0.15);
+    border: 1px solid rgba(99,102,241,0.2);
+    transition: all 250ms ease;
+}
+
+.ship-track-dot--filled {
+    background: var(--cat-color, #4fc3f7);
+    border-color: var(--cat-color, #4fc3f7);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--cat-color, #4fc3f7) 60%, transparent);
+}
+
+/* Cards row */
+.ship-track-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+/* ── Upgrade Card ─────────────────────────────────────── */
+.ship-up {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.9rem;
+    background: linear-gradient(180deg, rgba(15,23,42,0.7), rgba(8,15,30,0.75));
+    border: 1px solid rgba(99,102,241,0.20);
+    border-radius: 0.9rem;
+    transition: all 250ms ease;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.ship-up::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--cat-color, #4fc3f7) 4%, transparent), transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.ship-up-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.ship-up-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.ship-up-tier {
+    font-family: var(--font-display);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.ship-up-name {
+    font-family: var(--font-display);
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+}
+
+.ship-up-badge {
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: color-mix(in srgb, var(--cat-color, #4fc3f7) 80%, #ffffff);
+    background: color-mix(in srgb, var(--cat-color, #4fc3f7) 18%, rgba(8,15,30,0.7));
+    border: 1px solid color-mix(in srgb, var(--cat-color, #4fc3f7) 40%, transparent);
+}
+
+.ship-up-desc {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    min-height: 2em;
+}
+
+.ship-up-effect {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.55rem;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 999px;
+    color: var(--cat-color, #4fc3f7);
+    background: color-mix(in srgb, var(--cat-color, #4fc3f7) 8%, rgba(8,15,30,0.6));
+    border: 1px solid color-mix(in srgb, var(--cat-color, #4fc3f7) 30%, transparent);
+    width: fit-content;
+}
+
+.ship-up-cost {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.ship-cost-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.55rem;
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 999px;
+    background: rgba(8,15,30,0.6);
+    border: 1px solid var(--chip-color, rgba(255,255,255,0.15));
+    color: var(--chip-color, var(--color-text));
+}
+
+.ship-cost-chip[data-ok="false"] {
+    opacity: 0.4;
+    text-decoration: line-through;
+    text-decoration-color: rgba(248,113,113,0.7);
+    text-decoration-thickness: 1px;
+}
+
+/* Action button */
+.ship-up-btn {
+    margin-top: auto;
+    width: 100%;
+    padding: 0.55rem 0.9rem;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border-radius: 0.7rem;
+    cursor: pointer;
+    transition: all 200ms ease;
+    border: 1px solid transparent;
+}
+
+.ship-up-btn[data-state="buy"] {
+    color: #050a1a;
+    background: linear-gradient(135deg, var(--cat-color, #4fc3f7), color-mix(in srgb, var(--cat-color, #4fc3f7) 70%, #ffffff));
+    border-color: color-mix(in srgb, var(--cat-color, #4fc3f7) 70%, transparent);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--cat-color, #4fc3f7) 25%, transparent);
+}
+
+.ship-up-btn[data-state="buy"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--cat-color, #4fc3f7) 35%, transparent);
+}
+
+.ship-up-btn[data-state="locked"] {
+    color: var(--color-text-muted);
+    background: rgba(8,15,30,0.65);
+    border-color: rgba(99,102,241,0.18);
+    cursor: not-allowed;
+}
+
+.ship-up-btn[data-state="installed"] {
+    color: #4ade80;
+    background: rgba(74,222,128,0.10);
+    border-color: rgba(74,222,128,0.35);
+    cursor: default;
+}
+
+/* Card states */
+.ship-up--installed {
+    border-color: rgba(74,222,128,0.35);
+}
+
+.ship-up--installed::after {
+    content: '✓';
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: rgba(74,222,128,0.18);
+    color: #4ade80;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(74,222,128,0.40);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.ship-up--available {
+    border-color: color-mix(in srgb, var(--cat-color, #4fc3f7) 45%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat-color, #4fc3f7) 18%, transparent) inset,
+                0 8px 22px rgba(0,0,0,0.25);
+}
+
+.ship-up--available:hover {
+    border-color: color-mix(in srgb, var(--cat-color, #4fc3f7) 65%, transparent);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.30), 0 0 24px color-mix(in srgb, var(--cat-color, #4fc3f7) 15%, transparent);
+}
+
+.ship-up--locked {
+    opacity: 0.55;
+}
+
+.ship-up--locked .ship-up-name { color: var(--color-text-muted); }
+
+/* ── Backdrop-filter only on wide screens ─────────────── */
+@media (min-width: 1024px) {
+    .ship-hero,
+    .ship-track,
+    .ship-up {
+        backdrop-filter: blur(12px);
+    }
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 720px) {
+    .ship-hero { grid-template-columns: 1fr; }
+    .ship-hero-craft { min-height: 130px; }
+    .ship-hero-stats { grid-template-columns: 1fr 1fr; }
+    .ship-track-cards { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .ship-hero-stats { grid-template-columns: 1fr; }
+}
+
+/* ── Reduced motion ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .ship-hero-icon,
+    .ship-hero-ring--1,
+    .ship-hero-ring--2,
+    .ship-stat-fill,
+    .ship-up-btn,
+    .ship-up--available:hover,
+    .ship-up-btn[data-state="buy"]:hover {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+    }
+}

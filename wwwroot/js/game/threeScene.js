@@ -30,7 +30,7 @@ export async function initThreeScene(canvasId) {
     });
     _renderer.setPixelRatio(profile.pixelRatio);
     _renderer.setSize(canvas.parentNode.clientWidth, canvas.parentNode.clientHeight, false);
-    _renderer.setClearColor(0x050a1a, 1);
+    _renderer.setClearColor(0x000000, 1);
     window.addEventListener('resize', _onResize);
     onQualityChange(() => {
         recreateRenderer();
@@ -76,7 +76,7 @@ export function recreateRenderer() {
     });
     _renderer.setPixelRatio(profile.pixelRatio);
     _renderer.setSize(container.clientWidth, container.clientHeight, false);
-    _renderer.setClearColor(0x050a1a, 1);
+    _renderer.setClearColor(0x000000, 1);
     const builder = _builders.get(_lastSceneName);
     if (builder) {
         _currentScene = builder();

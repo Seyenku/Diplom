@@ -40,7 +40,7 @@ export async function initThreeScene(canvasId: string): Promise<void> {
 
     _renderer.setPixelRatio(profile.pixelRatio);
     _renderer.setSize((canvas.parentNode as HTMLElement)!.clientWidth, (canvas.parentNode as HTMLElement)!.clientHeight, false);
-    _renderer.setClearColor(0x050a1a, 1);
+    _renderer.setClearColor(0x000000, 1);
 
     window.addEventListener('resize', _onResize);
 
@@ -93,7 +93,7 @@ export function recreateRenderer(): void {
     });
     _renderer.setPixelRatio(profile.pixelRatio);
     _renderer.setSize(container.clientWidth, container.clientHeight, false);
-    _renderer.setClearColor(0x050a1a, 1);
+    _renderer.setClearColor(0x000000, 1);
 
     const builder = _builders.get(_lastSceneName);
     if (builder) {

@@ -40,6 +40,7 @@ export interface PlanetDto {
     softSkills: string[];
     risks: string[];
     isStarterVisible: boolean;
+    textureKey?: string | null;
 }
 
 // в”Ђв”Ђ DTO: РљР»Р°СЃС‚РµСЂ (С‚СѓРјР°РЅРЅРѕСЃС‚СЊ) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -127,10 +128,18 @@ export interface UpgradeDto {
 
 // в”Ђв”Ђ Session Data (volatile, С…СЂР°РЅРёС‚СЃСЏ РІ РїР°РјСЏС‚Рё) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
+export interface LiveOpsDto {
+    flightDurationS: number;
+    minigameDurationS: number;
+    unlockBaseCost: number;
+    crystalFlightBonus: number;
+}
+
 export interface SessionData {
     clusters: ClusterDto[];
     catalog: PlanetDto[];
     upgrades: UpgradeDto[];
+    liveOps?: LiveOpsDto;
     planetId?: string;
     crystalType?: CrystalType;
     regionId?: string;
@@ -239,7 +248,6 @@ declare global {
         };
         _planetDetail: {
             startMiniGame: () => void;
-            unlockPlanet: (planetId: string) => void;
         };
         _miniGame: {
             pause: () => void;

@@ -6,7 +6,7 @@
  * состояние store и обновляет индикаторы без перерисовки всего DOM.
  */
 
-import { getStore, on } from './stateManager.js';
+import { getStore, on, computeShipStats } from './stateManager.js';
 import { PlayerState, UpgradeDto, CrystalType } from './types.js';
 import { addMessage } from './guideManager.js';
 import { CRYSTAL_ICONS } from './clusterConfig.js';
@@ -76,23 +76,13 @@ interface ShipStats {
 }
 
 function _calcShipStats(player: PlayerState): ShipStats {
-    const applied = new Set(player.appliedUpgrades ?? []);
     const store = getStore();
     const upgrades = (store.sessionData?.upgrades ?? []) as UpgradeDto[];
-
-    let speedBonus = 0;
-    let shieldBonus = 0;
-
-    upgrades
-        .filter(u => applied.has(u.id))
-        .forEach(u => {
-            speedBonus += (u.effect?.speedBonus ?? 0);
-            shieldBonus += (u.effect?.shieldBonus ?? 0);
-        });
+    const stats = computeShipStats(player.appliedUpgrades ?? [], upgrades);
 
     return {
-        speedPct: Math.min(200, 100 + speedBonus),
-        shieldPct: Math.min(100, Math.round((100 + shieldBonus) / 1.6)),
+        speedPct: Math.min(300, 100 + stats.speedBonus),
+        shieldPct: 100,
         energyPct: 100,
     };
 }

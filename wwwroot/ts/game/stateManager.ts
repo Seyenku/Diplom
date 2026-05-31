@@ -6,6 +6,7 @@ import {
     GameSettingsDto, SessionData, PlayerState,
 } from './types.js';
 import { playSfx } from './audioManager.js';
+import { switchScene as _switchThreeScene } from './threeScene.js';
 
 export { Screen, ScreenId };
 
@@ -92,9 +93,30 @@ on('DISCOVER_PLANET', (s, { planetId }) => {
 
 on('APPLY_UPGRADE', (s, { upgradeId }) => {
     s.player!.appliedUpgrades ??= [];
-    if (!s.player!.appliedUpgrades.includes(upgradeId))
+    if (!s.player!.appliedUpgrades.includes(upgradeId)) {
         s.player!.appliedUpgrades.push(upgradeId);
+    }
+    s.player!.shipStats = computeShipStats(s.player!.appliedUpgrades, s.sessionData?.upgrades ?? []);
 });
+
+const BASE_SHIP_STATS = { speedBonus: 0, shieldBonus: 0, scanRange: 1, capacity: 20 };
+
+export function computeShipStats(
+    appliedUpgrades: readonly string[],
+    upgrades: readonly UpgradeDto[]
+): { speedBonus: number; shieldBonus: number; scanRange: number; capacity: number } {
+    const applied = new Set(appliedUpgrades);
+    const stats = { ...BASE_SHIP_STATS };
+    for (const u of upgrades) {
+        if (!applied.has(u.id)) continue;
+        const e = u.effect ?? {};
+        stats.speedBonus  += e.speedBonus  ?? 0;
+        stats.shieldBonus += e.shieldBonus ?? 0;
+        stats.scanRange   += e.scanRange   ?? 0;
+        stats.capacity    += e.capacity    ?? 0;
+    }
+    return stats;
+}
 
 on('EARN_CRYSTALS', (s, { earned }) => {
     if (!s.player) return;
@@ -143,6 +165,12 @@ const NAVBAR_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
 const SYS_MENU_HIDDEN_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
     Screen.MINIGAME_MEDICINE, Screen.MINIGAME_PROGRAMMING, Screen.MINIGAME_GEOLOGY,
     Screen.FLIGHT, Screen.CHAR_CREATION, Screen.ONBOARDING,
+]);
+
+// Экраны, чьи init() сами вызывают switchScene и владеют WebGL-сценой.
+// Для остальных при переходе сцена сбрасывается на 'starfield'.
+const WEBGL_OWNING_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
+    Screen.MAIN_MENU, Screen.FLIGHT, Screen.GALAXY_MAP, Screen.PLANET_DETAIL,
 ]);
 
 on('SCREEN_CHANGED', () => {
@@ -234,6 +262,13 @@ export async function transition(screenId: ScreenId, payload: Partial<SessionDat
 
         // HUD видим только во время игры
         _updateHudVisibility(screenId);
+
+        // Для DOM-экранов сбрасываем WebGL-фон на звёздное поле,
+        // чтобы не оставался последний кадр предыдущей 3D-сцены (flight/galaxy/planet).
+        // Экраны из WEBGL_OWNING_SCREENS вызывают switchScene самостоятельно в своих init().
+        if (!WEBGL_OWNING_SCREENS.has(screenId)) {
+            try { await _switchThreeScene('starfield'); } catch (e) { console.error(e); }
+        }
 
         // Инициализируем модуль экрана
         const mod = ScreenModules[screenId];
@@ -334,6 +369,11 @@ export function loadSavedPlayer(): boolean {
             if (!_store.player.shipColor) {
                 _store.player.shipColor = '#4fc3f7';
             }
+            // Пересчитываем shipStats: миграция старых сохранений + защита от рассинхронизации
+            _store.player.shipStats = computeShipStats(
+                _store.player.appliedUpgrades ?? [],
+                _store.sessionData?.upgrades ?? []
+            );
             return true;
         }
     } catch { }
@@ -354,4 +394,91 @@ window.addEventListener('beforeunload', () => {
     if (_persistTimeout) { clearTimeout(_persistTimeout); _persistTimeout = null; }
     _persistPlayer();
 });
+
+// ── Custom In-Game Notifications (Toasts) ────────────────────────────────────
+
+export function showNotification(
+    message: string, 
+    type: 'info' | 'success' | 'warning' | 'error' = 'info'
+): void {
+    let container = document.getElementById('game-notifications-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'game-notifications-container';
+        container.style.cssText = `
+            position: absolute;
+            top: 5rem;
+            right: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 10000;
+            pointer-events: none;
+            width: min(340px, 90vw);
+        `;
+        document.getElementById('game-root')?.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'game-toast';
+    
+    const colors = {
+        info: { bg: 'rgba(15, 23, 42, 0.95)', border: 'rgba(79, 195, 247, 0.4)', text: '#e2e8f0', icon: 'ℹ️', glow: 'rgba(79, 195, 247, 0.2)' },
+        success: { bg: 'rgba(10, 30, 20, 0.95)', border: 'rgba(74, 222, 128, 0.4)', text: '#4ade80', icon: '✅', glow: 'rgba(74, 222, 128, 0.2)' },
+        warning: { bg: 'rgba(30, 30, 10, 0.95)', border: 'rgba(250, 204, 21, 0.4)', text: '#facc15', icon: '⚠️', glow: 'rgba(250, 204, 21, 0.2)' },
+        error: { bg: 'rgba(30, 10, 10, 0.95)', border: 'rgba(248, 113, 113, 0.4)', text: '#f87171', icon: '🚨', glow: 'rgba(248, 113, 113, 0.2)' }
+    };
+    const c = colors[type] || colors.info;
+
+    toast.style.cssText = `
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1.2rem;
+        background: ${c.bg};
+        border: 1px solid ${c.border};
+        border-radius: var(--radius-sm);
+        color: ${c.text};
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.4), 0 0 12px ${c.glow};
+        backdrop-filter: blur(8px);
+        pointer-events: auto;
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+        transition: opacity 250ms ease, transform 250ms ease;
+    `;
+    
+    toast.innerHTML = `
+        <span style="font-size: 1.1rem; line-height: 1;">${c.icon}</span>
+        <span style="line-height: 1.35; white-space: pre-line;">${message}</span>
+    `;
+
+    container.appendChild(toast);
+
+    void toast.offsetWidth;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0) scale(1)';
+
+    import('./audioManager.js').then(({ playSfx }) => {
+        if (type === 'error' || type === 'warning') {
+            playSfx('ui_error');
+        } else if (type === 'success') {
+            playSfx('ui_success');
+        } else {
+            playSfx('ui_click');
+        }
+    }).catch(() => {});
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px) scale(0.98)';
+        setTimeout(() => {
+            toast.remove();
+        }, 250);
+    }, 4000);
+}
+
+(window as any).showNotification = showNotification;
 

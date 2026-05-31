@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { ClusterType, PlanetDto } from '../types.js';
 import { CLUSTER_META } from '../clusterConfig.js';
-import { getProfile } from '../qualityPresets.js';
+import { getProfile, getQualityLevel } from '../qualityPresets.js';
 
 export interface GalaxyNebulaeState {
     textureCache: Map<string, THREE.CanvasTexture>;
@@ -154,22 +154,143 @@ export function buildNebulae(
         sparks.userData = { type: 'sparks' };
         group.add(sparks);
 
-        // 3: Core
-        const coreSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: coreTexture,
-            color: new THREE.Color(meta.color),
-            transparent: true,
-            opacity: 0.4,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-        }));
-        coreSprite.scale.set(60, 60, 1);
-        coreSprite.userData = { type: 'core', currentScale: 60, currentOp: 0.4 };
-        group.add(coreSprite);
+        // 3: Core (Quality-dependent: Low = Layered Elliptical Disks, Medium/High = 3D Volumetric Oblate Sphere with Fresnel shader)
+        const quality = getQualityLevel();
 
-        // 4: Light
-        const light = new THREE.PointLight(meta.color, 1.2, 120);
-        group.add(light);
+        if (quality === 'low') {
+            // Variant 2: Concentric Elliptical horizontal disks lying flat on XZ plane
+            const coreGroup = new THREE.Group();
+            coreGroup.userData = { type: 'core-discs', currentScale: 1.0, currentOp: 0.4 };
+            
+            const planeGeo = new THREE.PlaneGeometry(1, 1);
+            const ellipseWidth = 80;
+            const ellipseHeight = 35;
+            
+            const layersConfig = [
+                { scaleX: ellipseWidth,       scaleY: ellipseHeight,       opacity: 0.45, speed: 0.002 },
+                { scaleX: ellipseWidth * 0.8, scaleY: ellipseHeight * 0.8, opacity: 0.30, speed: -0.003 },
+                { scaleX: ellipseWidth * 0.5, scaleY: ellipseHeight * 0.5, opacity: 0.20, speed: 0.005 }
+            ];
+
+            layersConfig.forEach((cfg) => {
+                const planeMat = new THREE.MeshBasicMaterial({
+                    map: coreTexture,
+                    color: new THREE.Color(meta.color),
+                    transparent: true,
+                    opacity: cfg.opacity,
+                    blending: THREE.NormalBlending,
+                    depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+                
+                const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+                planeMesh.rotation.x = -Math.PI / 2;
+                planeMesh.scale.set(cfg.scaleX, cfg.scaleY, 1);
+                planeMesh.userData = { rotSpeed: cfg.speed, baseOpacity: cfg.opacity };
+                
+                coreGroup.add(planeMesh);
+            });
+            
+            group.add(coreGroup);
+        } else {
+            // Variant 1: 3D oblate sphere (spheroid) using a custom THREE.ShaderMaterial
+            const coreGeo = new THREE.SphereGeometry(1, 48, 48); // Smoother geometry
+            const coreMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    glowColor: { value: new THREE.Color(meta.color) },
+                    opacity: { value: 0.4 },
+                    power: { value: 3.0 }, // Steeper exponential decay
+                    objPosition: { value: new THREE.Vector3(meta.position.x, meta.position.y, meta.position.z) },
+                    objScale: { value: new THREE.Vector3(60, 20, 60) }
+                },
+                vertexShader: `
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                        vWorldPosition = worldPosition.xyz;
+                        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 glowColor;
+                    uniform float opacity;
+                    uniform float power;
+                    uniform vec3 objPosition;
+                    uniform vec3 objScale;
+                    
+                    varying vec3 vWorldPosition;
+                    
+                    void main() {
+                        // Calculate local space camera and fragment positions based on scale and position
+                        vec3 localCamPos = (cameraPosition - objPosition) / objScale;
+                        vec3 localFragPos = (vWorldPosition - objPosition) / objScale;
+                        
+                        vec3 localRayDir = normalize(localFragPos - localCamPos);
+                        
+                        // Shortest distance from local origin (0,0,0) to the ray
+                        // This perfectly finds the visual center of the scaled 3D oblate spheroid
+                        float d = length(cross(-localCamPos, localRayDir));
+                        
+                        // d is 0 at the exact center, 1 at the edge of the unit sphere
+                        float facingRatio = clamp(1.0 - d, 0.0, 1.0);
+                        
+                        // Exponential radial decay
+                        float intensity = pow(facingRatio, power);
+                        
+                        // Smooth edges to 0 to prevent harsh clipping
+                        float edgeFade = smoothstep(0.0, 0.15, facingRatio);
+                        
+                        // Singularity at the center (white color peak)
+                        float singularity = pow(facingRatio, 15.0); 
+                        
+                        vec3 finalColor = mix(glowColor, vec3(1.0), singularity);
+                        float finalAlpha = intensity * opacity * edgeFade;
+                        
+                        gl_FragColor = vec4(finalColor, finalAlpha);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.NormalBlending, // Normal blending prevents overlapping nebulae from turning completely white
+                depthWrite: false,
+                side: THREE.FrontSide // FrontSide only for correct volume rendering
+            });
+
+            const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+            // Spheroid (oblate sphere): Massive, slightly flattened from poles. 
+            // Static and centered. 
+            coreMesh.scale.set(60, 20, 60);
+            
+            // No rotation, static orientation
+            coreMesh.rotation.set(0, 0, 0);
+            
+            coreMesh.userData = { 
+                type: 'core-volumetric', 
+                currentScaleMult: 1.0, 
+                currentOp: 0.4
+            };
+            group.add(coreMesh);
+        }
+
+        // 4: Light (Quality-dependent: High = 3 PointLights, Low/Medium = 1 PointLight)
+        if (quality === 'high') {
+            const lightCenter = new THREE.PointLight(meta.color, 0.75, 120);
+            lightCenter.position.set(0, 0, 0);
+            group.add(lightCenter);
+
+            // Spread lights along X/Z plane slightly to softly illuminate surrounding clouds
+            const offset = 20;
+            const lightLeft = new THREE.PointLight(meta.color, 0.45, 80);
+            lightLeft.position.set(-offset, 0, 0);
+            group.add(lightLeft);
+
+            const lightRight = new THREE.PointLight(meta.color, 0.45, 80);
+            lightRight.position.set(offset, 0, 0);
+            group.add(lightRight);
+        } else {
+            const light = new THREE.PointLight(meta.color, 1.2, 120);
+            light.position.set(0, 0, 0);
+            group.add(light);
+        }
 
         // 5: Hitbox
         const hitGeo = new THREE.SphereGeometry(30, 16, 12);
@@ -199,8 +320,39 @@ export function updateNebulae(
 
         for (const child of group.children) {
             const ud = child.userData as Record<string, unknown>;
-            if (ud.type === 'core') {
-                const targetScale = isFocused ? 15 : 60;
+            if (ud.type === 'core-volumetric') {
+                const targetScaleMult = isFocused ? 0.25 : 1.0;
+                // Higher opacity for visibility, the shader naturally decays it
+                const targetOp = isFocused ? 1.0 : 0.6;
+                
+                ud.currentScaleMult = (ud.currentScaleMult as number ?? 1.0) + (targetScaleMult - (ud.currentScaleMult as number ?? 1.0)) * 0.05;
+                ud.currentOp = (ud.currentOp as number) + (targetOp - (ud.currentOp as number)) * 0.05;
+
+                // Muted, organic breathing/pulsing effect
+                const pulseSpeed = isFocused ? 1.5 : 0.8;
+                const pulseAmp = isFocused ? 0.08 : 0.05;
+                const pulse = 1 + Math.sin(time * pulseSpeed) * pulseAmp;
+
+                const mult = (ud.currentScaleMult as number) * pulse;
+                
+                // Base dimensions for the oblate spheroid (flattened sphere)
+                const baseX = 60;
+                const baseY = 20;
+                const baseZ = 60;
+                (child as THREE.Mesh).scale.set(baseX * mult, baseY * mult, baseZ * mult);
+                
+                // Static orientation, no rotation
+                
+                const mat = (child as THREE.Mesh).material as THREE.ShaderMaterial;
+                mat.uniforms.objScale.value.set(baseX * mult, baseY * mult, baseZ * mult);
+                
+                // Subtle opacity breath
+                const finalOp = (ud.currentOp as number) + Math.sin(time * 1.5) * (isFocused ? 0.1 : 0.05);
+                const finalTargetOp = finalOp * targetOpacityMultiplier;
+                mat.uniforms.opacity.value += (finalTargetOp - mat.uniforms.opacity.value) * 0.05;
+                mat.opacity = mat.uniforms.opacity.value; // Sync base material opacity parameter
+            } else if (ud.type === 'core-discs') {
+                const targetScale = isFocused ? 0.25 : 1.0;
                 const targetOp = isFocused ? 0.8 : 0.4;
                 
                 ud.currentScale = (ud.currentScale as number) + (targetScale - (ud.currentScale as number)) * 0.05;
@@ -210,11 +362,19 @@ export function updateNebulae(
                 const pulseAmp = isFocused ? 0.15 : 0.08;
                 const pulse = 1 + Math.sin(time * pulseSpeed) * pulseAmp;
 
-                (child as THREE.Sprite).scale.setScalar((ud.currentScale as number) * pulse);
+                const s = (ud.currentScale as number) * pulse;
+                (child as THREE.Group).scale.set(s, s, 1.0);
                 
-                const mat = (child as THREE.Sprite).material;
-                const finalOp = (ud.currentOp as number) + Math.sin(time * 2.0) * (isFocused ? 0.2 : 0.1);
-                mat.opacity += ((finalOp * targetOpacityMultiplier) - mat.opacity) * 0.05;
+                const finalOpRatio = (ud.currentOp as number) / 0.4;
+                child.children.forEach(layer => {
+                    const mesh = layer as THREE.Mesh;
+                    const layerUd = mesh.userData;
+                    mesh.rotation.z += layerUd.rotSpeed;
+                    
+                    const mat = mesh.material as THREE.MeshBasicMaterial;
+                    const finalOp = (layerUd.baseOpacity as number) * finalOpRatio;
+                    mat.opacity += ((finalOp * targetOpacityMultiplier) - mat.opacity) * 0.05;
+                });
             } else if (ud.type === 'nebula-cloud') {
                 const mat = ((child as THREE.Points).material as THREE.PointsMaterial);
                 const baseOp = 0.45 + Math.sin(time * 0.6) * 0.05;

@@ -18,9 +18,10 @@ namespace KosmosCore.Pages;
 ///  - OnPostSaveProgress()   → запись прогресса в game_saves
 /// </summary>
 [IgnoreAntiforgeryToken]
-public class GameModel(IPlanetRepository planets, IMiniGameService miniGameService, ITelemetryRepository telemetry, ILogger<GameModel> logger) : PageModel
+public class GameModel(IPlanetRepository planets, IGameSettingsRepository gameSettings, IMiniGameService miniGameService, ITelemetryRepository telemetry, ILogger<GameModel> logger) : PageModel
 {
     private readonly IPlanetRepository _planets = planets;
+    private readonly IGameSettingsRepository _gameSettings = gameSettings;
     private readonly IMiniGameService _miniGameService = miniGameService;
     private readonly ITelemetryRepository _telemetry = telemetry;
     private readonly ILogger<GameModel> _logger = logger;
@@ -35,6 +36,7 @@ public class GameModel(IPlanetRepository planets, IMiniGameService miniGameServi
     {
         var planetList  = await _planets.GetAllAsync();
         var clusterList = await _planets.GetClustersAsync();
+        var settings    = await _gameSettings.GetAllAsync();
 
         var initData = new GameInitDto
         {
@@ -48,11 +50,28 @@ public class GameModel(IPlanetRepository planets, IMiniGameService miniGameServi
                 PlanetCount = planetList.Count(p => p.ClusterId == c.Id)
             }).ToList().AsReadOnly(),
             Catalog         = planetList.Select(MapPlanet).ToList().AsReadOnly(),
-            DefaultSettings = GameSettingsDto.Default
+            DefaultSettings = GameSettingsDto.Default,
+            LiveOps         = BuildLiveOps(settings)
         };
 
         InitialDataJson          = JsonSerializer.Serialize(initData, JsonOptions);
         ViewData["GameInitData"] = InitialDataJson;
+    }
+
+    private static LiveOpsDto BuildLiveOps(IReadOnlyDictionary<string, string> s)
+    {
+        static int ParseInt(IReadOnlyDictionary<string, string> d, string key, int fallback) =>
+            d.TryGetValue(key, out var v) && int.TryParse(v, out var n) ? n : fallback;
+        static float ParseFloat(IReadOnlyDictionary<string, string> d, string key, float fallback) =>
+            d.TryGetValue(key, out var v) && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : fallback;
+
+        return new LiveOpsDto
+        {
+            FlightDurationS    = ParseInt(s, "flight_duration_s", 60),
+            MinigameDurationS  = ParseInt(s, "minigame_duration_s", 30),
+            UnlockBaseCost     = ParseInt(s, "unlock_base_cost", 5),
+            CrystalFlightBonus = ParseFloat(s, "crystal_flight_bonus", 1.0f),
+        };
     }
 
     // ──────────────────────────────────────────────
@@ -185,7 +204,8 @@ public class GameModel(IPlanetRepository planets, IMiniGameService miniGameServi
             SoftSkills       = SafeJsonArray(p.SoftSkills),
             Risks            = SafeJsonArray(p.Risks),
             UnlockCost       = p.UnlockCost,
-            IsStarterVisible = p.UnlockCost == 0  // если стоимость 0, значит видна сразу
+            IsStarterVisible = p.UnlockCost == 0,  // если стоимость 0, значит видна сразу
+            TextureKey       = p.TextureKey
         };
     }
 

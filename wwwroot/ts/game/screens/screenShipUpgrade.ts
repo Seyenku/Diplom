@@ -1,16 +1,15 @@
 /**
- * screenShipUpgrade.ts — Модуль экрана апгрейдов корабля
+ * screenShipUpgrade.ts — Мастерская корабля (modern shipyard)
  *
- * Стоимость апгрейдов — комбинации кристаллов:
- *   Двигатель: programming + geology
- *   Щиты:     medicine    + geology
- *   Сканер:   programming + medicine
- *   Трюм:     все 3 типа
+ * Категории апгрейдов: engine / shield / scanner / capacity.
+ * Каждая категория рендерится как «трек» — горизонтальная сетка карточек по уровням.
  */
 
-import { getStore, dispatch } from '../stateManager.js';
+import { getStore, dispatch, computeShipStats } from '../stateManager.js';
 import { GameStore, CrystalType, UpgradeDto } from '../types.js';
 import { playSfx } from '../audioManager.js';
+
+// ── Метаданные ──────────────────────────────────────────────────────────────
 
 const CRYSTAL_META: Record<string, { emoji: string; label: string; color: string }> = {
     programming: { emoji: '💎', label: 'Программирование', color: '#4fc3f7' },
@@ -18,9 +17,28 @@ const CRYSTAL_META: Record<string, { emoji: string; label: string; color: string
     geology:     { emoji: '🌿', label: 'Геология',         color: '#34d399' },
 };
 
-interface UpgradeCost {
-    [key: string]: number;
+interface CategoryMeta {
+    title: string;
+    sub: string;
+    icon: string;
+    color: string;
 }
+
+const CATEGORY_META: Record<string, CategoryMeta> = {
+    engine:   { title: 'Двигатель', sub: 'Маневренность и скорость пролёта',  icon: '🚀', color: '#4fc3f7' },
+    shield:   { title: 'Щиты',      sub: 'Запас прочности при столкновениях', icon: '🛡', color: '#a78bfa' },
+    scanner:  { title: 'Сканер',    sub: 'Радиус притяжения кристаллов',      icon: '🔭', color: '#5eead4' },
+    capacity: { title: 'Трюм',      sub: 'Ёмкость кристаллов за полёт',       icon: '💎', color: '#fb923c' },
+};
+
+const TIER_ROMAN = ['I', 'II', 'III', 'IV', 'V'];
+
+// Базовые значения для расчёта прогресс-баров (соответствуют BASE_SHIP_STATS в stateManager)
+const BASE_STATS = { speedBonus: 0, shieldBonus: 0, scanRange: 1, capacity: 20 } as const;
+
+// ── Глобальный API ──────────────────────────────────────────────────────────
+
+interface UpgradeCost { [key: string]: number; }
 
 window._shipUpgrade = {
     buyUpgrade(upgradeId: string) {
@@ -28,40 +46,37 @@ window._shipUpgrade = {
         const upgrade = ((store.sessionData?.upgrades ?? []) as UpgradeDto[]).find(u => u.id === upgradeId);
         if (!upgrade) return;
 
-        // Проверяем, не куплен ли уже
         if ((store.player?.appliedUpgrades ?? []).includes(upgradeId)) return;
 
-        // Стоимость — объект { programming: N, medicine: N, ... }
         const cost: UpgradeCost = (upgrade as unknown as { cost: UpgradeCost }).cost ?? {};
         const crystals = store.player?.crystals ?? {};
 
-        // Проверяем каждый тип кристаллов
         for (const [type, needed] of Object.entries(cost)) {
             const have = (crystals as Record<string, number>)[type] ?? 0;
             if (have < (needed as number)) {
                 const meta = CRYSTAL_META[type];
-                playSfx('ui_error');
-                alert(`Недостаточно кристаллов ${meta?.label ?? type}. Нужно: ${needed}, есть: ${have}.`);
+                (window as any).showNotification(`Недостаточно кристаллов ${meta?.label ?? type}. Нужно: ${needed}, есть: ${have}.`, 'error');
                 return;
             }
         }
 
-        // Списываем кристаллы по типам
         dispatch('SPEND_CRYSTALS', { spent: cost as Record<CrystalType, number> });
         dispatch('APPLY_UPGRADE', { upgradeId });
 
-        // Обновляем кнопку
-        const btn = document.getElementById(`upgrade-btn-${upgradeId}`) as HTMLButtonElement | null;
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = '✓ Установлен';
-            btn.style.opacity = '0.5';
-        }
-
         playSfx('upgrade_buy');
+
+        // Полный перерендер карточек — состояния могут поменяться у соседних
+        const updatedStore = getStore();
+        _renderUpgrades(
+            (updatedStore.sessionData?.upgrades ?? []) as UpgradeDto[],
+            new Set(updatedStore.player?.appliedUpgrades ?? []),
+            updatedStore.player?.crystals ?? {}
+        );
         _updateStats();
     }
 };
+
+// ── Lifecycle ───────────────────────────────────────────────────────────────
 
 export async function init(store: Readonly<GameStore>): Promise<void> {
     const upgrades = (store.sessionData?.upgrades ?? []) as UpgradeDto[];
@@ -73,6 +88,8 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
 export function destroy(): void {}
 
+// ── Рендер треков и карточек ────────────────────────────────────────────────
+
 function _renderUpgrades(
     upgrades: UpgradeDto[],
     installed: Set<string>,
@@ -81,90 +98,199 @@ function _renderUpgrades(
     const tree = document.getElementById('upgrade-tree');
     if (!tree || upgrades.length === 0) return;
 
-    // Группируем по категории
+    // Группируем по категории и сортируем внутри по суммарной стоимости (= уровень)
     const groups: Record<string, UpgradeDto[]> = {};
     upgrades.forEach(u => { (groups[u.category] ??= []).push(u); });
+    Object.values(groups).forEach(arr => arr.sort((a, b) => _totalCost(a) - _totalCost(b)));
 
-    const catTitles: Record<string, string> = {
-        engine: '🚀 Двигатель',
-        shield: '🛡 Щиты',
-        scanner: '🔭 Сканер',
-        capacity: '💎 Трюм'
-    };
+    // Порядок треков: engine → shield → scanner → capacity
+    const order = ['engine', 'shield', 'scanner', 'capacity'];
+    const cats = order.filter(c => groups[c]?.length);
 
-    tree.innerHTML = Object.entries(groups).map(([cat, items]) => `
-        <div class="game-card" style="display:flex;flex-direction:column;gap:0.75rem;">
-            <h3 style="font-family:var(--font-display);font-size:0.85rem;letter-spacing:0.05em;color:var(--color-text-muted);">${catTitles[cat] ?? cat.toUpperCase()}</h3>
-            ${items.map(u => _upgradeCard(u, installed.has(u.id), crystals)).join('')}
-        </div>`
+    tree.innerHTML = cats.map(cat => _renderTrack(cat, groups[cat], installed, crystals)).join('');
+
+    // Общий счётчик апгрейдов
+    const counter = document.getElementById('ship-progress-counter');
+    if (counter) {
+        const total = upgrades.length;
+        counter.textContent = `${installed.size} / ${total}`;
+    }
+}
+
+function _renderTrack(
+    cat: string,
+    items: UpgradeDto[],
+    installed: Set<string>,
+    crystals: Partial<Record<CrystalType, number>>
+): string {
+    const meta = CATEGORY_META[cat] ?? { title: cat.toUpperCase(), sub: '', icon: '⚙', color: '#4fc3f7' };
+    const installedInCat = items.filter(u => installed.has(u.id)).length;
+    const total = items.length;
+
+    const dots = items.map((_, i) =>
+        `<span class="ship-track-dot${i < installedInCat ? ' ship-track-dot--filled' : ''}"></span>`
     ).join('');
+
+    const cards = items.map((u, i) => _upgradeCard(u, i, cat, installed.has(u.id), crystals)).join('');
+
+    return `
+        <section class="ship-track" style="--cat-color:${meta.color};">
+            <header class="ship-track-head">
+                <div class="ship-track-head-info">
+                    <span class="ship-track-icon" aria-hidden="true">${meta.icon}</span>
+                    <div>
+                        <h2 class="ship-track-title">${_escape(meta.title)}</h2>
+                        <p class="ship-track-sub">${_escape(meta.sub)}</p>
+                    </div>
+                </div>
+                <div class="ship-track-progress">
+                    <span class="ship-track-progress-dots" aria-hidden="true">${dots}</span>
+                    <span>${installedInCat} / ${total}</span>
+                </div>
+            </header>
+            <div class="ship-track-cards">${cards}</div>
+        </section>
+    `;
 }
 
 function _upgradeCard(
     u: UpgradeDto,
+    tierIndex: number,
+    cat: string,
     isInstalled: boolean,
     crystals: Partial<Record<CrystalType, number>>
 ): string {
-    const eff = u.effect ?? {};
-    const effText = [
-        eff.speedBonus  ? `⚡ Скорость +${eff.speedBonus}%` : '',
-        eff.shieldBonus ? `🛡 Щиты +${eff.shieldBonus}%`   : '',
-        eff.scanRange   ? `🔭 Дальность +${eff.scanRange}`  : '',
-        eff.capacity    ? `💎 Вместимость +${eff.capacity}` : '',
-    ].filter(Boolean).join(', ');
+    const meta = CATEGORY_META[cat] ?? { color: '#4fc3f7' } as CategoryMeta;
+    const tier = TIER_ROMAN[tierIndex] ?? String(tierIndex + 1);
 
-    // Стоимость — несколько типов кристаллов
+    const eff = u.effect ?? {};
+    const effChips = [
+        eff.speedBonus  ? `⚡ +${eff.speedBonus}%`         : '',
+        eff.shieldBonus ? `🛡 +${eff.shieldBonus}%`        : '',
+        eff.scanRange   ? `🔭 +${eff.scanRange}`           : '',
+        eff.capacity    ? `💎 +${eff.capacity} к ёмкости`  : '',
+    ].filter(Boolean);
+    const effHtml = effChips.length
+        ? `<span class="ship-up-effect">${_escape(effChips.join(' • '))}</span>`
+        : '';
+
+    // Стоимость
     const cost = (u as unknown as { cost: Record<string, number> }).cost ?? {};
-    const costBadges = Object.entries(cost).map(([type, needed]) => {
-        const meta = CRYSTAL_META[type] ?? { emoji: '💎', label: type, color: '#888' };
+    const costChips = Object.entries(cost).map(([type, needed]) => {
+        const cm = CRYSTAL_META[type] ?? { emoji: '💎', label: type, color: '#888' };
         const have = (crystals as Record<string, number>)[type] ?? 0;
-        const sufficient = have >= (needed as number);
-        return `<span class="crystal-badge" style="border-color:${meta.color};${sufficient ? '' : 'opacity:0.5;'}">
-            ${meta.emoji} ${needed}
-        </span>`;
+        const ok = have >= (needed as number);
+        return `<span class="ship-cost-chip" data-ok="${ok}" style="--chip-color:${cm.color};" title="${_escape(cm.label)}: ${have} / ${needed}">${cm.emoji} ${needed}</span>`;
     }).join('');
 
-    // Есть ли все кристаллы?
-    const canAfford = Object.entries(cost).every(([type, needed]) => ((crystals as Record<string, number>)[type] ?? 0) >= (needed as number));
+    const canAfford = Object.entries(cost).every(([type, needed]) =>
+        ((crystals as Record<string, number>)[type] ?? 0) >= (needed as number));
+
+    // Состояние карточки
+    let cardState: string;
+    let btnState: 'buy' | 'locked' | 'installed';
+    let btnText: string;
+    let btnDisabled = false;
+    if (isInstalled) {
+        cardState = 'ship-up--installed';
+        btnState = 'installed';
+        btnText = '✓ Установлен';
+        btnDisabled = true;
+    } else if (canAfford) {
+        cardState = 'ship-up--available';
+        btnState = 'buy';
+        btnText = 'Купить';
+    } else {
+        cardState = 'ship-up--locked';
+        btnState = 'locked';
+        btnText = '🔒 Недостаточно';
+        btnDisabled = true;
+    }
 
     return `
-        <div style="display:flex;flex-direction:column;gap:0.5rem;padding:0.75rem;background:rgba(5,10,26,0.5);border-radius:var(--radius-sm);border:1px solid var(--color-border);">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:0.9rem;font-weight:500;">${u.name}</span>
-                <div style="display:flex;gap:0.25rem;">${costBadges}</div>
+        <article class="ship-up ${cardState}" style="--cat-color:${meta.color};">
+            <div class="ship-up-head">
+                <div class="ship-up-title-wrap">
+                    <span class="ship-up-tier">Уровень ${tier}</span>
+                    <span class="ship-up-name">${_escape(u.name)}</span>
+                </div>
+                <span class="ship-up-badge" aria-hidden="true">${tier}</span>
             </div>
-            <p style="font-size:0.8rem;color:var(--color-text-muted);">${u.description}</p>
-            <p style="font-size:0.75rem;color:var(--color-primary);">${effText}</p>
-            <button id="upgrade-btn-${u.id}"
-                    class="btn-game ${isInstalled ? 'btn-secondary' : canAfford ? 'btn-primary' : 'btn-secondary'}"
-                    style="padding:6px 14px;font-size:0.75rem;${isInstalled || !canAfford ? 'opacity:0.5;' : ''}"
-                    ${isInstalled || !canAfford ? 'disabled' : `onclick="window._shipUpgrade?.buyUpgrade('${u.id}')"`}>
-                ${isInstalled ? '✓ Установлен' : canAfford ? 'Купить' : '🔒 Недостаточно кристаллов'}
+            <p class="ship-up-desc">${_escape(u.description)}</p>
+            ${effHtml}
+            <div class="ship-up-cost">${costChips}</div>
+            <button id="upgrade-btn-${_escape(u.id)}"
+                    type="button"
+                    class="ship-up-btn"
+                    data-state="${btnState}"
+                    ${btnDisabled ? 'disabled' : `onclick="window._shipUpgrade?.buyUpgrade('${_escape(u.id)}')"`}>
+                ${btnText}
             </button>
-        </div>`;
+        </article>
+    `;
 }
+
+// ── Обновление статов ───────────────────────────────────────────────────────
 
 function _updateStats(): void {
     const store = getStore();
-    const apps = new Set(store.player?.appliedUpgrades ?? []);
     const all = (store.sessionData?.upgrades ?? []) as UpgradeDto[];
+    const stats = computeShipStats(store.player?.appliedUpgrades ?? [], all);
 
-    let speed = 100, shield = 100, scan = 1, cap = 50;
-    all.filter(u => apps.has(u.id)).forEach(u => {
-        const e = u.effect ?? {};
-        speed += e.speedBonus ?? 0;
-        shield += e.shieldBonus ?? 0;
-        scan += e.scanRange ?? 0;
-        cap += e.capacity ?? 0;
-    });
+    // Максимально достижимые значения (если установить ВСЕ апгрейды категории)
+    const max = _computeMaxStats(all);
 
-    _set('ship-stat-speed', `${speed}%`);
-    _set('ship-stat-shield', `${shield}%`);
-    _set('ship-stat-scanner', String(scan));
-    _set('ship-stat-capacity', String(cap));
+    _set('ship-stat-speed', `${100 + stats.speedBonus}%`);
+    _set('ship-stat-shield', `${100 + stats.shieldBonus}%`);
+    _set('ship-stat-scanner', String(stats.scanRange));
+    _set('ship-stat-capacity', String(stats.capacity));
+
+    _set('ship-stat-speed-cap',    `/ ${100 + max.speedBonus}%`);
+    _set('ship-stat-shield-cap',   `/ ${100 + max.shieldBonus}%`);
+    _set('ship-stat-scanner-cap',  `/ ${max.scanRange}`);
+    _set('ship-stat-capacity-cap', `/ ${max.capacity}`);
+
+    // Прогресс-бары: текущий бонус / максимально возможный бонус (исключая базу)
+    _setFill('ship-stat-speed-fill',    _pctOfMax(stats.speedBonus,  max.speedBonus));
+    _setFill('ship-stat-shield-fill',   _pctOfMax(stats.shieldBonus, max.shieldBonus));
+    _setFill('ship-stat-scanner-fill',  _pctOfMax(stats.scanRange - BASE_STATS.scanRange, max.scanRange - BASE_STATS.scanRange));
+    _setFill('ship-stat-capacity-fill', _pctOfMax(stats.capacity - BASE_STATS.capacity, max.capacity - BASE_STATS.capacity));
 }
+
+function _computeMaxStats(upgrades: UpgradeDto[]): { speedBonus: number; shieldBonus: number; scanRange: number; capacity: number } {
+    const m = { ...BASE_STATS };
+    for (const u of upgrades) {
+        const e = u.effect ?? {};
+        m.speedBonus  += e.speedBonus  ?? 0;
+        m.shieldBonus += e.shieldBonus ?? 0;
+        m.scanRange   += e.scanRange   ?? 0;
+        m.capacity    += e.capacity    ?? 0;
+    }
+    return m;
+}
+
+function _pctOfMax(current: number, max: number): number {
+    if (max <= 0) return 0;
+    return Math.max(0, Math.min(100, (current / max) * 100));
+}
+
+function _totalCost(u: UpgradeDto): number {
+    const cost = (u as unknown as { cost: Record<string, number> }).cost ?? {};
+    return Object.values(cost).reduce((s, n) => s + (n ?? 0), 0);
+}
+
+// ── Утилиты ─────────────────────────────────────────────────────────────────
 
 function _set(id: string, v: string): void {
     const e = document.getElementById(id);
     if (e) e.textContent = v;
+}
+
+function _setFill(id: string, pct: number): void {
+    const e = document.getElementById(id);
+    if (e) (e as HTMLElement).style.width = `${pct}%`;
+}
+
+function _escape(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

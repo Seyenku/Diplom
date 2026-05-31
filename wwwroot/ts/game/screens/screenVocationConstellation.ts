@@ -6,8 +6,8 @@ import { getStore, transition, Screen } from '../stateManager.js';
 import { GameStore, PlanetDto } from '../types.js';
 
 window._vocationConst = {
-    exportPdf() { alert('Экспорт PDF будет доступен в следующей версии.'); },
-    showPath()  { alert('Отображение пути развития — в разработке.'); }
+    exportPdf() { (window as any).showNotification('Экспорт PDF будет доступен в следующей версии.', 'info'); },
+    showPath()  { (window as any).showNotification('Отображение пути развития — в разработке.', 'info'); }
 };
 
 interface RankedPlanet {
@@ -18,14 +18,13 @@ interface RankedPlanet {
 export async function init(store: Readonly<GameStore>): Promise<void> {
     const discovered = new Set(store.player?.discoveredPlanets ?? []);
     const catalog    = store.sessionData?.catalog as PlanetDto[] ?? [];
-    const planets    = catalog.filter(p => discovered.has(p.id) || p.isStarterVisible);
 
-    if (planets.length === 0) return;
+    // Для матчинга берём весь каталог: даже неоткрытые планеты могут попасть в рекомендации.
+    if (catalog.length === 0) return;
 
-    // Строим рекомендации: топ-5 по кристаллам
-    const crystals  = store.player?.crystals ?? {};
-    const ranked: RankedPlanet[] = planets
-        .map(p => ({ planet: p, score: _matchScore(crystals, (p as unknown as Record<string, unknown>).crystalRequirements as Record<string, number> | undefined) }))
+    const crystals = (store.player?.crystals ?? {}) as Record<string, number>;
+    const ranked: RankedPlanet[] = catalog
+        .map(p => ({ planet: p, score: _matchScore(crystals, p, discovered.has(p.id)) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
 
@@ -38,11 +37,22 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
 export function destroy(): void {}
 
-function _matchScore(crystals: Record<string, number>, req?: Record<string, number>): number {
-    if (!req || Object.keys(req).length === 0) return 0;
-    let s = 0;
-    for (const [d, n] of Object.entries(req)) s += Math.min(1, (crystals[d] ?? 0) / n);
-    return s / Object.keys(req).length;
+/**
+ * Однокластерное совпадение: доля собранных кристаллов нужного типа
+ * относительно стоимости открытия планеты.
+ * Уже открытым планетам +0.2 — отражает реальный «прохождённый интерес».
+ */
+function _matchScore(crystals: Record<string, number>, planet: PlanetDto, isDiscovered: boolean): number {
+    const need = planet.unlockCost ?? 0;
+    let s: number;
+    if (need <= 0) {
+        s = 0.5;
+    } else {
+        const have = crystals[planet.crystalType] ?? 0;
+        s = Math.min(1, have / need);
+    }
+    if (isDiscovered) s = Math.min(1, s + 0.2);
+    return s;
 }
 
 interface Point {

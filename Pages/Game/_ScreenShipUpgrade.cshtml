@@ -1,36 +1,85 @@
-<!-- _ScreenShipUpgrade.cshtml — Мастерская корабля -->
-<div class="screen" id="screen-ship-upgrade"
-     style="width:100%;min-height:100vh;display:flex;flex-direction:column;padding:2rem;gap:1.5rem;">
+@*  _ScreenShipUpgrade.cshtml — Мастерская корабля (modern layout) *@
+<main class="screen ship-screen" id="screen-ship-upgrade" aria-labelledby="ship-title">
+    <div class="ship-shell">
 
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
-        <h1 class="game-title" style="font-size:1.5rem;">⚙ Мастерская корабля</h1>
-    </div>
+        <!-- ═══ Action bar ════════════════════════════════════════ -->
+        <header class="ship-actionbar">
+            <div class="ship-actionbar-title">
+                <h1 id="ship-title" class="ship-pagetitle">Мастерская корабля</h1>
+                <p class="ship-pagesubtitle">Модификации навигатора — путь от Кадета до Адмирала</p>
+            </div>
+            <span id="ship-progress-counter" class="ship-progress-counter" aria-live="polite">0 / 11</span>
+        </header>
 
-    <!-- Статы корабля -->
-    <div class="game-card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;padding:1rem;">
-        <div style="text-align:center;">
-            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">СКОРОСТЬ</p>
-            <p id="ship-stat-speed" style="font-family:var(--font-display);font-size:1.4rem;color:var(--color-primary);">100%</p>
-        </div>
-        <div style="text-align:center;">
-            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">ЩИТЫ</p>
-            <p id="ship-stat-shield" style="font-family:var(--font-display);font-size:1.4rem;color:var(--color-accent);">100%</p>
-        </div>
-        <div style="text-align:center;">
-            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">СКАНЕР</p>
-            <p id="ship-stat-scanner" style="font-family:var(--font-display);font-size:1.4rem;color:var(--color-crystal1);">1</p>
-        </div>
-        <div style="text-align:center;">
-            <p style="font-size:0.7rem;color:var(--color-text-muted);letter-spacing:0.1em;">ВМЕСТИМОСТЬ</p>
-            <p id="ship-stat-capacity" style="font-family:var(--font-display);font-size:1.4rem;color:#fb923c;">50</p>
-        </div>
-    </div>
+        <!-- ═══ Hero Stats Panel ═════════════════════════════════════ -->
+        <section class="ship-hero" aria-label="Характеристики корабля">
+            <div class="ship-hero-craft">
+                <div class="ship-hero-glow" aria-hidden="true"></div>
+                <div class="ship-hero-icon" aria-hidden="true">🚀</div>
+                <div class="ship-hero-rings" aria-hidden="true">
+                    <span class="ship-hero-ring ship-hero-ring--1"></span>
+                    <span class="ship-hero-ring ship-hero-ring--2"></span>
+                </div>
+            </div>
+            <div class="ship-hero-stats">
+                <article class="ship-stat" data-stat="speed" style="--accent:#4fc3f7;">
+                    <div class="ship-stat-header">
+                        <span class="ship-stat-icon" aria-hidden="true">⚡</span>
+                        <span class="ship-stat-name">Скорость</span>
+                    </div>
+                    <div class="ship-stat-value-row">
+                        <span id="ship-stat-speed" class="ship-stat-value">100%</span>
+                        <span id="ship-stat-speed-cap" class="ship-stat-cap">/ 230%</span>
+                    </div>
+                    <div class="ship-stat-track">
+                        <div id="ship-stat-speed-fill" class="ship-stat-fill" style="width:43%;"></div>
+                    </div>
+                </article>
+                <article class="ship-stat" data-stat="shield" style="--accent:#a78bfa;">
+                    <div class="ship-stat-header">
+                        <span class="ship-stat-icon" aria-hidden="true">🛡</span>
+                        <span class="ship-stat-name">Щиты</span>
+                    </div>
+                    <div class="ship-stat-value-row">
+                        <span id="ship-stat-shield" class="ship-stat-value">100%</span>
+                        <span id="ship-stat-shield-cap" class="ship-stat-cap">/ 210%</span>
+                    </div>
+                    <div class="ship-stat-track">
+                        <div id="ship-stat-shield-fill" class="ship-stat-fill" style="width:48%;"></div>
+                    </div>
+                </article>
+                <article class="ship-stat" data-stat="scanner" style="--accent:#5eead4;">
+                    <div class="ship-stat-header">
+                        <span class="ship-stat-icon" aria-hidden="true">🔭</span>
+                        <span class="ship-stat-name">Сканер</span>
+                    </div>
+                    <div class="ship-stat-value-row">
+                        <span id="ship-stat-scanner" class="ship-stat-value">1</span>
+                        <span id="ship-stat-scanner-cap" class="ship-stat-cap">/ 8</span>
+                    </div>
+                    <div class="ship-stat-track">
+                        <div id="ship-stat-scanner-fill" class="ship-stat-fill" style="width:13%;"></div>
+                    </div>
+                </article>
+                <article class="ship-stat" data-stat="capacity" style="--accent:#fb923c;">
+                    <div class="ship-stat-header">
+                        <span class="ship-stat-icon" aria-hidden="true">💎</span>
+                        <span class="ship-stat-name">Трюм</span>
+                    </div>
+                    <div class="ship-stat-value-row">
+                        <span id="ship-stat-capacity" class="ship-stat-value">20</span>
+                        <span id="ship-stat-capacity-cap" class="ship-stat-cap">/ 90</span>
+                    </div>
+                    <div class="ship-stat-track">
+                        <div id="ship-stat-capacity-fill" class="ship-stat-fill" style="width:22%;"></div>
+                    </div>
+                </article>
+            </div>
+        </section>
 
-    <!-- Дерево апгрейдов (рендерится через JS) -->
-    <div id="upgrade-tree" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;">
-        <!-- JS → ShipUpgrade.init() заполняет этот контейнер -->
-        <p style="color:var(--color-text-muted);grid-column:1/-1;text-align:center;padding:2rem;">
-            Загрузка апгрейдов…
-        </p>
+        <!-- ═══ Upgrade Tracks (filled by JS) ═══════════════════════ -->
+        <section id="upgrade-tree" class="ship-tracks" aria-label="Дерево апгрейдов">
+            <p class="ship-tracks-loading">Загрузка апгрейдов…</p>
+        </section>
     </div>
-</div>
+</main>

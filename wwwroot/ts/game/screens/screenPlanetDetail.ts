@@ -27,6 +27,9 @@ import { GameStore, PlanetDto, CrystalType, ClusterType, ActionType } from '../t
 import { disposeSceneGraph } from '../threeUtils.js';
 import { CLUSTER_MAP } from '../clusterConfig.js';
 import { playSfx } from '../audioManager.js';
+import { getTextureProfile, textureUrl, TextureProfile } from '../planetTextures.js';
+import { loadTexture, releaseTexture } from '../textureManager.js';
+import { getProfile as getQualityProfile } from '../qualityPresets.js';
 
 // ── Цветовая схема кластеров (из clusterConfig.ts) ──────────────────────────────
 
@@ -47,8 +50,11 @@ let _planetScene: THREE.Scene | null = null;
 let _planetCamera: THREE.PerspectiveCamera | null = null;
 let _planetAnimId: number | null = null;
 let _planetMesh: THREE.Mesh | null = null;
+let _cloudMesh: THREE.Mesh | null = null;
 let _resizeObs: ResizeObserver | null = null;
 let _currentPlanet: PlanetDto | null = null;
+let _activeTextureProfile: TextureProfile | null = null;
+let _activeTextureUrls: string[] = [];
 
 // ── Реактивное обновление UI при изменении баланса кристаллов ────────────────
 
@@ -86,8 +92,7 @@ window._planetDetail = {
             const cost = planet.unlockCost ?? 0;
             const bal = ((store.player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
             if (bal < cost) {
-                playSfx('ui_error');
-                alert(`Недостаточно кристаллов для попытки открытия.\nНужно: ${cost}, есть: ${bal}.`);
+                (window as any).showNotification(`Недостаточно кристаллов для попытки открытия.\nНужно: ${cost}, есть: ${bal}.`, 'error');
                 return;
             }
             dispatch('SPEND_CRYSTALS', { spent: { [crystalType]: cost } as Record<CrystalType, number> });
@@ -97,8 +102,6 @@ window._planetDetail = {
         const targetScreen = _getMiniGameScreen(planet.clusterId);
         transition(targetScreen);
     },
-    // unlockPlanet больше не нужна — открытие происходит через мини-игру
-    unlockPlanet(_planetId: string) { /* noop */ }
 };
 
 function _getMiniGameScreen(clusterId: string): ScreenId {
@@ -189,67 +192,91 @@ function _init3DPlanet(planet: PlanetDto, clusterMeta: { label: string; color: n
     _planetCamera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
     _planetCamera.position.set(0, 0, 6);
 
-    // Освещение
-    _planetScene!.add(new THREE.AmbientLight(0x334155, 0.5));
-    const dirLight = new THREE.DirectionalLight(clusterMeta.color, 1.0);
+    // ── Профиль текстуры (учитываем уровень качества) ───────────────────
+    const qualityProfile = getQualityProfile();
+    const texLevel = qualityProfile.planetTextures; // 'off' | 'surface' | 'full'
+    const texProfile = texLevel === 'off' ? null : getTextureProfile(planet.textureKey);
+    _activeTextureProfile = texProfile;
+    _activeTextureUrls = [];
+
+    const atmoColorHex = texProfile?.atmoColor ?? clusterMeta.color;
+    const atmoColor = new THREE.Color(atmoColorHex);
+
+    // ── Освещение ───────────────────────────────────────────────────────
+    _planetScene.add(new THREE.AmbientLight(0x334155, 0.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
     dirLight.position.set(3, 4, 5);
-    _planetScene!.add(dirLight);
-    const rimLight = new THREE.PointLight(0xffffff, 0.3, 20);
+    _planetScene.add(dirLight);
+    const rimLight = new THREE.PointLight(atmoColorHex, 0.5, 20);
     rimLight.position.set(-3, -2, 3);
-    _planetScene!.add(rimLight);
+    _planetScene.add(rimLight);
 
-    // Сфера планеты
-    const planetColor = new THREE.Color(clusterMeta.color);
-    const geo = new THREE.SphereGeometry(1.8, 48, 36);
-    const mat = new THREE.MeshStandardMaterial({
-        color: planetColor,
-        emissive: planetColor,
-        emissiveIntensity: 0.15,
-        roughness: 0.5,
-        metalness: 0.3,
+    // ── Surface mesh (базовый слой) ─────────────────────────────────────
+    const surfaceGeo = new THREE.SphereGeometry(1.8, 48, 36);
+    const surfaceMat = new THREE.MeshStandardMaterial({
+        color: texProfile ? 0xffffff : atmoColor,
+        emissive: texProfile ? new THREE.Color(0x000000) : atmoColor,
+        emissiveIntensity: texProfile ? 0 : 0.15,
+        roughness: texProfile ? 0.85 : 0.5,
+        metalness: texProfile ? 0.05 : 0.3,
     });
-    _planetMesh = new THREE.Mesh(geo, mat);
-    _planetScene!.add(_planetMesh);
+    if (texProfile) {
+        const url = textureUrl(texProfile.surface);
+        surfaceMat.map = loadTexture(url);
+        _activeTextureUrls.push(url);
 
-    // Атмосфера
-    const atmoGeo = new THREE.SphereGeometry(2.0, 48, 36);
+        // Normal-map только в режиме 'full'
+        if (texLevel === 'full' && texProfile.normal) {
+            const nUrl = textureUrl(texProfile.normal);
+            surfaceMat.normalMap = loadTexture(nUrl);
+            _activeTextureUrls.push(nUrl);
+        }
+    }
+    _planetMesh = new THREE.Mesh(surfaceGeo, surfaceMat);
+    _planetScene.add(_planetMesh);
+
+    // ── Cloud mesh (параллакс-слой) — только в режиме 'full' ────────────
+    if (texLevel === 'full' && texProfile?.clouds) {
+        const cloudGeo = new THREE.SphereGeometry(1.83, 48, 36);
+        const cloudUrl = textureUrl(texProfile.clouds);
+        const cloudMat = new THREE.MeshStandardMaterial({
+            map: loadTexture(cloudUrl),
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.85,
+            depthWrite: false,
+            roughness: 1.0,
+            metalness: 0,
+        });
+        _activeTextureUrls.push(cloudUrl);
+        _cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+        _planetScene.add(_cloudMesh);
+    }
+
+    // ── Atmospheric shell ───────────────────────────────────────────────
+    const atmoGeo = new THREE.SphereGeometry(1.98, 48, 36);
     const atmoMat = new THREE.MeshBasicMaterial({
-        color: planetColor,
+        color: atmoColor,
         transparent: true,
-        opacity: 0.08,
+        opacity: 0.10,
         side: THREE.BackSide,
+        depthWrite: false,
     });
-    _planetScene!.add(new THREE.Mesh(atmoGeo, atmoMat));
+    _planetScene.add(new THREE.Mesh(atmoGeo, atmoMat));
 
-    // Орбитальное кольцо
+    // ── Орбитальное кольцо ─────────────────────────────────────────────
     const ringGeo = new THREE.RingGeometry(2.2, 2.35, 64);
     const ringMat = new THREE.MeshBasicMaterial({
-        color: clusterMeta.color,
+        color: atmoColorHex,
         side: THREE.DoubleSide,
         transparent: true,
         opacity: 0.2,
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = Math.PI / 2.5;
-    _planetScene!.add(ring);
+    _planetScene.add(ring);
 
-    // «Облака»
-    const cost = planet.unlockCost ?? 5;
-    for (let i = 0; i < Math.min(cost, 8); i++) {
-        const spotGeo = new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 8, 6);
-        const spotMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.12,
-        });
-        const spot = new THREE.Mesh(spotGeo, spotMat);
-        const phi = Math.random() * Math.PI;
-        const theta = Math.random() * Math.PI * 2;
-        spot.position.setFromSphericalCoords(1.82, phi, theta);
-        _planetMesh!.add(spot);
-    }
-
-    // ResizeObserver
+    // ── ResizeObserver ──────────────────────────────────────────────────
     _resizeObs = new ResizeObserver(() => {
         const vw = viewport.clientWidth;
         const vh = viewport.clientHeight;
@@ -266,9 +293,11 @@ function _init3DPlanet(planet: PlanetDto, clusterMeta: { label: string; color: n
 function _planetRenderLoop(): void {
     if (!_planetRenderer || !_planetScene || !_planetCamera) return;
 
-    if (_planetMesh) {
-        _planetMesh.rotation.y += 0.003;
-    }
+    const surfSpeed = _activeTextureProfile?.surfaceRotSpeed ?? 0.003;
+    const cloudSpeed = _activeTextureProfile?.cloudRotSpeed ?? 0.0045;
+
+    if (_planetMesh) _planetMesh.rotation.y += surfSpeed;
+    if (_cloudMesh)  _cloudMesh.rotation.y  += cloudSpeed;
 
     _planetRenderer.render(_planetScene, _planetCamera);
     _planetAnimId = requestAnimationFrame(_planetRenderLoop);
@@ -280,7 +309,22 @@ function _cleanup3D(): void {
 
     if (_resizeObs) { _resizeObs.disconnect(); _resizeObs = null; }
 
-    // Recursively free all GPU resources (geometries, materials, textures)
+    // Сначала отвязываем текстуры из материалов (чтобы disposeSceneGraph их не диспозил)
+    // и отдаём их обратно в TextureManager (refcount-).
+    if (_planetMesh && _planetMesh.material) {
+        const mat = _planetMesh.material as THREE.MeshStandardMaterial;
+        mat.map = null;
+        mat.normalMap = null;
+    }
+    if (_cloudMesh && _cloudMesh.material) {
+        const mat = _cloudMesh.material as THREE.MeshStandardMaterial;
+        mat.map = null;
+    }
+    _activeTextureUrls.forEach(url => releaseTexture(url));
+    _activeTextureUrls = [];
+    _activeTextureProfile = null;
+
+    // Recursively free all GPU resources (geometries, materials)
     if (_planetScene) {
         disposeSceneGraph(_planetScene);
     }
@@ -295,6 +339,7 @@ function _cleanup3D(): void {
     _planetScene = null;
     _planetCamera = null;
     _planetMesh = null;
+    _cloudMesh = null;
 }
 
 // ── DOM helpers ─────────────────────────────────────────────────────────────
@@ -377,7 +422,7 @@ function _updateUnlockButton(
         btn.onclick = () => {
             const meta = CLUSTER_META[crystalType];
             const label = meta?.shortLabel ?? 'этого типа';
-            alert(`Недостаточно кристаллов «${label}»!\nНужно: ${cost}, есть: ${playerCrystals}.\nСоберите кристаллы в полёте через карту галактики.`);
+            (window as any).showNotification(`Недостаточно кристаллов «${label}»!\nНужно: ${cost}, есть: ${playerCrystals}.\nСоберите кристаллы в полёте через карту галактики.`, 'warning');
         };
     }
 }

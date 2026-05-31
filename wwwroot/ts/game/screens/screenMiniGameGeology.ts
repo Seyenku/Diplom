@@ -164,6 +164,7 @@ let _planetId: string | null = null;
 let _shipColor = '#7a9e50';
 let _currentSample: RockSample | null = null;
 let _selectedMethodId: string | null = null;
+let _analysisStartTime = 0;
 let _cutscene3d: GeoCutsceneApi | null = null;
 let _isDestroyed = false;
 
@@ -282,6 +283,7 @@ function _startAnalysis(): void {
     _showOnly('geo-phase-analysis');
     if (!_currentSample) return;
 
+    _analysisStartTime = Date.now();
     _setText('geo-probe-status', '✅ Данные получены');
     _setText('geo-sample-name', _currentSample.name);
     _setText('geo-sample-desc', _currentSample.description);
@@ -529,7 +531,12 @@ async function _fetchReward(): Promise<MiniGameRewardDto | null> {
                 'RequestVerificationToken':
                     (document.querySelector('input[name="__RequestVerificationToken"]') as HTMLInputElement)?.value ?? '',
             },
-            body: JSON.stringify({ planetId: _planetId, score: 100, timeMs: 6000, passed: true }),
+            body: JSON.stringify({
+                planetId: _planetId,
+                score: 1000,
+                timeMs: Math.max(3000, Date.now() - _analysisStartTime),
+                passed: true,
+            }),
         });
         if (resp.ok) return await resp.json() as MiniGameRewardDto;
     } catch (e) {

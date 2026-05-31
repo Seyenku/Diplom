@@ -68,6 +68,18 @@
                 <textarea asp-for="Input.Description" rows="5"></textarea>
             </div>
 
+            <div class="admin-form-row">
+                <label asp-for="Input.TextureKey">Текстура планеты</label>
+                <select asp-for="Input.TextureKey">
+                    <option value="">— Без текстуры —</option>
+                    @foreach (var key in KosmosCore.Pages.Admin.PlanetsModel.TextureKeys)
+                    {
+                        <option value="@key">@key</option>
+                    }
+                </select>
+                <span asp-validation-for="Input.TextureKey"></span>
+            </div>
+
             <button type="submit" class="admin-primary-btn">@(Model.Input.Id > 0 ? "Сохранить планету" : "Создать планету")</button>
         </form>
     </section>

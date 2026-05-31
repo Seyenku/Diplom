@@ -67,6 +67,11 @@
     border-radius: 0.9rem;
     padding: clamp(0.75rem, 1.1vw, 1.2rem);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: margin-top 150ms ease;
+}
+
+body.has-navbar .planet-detail-header {
+    margin-top: var(--navbar-overlay-space);
 }
 
 .planet-description {

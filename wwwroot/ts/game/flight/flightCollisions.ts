@@ -16,12 +16,13 @@ export interface CollisionParams {
     shipModel: THREE.Group;
     vfxState: FlightVfxState;
     elapsed: number;
-    
+
     asteroids: THREE.Object3D[];
     crystals: THREE.Object3D[];
     bonuses: THREE.Object3D[];
-    
+
     capacity: number;
+    currentCargo: number;
     combo: number;
     iFramesRemaining: number;
     crystalColorHex: number;
@@ -32,6 +33,7 @@ export interface CollisionResult {
     damageTaken: number;
     healAmount: number;
     hitAsteroid: boolean;
+    cargoOverflow: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export function checkCollisions(params: CollisionParams): CollisionResult {
         damageTaken: 0,
         healAmount: 0,
         hitAsteroid: false,
+        cargoOverflow: false,
     };
 
     const sp = params.shipModel.position;
@@ -52,20 +55,29 @@ export function checkCollisions(params: CollisionParams): CollisionResult {
     const bonusThresholdSq = (1.2 + 0.8) ** 2;
 
     const container = document.getElementById('screen-flight');
+    const capacity = Math.max(1, Math.floor(params.capacity));
+    let cargo = params.currentCargo;
+    const remaining = (): number => Math.max(0, capacity - cargo - res.crystalsEarned);
 
     // Кристаллы
     for (let i = params.crystals.length - 1; i >= 0; i--) {
         const c = params.crystals[i];
         if (sp.distanceToSquared(c.position) < crystalThresholdSq) {
-            const earned = Math.max(1, Math.floor(params.capacity)) * params.combo;
+            const want = params.combo;
+            const earned = Math.min(want, remaining());
+            if (earned <= 0) {
+                res.cargoOverflow = true;
+                continue;
+            }
             res.crystalsEarned += earned;
-            
+            if (earned < want) res.cargoOverflow = true;
+
             if (container) {
                 spawnFloatingText(container, c.position, params.camera, `+${earned}`, params.crystalColorHex);
             }
             playSfx('crystal_collect');
             spawnCollectParticles(params.scene, c.position, params.crystalColorHex);
-            
+
             params.scene.remove(c);
             params.crystals.splice(i, 1);
         }
@@ -76,9 +88,15 @@ export function checkCollisions(params: CollisionParams): CollisionResult {
         const b = params.bonuses[i];
         if (sp.distanceToSquared(b.position) < bonusThresholdSq) {
             const bType = (b as any).userData._bonusType as string;
-            
+
             if (bType === 'mega') {
-                const earned = 5 * params.combo;
+                const want = 5 * params.combo;
+                const earned = Math.min(want, remaining());
+                if (earned <= 0) {
+                    res.cargoOverflow = true;
+                    continue;
+                }
+                if (earned < want) res.cargoOverflow = true;
                 res.crystalsEarned += earned;
                 if (container) spawnFloatingText(container, b.position, params.camera, `+${earned} ★`, 0xfbbf24);
                 spawnCollectParticles(params.scene, b.position, 0xfbbf24);

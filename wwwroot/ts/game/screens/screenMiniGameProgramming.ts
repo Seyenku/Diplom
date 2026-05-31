@@ -182,6 +182,7 @@ let _planetId: string | null = null;
 let _shipColor = '#4fc3f7';
 let _currentFault: SystemFault | null = null;
 let _selectedPatchId: string | null = null;
+let _diagnosisStartTime = 0;
 let _cutsceneTimer: ReturnType<typeof setTimeout> | null = null;
 let _progressTimer: ReturnType<typeof setInterval> | null = null;
 let _logTimers: ReturnType<typeof setTimeout>[] = [];
@@ -286,6 +287,7 @@ function _startDiagnosis(): void {
     _showOnly('prog-phase-diagnosis');
     if (!_currentFault) return;
 
+    _diagnosisStartTime = Date.now();
     _renderMetrics(_currentFault);
     _renderLogs(_currentFault.logs);
     _renderPatchList();
@@ -431,8 +433,8 @@ async function _fetchReward(): Promise<MiniGameRewardDto | null> {
             },
             body: JSON.stringify({
                 planetId: _planetId,
-                score: 100,
-                timeMs: 6000,
+                score: 1000,
+                timeMs: Math.max(3000, Date.now() - _diagnosisStartTime),
                 passed: true,
             }),
         });

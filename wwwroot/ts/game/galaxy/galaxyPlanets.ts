@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { ClusterType, PlanetDto } from '../types.js';
 import { CLUSTER_META } from '../clusterConfig.js';
 import { getProfile } from '../qualityPresets.js';
+import { getTextureProfile, textureUrl } from '../planetTextures.js';
+import { loadTexture, releaseTexture } from '../textureManager.js';
 
 export interface GalaxyPlanetsState {
     sharedPlanetGeo: THREE.SphereGeometry | null;
@@ -15,6 +17,8 @@ export interface GalaxyPlanetsState {
     planetMeshes: THREE.Mesh[];
     orbitMap: Map<string, THREE.LineLoop>;
     hoveredObj: THREE.Object3D | null;
+    /** URL-ы текстур, использованных текущим набором планет — для release при clear. */
+    usedTextureUrls: Set<string>;
 }
 
 export function initPlanetsState(): GalaxyPlanetsState {
@@ -26,6 +30,7 @@ export function initPlanetsState(): GalaxyPlanetsState {
         planetMeshes: [],
         orbitMap: new Map(),
         hoveredObj: null,
+        usedTextureUrls: new Set(),
     };
 }
 
@@ -59,10 +64,7 @@ export function clearPlanetMeshes(state: GalaxyPlanetsState, scene: THREE.Scene)
             if (c.material) {
                 const mats = Array.isArray(c.material) ? c.material : [c.material];
                 mats.forEach(mat => {
-                    for (const key of Object.keys(mat)) {
-                        const val = (mat as unknown as Record<string, unknown>)[key];
-                        if (val instanceof THREE.Texture) val.dispose();
-                    }
+                    // Текстуры из TextureManager НЕ диспозим напрямую — освобождаем через refcount ниже.
                     mat.dispose();
                 });
             }
@@ -70,6 +72,10 @@ export function clearPlanetMeshes(state: GalaxyPlanetsState, scene: THREE.Scene)
     });
     state.planetMeshes = [];
     state.hoveredObj = null;
+
+    // Релизим все текстуры, которые держал предыдущий набор планет
+    state.usedTextureUrls.forEach(url => releaseTexture(url));
+    state.usedTextureUrls.clear();
 
     state.orbitMap.forEach(line => {
         if (line.parent) line.removeFromParent();
@@ -95,23 +101,43 @@ export function buildPlanetsForCluster(
 
     const center = meta.position;
 
+    const qualityProfile = getProfile();
+    const texturesEnabled = qualityProfile.planetTextures !== 'off';
+
     clusterPlanets.forEach((planet, i) => {
         const discovered = discoveredIds.has(planet.id) || planet.isStarterVisible;
         const baseColor = new THREE.Color(meta.color);
 
         const radius = 0.8 + Math.min(planet.unlockCost ?? 5, 10) * 0.08;
-        const visibleColor = discovered ? baseColor.clone().lerp(new THREE.Color(0xffffff), 0.22) : new THREE.Color(0x46506f);
-        const baseEmissiveIntensity = discovered ? 0.72 : 0.2;
-        
+
+        // Профиль текстуры (если задан в БД и текстуры разрешены качеством)
+        const texProfile = texturesEnabled ? getTextureProfile(planet.textureKey) : null;
+        const useTexture = texProfile !== null;
+
+        // С текстурой: color=ffffff/затемнённый, emissive низкий (текстура сама даёт яркость)
+        // Без текстуры: старый сине-белый сплошной цвет
+        const visibleColor = useTexture
+            ? (discovered ? new THREE.Color(0xffffff) : new THREE.Color(0x4e5670))
+            : (discovered ? baseColor.clone().lerp(new THREE.Color(0xffffff), 0.22) : new THREE.Color(0x46506f));
+        const baseEmissiveIntensity = useTexture
+            ? (discovered ? 0.12 : 0.04)
+            : (discovered ? 0.72 : 0.2);
+
         const mat = new THREE.MeshStandardMaterial({
             color: visibleColor,
             emissive: discovered ? baseColor : new THREE.Color(0x111122),
             emissiveIntensity: baseEmissiveIntensity,
-            roughness: 0.3,
-            metalness: 0.22,
+            roughness: useTexture ? 0.85 : 0.3,
+            metalness: useTexture ? 0.05 : 0.22,
             transparent: !discovered,
-            opacity: discovered ? 1.0 : 0.62,
+            opacity: discovered ? 1.0 : (useTexture ? 0.78 : 0.62),
         });
+
+        if (texProfile) {
+            const url = textureUrl(texProfile.surface);
+            mat.map = loadTexture(url);
+            state.usedTextureUrls.add(url);
+        }
 
         const mesh = new THREE.Mesh(state.sharedPlanetGeo!, mat);
         mesh.scale.setScalar(radius);

@@ -11,6 +11,19 @@ namespace KosmosCore.Pages.Admin;
 [Authorize(Roles = "SuperAdmin")]
 public class PlanetsModel(IPlanetRepository planetRepository) : PageModel
 {
+    /// <summary>Известные ключи текстур (синхронизировано с wwwroot/ts/game/planetTextures.ts).</summary>
+    public static readonly IReadOnlyList<string> TextureKeys = new[]
+    {
+        // Программирование / технологические
+        "neptune", "gasgiant-blue", "metall", "glass", "met2", "zks",
+        "vortex", "uvbluesun", "iceworld2", "ice", "mh", "hs",
+        // Медицина / тёплые и газовые
+        "dgnyre", "ertaale", "gas_yellow", "jupiter", "venmap",
+        "mars", "mars2", "ertaale_ast_2006036_lrg", "hst_saturn_nicmos",
+        // Геология / каменные
+        "earth", "mercury", "moon", "moon34", "pluto"
+    };
+
     public IReadOnlyList<Planet> Planets { get; private set; } = [];
     public IReadOnlyList<Cluster> Clusters { get; private set; } = [];
 
@@ -35,7 +48,8 @@ public class PlanetsModel(IPlanetRepository planetRepository) : PageModel
             ClusterId = planet.ClusterId,
             Title = planet.Title,
             UnlockCost = planet.UnlockCost,
-            Description = planet.Description
+            Description = planet.Description,
+            TextureKey = planet.TextureKey
         };
     }
 
@@ -52,7 +66,8 @@ public class PlanetsModel(IPlanetRepository planetRepository) : PageModel
             ClusterId = Input.ClusterId,
             Title = Input.Title.Trim(),
             UnlockCost = Input.UnlockCost,
-            Description = Input.Description?.Trim()
+            Description = Input.Description?.Trim(),
+            TextureKey = string.IsNullOrWhiteSpace(Input.TextureKey) ? null : Input.TextureKey
         };
 
         if (dto.Id > 0)
@@ -97,5 +112,8 @@ public class PlanetsModel(IPlanetRepository planetRepository) : PageModel
         public int UnlockCost { get; set; }
 
         public string? Description { get; set; }
+
+        [StringLength(64)]
+        public string? TextureKey { get; set; }
     }
 }

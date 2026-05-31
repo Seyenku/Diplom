@@ -12,6 +12,9 @@ public class Planet
     public int    UnlockCost   { get; set; }              // стоимость открытия в кристаллах кластера
     public string Description  { get; set; } = string.Empty;
 
+    /// <summary>Ключ профиля текстуры (см. wwwroot/ts/game/planetTextures.ts). Может быть null.</summary>
+    public string? TextureKey  { get; set; }
+
     /// <summary>Название кластера (заполняется через JOIN при необходимости).</summary>
     public string? ClusterName { get; set; }
 

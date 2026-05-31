@@ -122,6 +122,7 @@ let _planetId: string | null = null;
 let _shipColor = '#4fc3f7';
 let _currentInjury: Injury | null = null;
 let _selectedDiagnosisId: string | null = null;
+let _diagnosisStartTime = 0;
 let _cutsceneTimer: ReturnType<typeof setTimeout> | null = null;
 let _progressTimer: ReturnType<typeof setInterval> | null = null;
 let _cutscene3d: MedCutsceneApi | null = null;
@@ -237,6 +238,8 @@ function _startDiagnosis(): void {
     _showOnly('med-phase-diagnosis');
     if (!_currentInjury) return;
 
+    _diagnosisStartTime = Date.now();
+
     // Показываем симптомы
     _setText('med-symptoms-text', _currentInjury.symptoms);
 
@@ -345,8 +348,8 @@ async function _handleDiagnosisSubmit(): Promise<void> {
                 },
                 body: JSON.stringify({
                     planetId: _planetId,
-                    score: 100,
-                    timeMs: 6000,
+                    score: 1000,
+                    timeMs: Math.max(3000, Date.now() - _diagnosisStartTime),
                     passed: true,
                 }),
             });

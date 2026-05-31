@@ -88,7 +88,7 @@ window._charCreation = {
             crystals: { ...EMPTY_CRYSTALS },
             discoveredPlanets: [],
             appliedUpgrades: [],
-            shipStats: { speedBonus: 0, shieldBonus: 0, scanRange: 1, capacity: 50 },
+            shipStats: { speedBonus: 0, shieldBonus: 0, scanRange: 1, capacity: 20 },
             stats: { scans: 0, miniGamesPlayed: 0, totalCrystalsEarned: 0 },
             badges: [],
         });

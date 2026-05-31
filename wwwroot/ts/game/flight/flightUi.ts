@@ -7,8 +7,11 @@ import { CrystalType } from '../types.js';
 
 export interface FlightUiState {
     collected: number;
+    capacity: number;
     shield: number;
     maxShield: number;
+    energy: number;
+    maxEnergy: number;
     currentWave: number;
     waveCount: number;
     elapsed: number;
@@ -21,8 +24,29 @@ export interface FlightUiState {
 
 export function updateHud(state: FlightUiState): void {
     _setText('flight-crystals-count', String(state.collected));
+    const cap = document.getElementById('flight-capacity-label');
+    if (cap) {
+        cap.textContent = `/ ${state.capacity}`;
+        cap.style.color = state.collected >= state.capacity ? '#f87171' : 'var(--color-text-muted)';
+    }
     updateShieldBar(state.shield, state.maxShield);
+    updateEnergyBar(state.energy, state.maxEnergy);
     updateWaveProgress(state.currentWave, state.waveCount, state.elapsed, state.waveDurationS);
+}
+
+export function updateEnergyBar(energy: number, maxEnergy: number): void {
+    const bar = document.getElementById('flight-energy-bar');
+    if (!bar) return;
+    const pct = Math.max(0, Math.min(100, (energy / maxEnergy) * 100));
+    bar.style.width = `${pct}%`;
+
+    if (pct > 50) {
+        bar.style.background = 'linear-gradient(90deg, #39ff14, #a3e635)';
+    } else if (pct > 20) {
+        bar.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
+    } else {
+        bar.style.background = 'linear-gradient(90deg, #f87171, #ef4444)';
+    }
 }
 
 export function updateShieldBar(shield: number, maxShield: number): void {

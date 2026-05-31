@@ -22,6 +22,7 @@ builder.Services.AddScoped<IUserRepository,        UserRepository>();
 builder.Services.AddScoped<IPlanetRepository,      PlanetRepository>();
 builder.Services.AddScoped<ISpecRepository,        SpecRepository>();
 builder.Services.AddScoped<ITelemetryRepository,   TelemetryRepository>();
+builder.Services.AddScoped<IGameSettingsRepository, GameSettingsRepository>();
 
 // --- Services ---
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();

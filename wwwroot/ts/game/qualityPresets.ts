@@ -46,6 +46,9 @@ export interface QualityProfile {
     flightDamageOverlay: boolean;
     flightVignette: boolean;
     flightParticleMultiplier: number;  // 0.5 / 1.0 / 2.0
+
+    /** Уровень текстурирования планет: off (solid color), surface (только базовая), full (+ облака + normal). */
+    planetTextures: 'off' | 'surface' | 'full';
 }
 
 // ── Профили ─────────────────────────────────────────────────────────────────
@@ -77,6 +80,7 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         flightDamageOverlay:  false,
         flightVignette:       false,
         flightParticleMultiplier: 0.5,
+        planetTextures:       'off',
     },
     medium: {
         pixelRatio:           Math.min(dpr, 1.5),
@@ -102,6 +106,7 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         flightDamageOverlay:  true,
         flightVignette:       true,
         flightParticleMultiplier: 1.0,
+        planetTextures:       'surface',
     },
     high: {
         pixelRatio:           Math.min(dpr, 2),
@@ -127,6 +132,7 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         flightDamageOverlay:  true,
         flightVignette:       true,
         flightParticleMultiplier: 2.0,
+        planetTextures:       'full',
     },
 };
 

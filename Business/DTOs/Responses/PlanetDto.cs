@@ -29,4 +29,7 @@ public class PlanetDto
 
     /// <summary>Открыта ли планета по умолчанию (видна без оплаты кристаллов).</summary>
     public bool IsStarterVisible { get; init; }
+
+    /// <summary>Ключ профиля текстуры (см. wwwroot/ts/game/planetTextures.ts).</summary>
+    public string? TextureKey { get; init; }
 }

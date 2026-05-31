@@ -26,7 +26,7 @@ import { initGuide }      from './guideManager.js';
 import { initHud }        from './hudManager.js';
 import { telemetry }      from './telemetryCollector.js';
 import { initQuality, QualityLevel } from './qualityPresets.js';
-import { ClusterDto, PlanetDto, GameSettingsDto } from './types.js';
+import { ClusterDto, PlanetDto, GameSettingsDto, LiveOpsDto } from './types.js';
 import { initAudio, playSfx } from './audioManager.js';
 import { init as initInputManager } from './inputManager.js';
 
@@ -122,6 +122,7 @@ import * as OfflineError  from './screens/screenOfflineError.js';
             clusters: initData.clusters ?? [],
             catalog:  initData.catalog  ?? [],
             upgrades: upgradesData,
+            liveOps:  initData.liveOps,
         } as Parameters<typeof dispatch<'SET_SESSION'>>[1]);
         dispatch('SET_SETTINGS', (initData.defaultSettings ?? {}) as Parameters<typeof dispatch<'SET_SETTINGS'>>[1]);
     }
@@ -226,6 +227,7 @@ interface InitData {
     clusters?: ClusterDto[];
     catalog?: PlanetDto[];
     defaultSettings?: GameSettingsDto;
+    liveOps?: LiveOpsDto;
 }
 
 function _readInitData(): InitData | null {

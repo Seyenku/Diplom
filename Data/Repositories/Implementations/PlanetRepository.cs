@@ -30,6 +30,7 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
                        p.Title             AS Title,
                        p.UnlockCost        AS UnlockCost,
                        p.Description       AS Description,
+                       p.TextureKey        AS TextureKey,
                        ISNULL((
                            SELECT '[' + STRING_AGG('""' + STRING_ESCAPE(s.Name, 'json') + '""', ',') + ']'
                            FROM dbo.Planet_Skills_Map psm
@@ -98,8 +99,8 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
     public async Task CreatePlanetAsync(AdminPlanetInputDto planet, CancellationToken ct = default)
     {
         const string sql = @"
-            INSERT INTO dbo.Planets (ClusterId, Title, UnlockCost, Description)
-            VALUES (@ClusterId, @Title, @UnlockCost, @Description);";
+            INSERT INTO dbo.Planets (ClusterId, Title, UnlockCost, Description, TextureKey)
+            VALUES (@ClusterId, @Title, @UnlockCost, @Description, @TextureKey);";
 
         await db.ExecuteAsync(new CommandDefinition(sql, planet, cancellationToken: ct));
         cache.Remove(CacheKey);
@@ -112,7 +113,8 @@ public class PlanetRepository(IDbConnection db, IMemoryCache cache, ILogger<Plan
                SET ClusterId = @ClusterId,
                    Title = @Title,
                    UnlockCost = @UnlockCost,
-                   Description = @Description
+                   Description = @Description,
+                   TextureKey = @TextureKey
              WHERE Id = @Id;";
 
         await db.ExecuteAsync(new CommandDefinition(sql, planet, cancellationToken: ct));

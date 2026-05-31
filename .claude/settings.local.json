@@ -9,7 +9,8 @@
       "PowerShell(dotnet build KosmosCore.csproj -nologo -v q 2>&1)",
       "Bash(Remove-Item \"C:\\\\Users\\\\Ars\\\\source\\\\repos\\\\KosmosCore\\\\wwwroot\\\\ts\\\\game\\\\screens\\\\screenMiniGame.ts\" -ErrorAction Stop)",
       "Bash(Remove-Item \"C:\\\\Users\\\\Ars\\\\source\\\\repos\\\\KosmosCore\\\\Pages\\\\Game\\\\_ScreenMiniGame.cshtml\" -ErrorAction Stop)",
-      "Bash(Write-Host \"Deleted\")"
+      "Bash(Write-Host \"Deleted\")",
+      "Bash(sqlcmd -S . -d diplom -E -i \"Scripts/migrate_add_texture_key.sql\")"
     ]
   }
 }

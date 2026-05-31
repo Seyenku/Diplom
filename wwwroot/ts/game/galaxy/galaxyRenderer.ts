@@ -25,9 +25,9 @@ export function initRenderer(wrap: HTMLElement): GalaxyRendererState {
     const renderer = new THREE.WebGLRenderer({ antialias: profile.antialias, alpha: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(profile.pixelRatio);
     renderer.setSize(w, h, false);
-    renderer.setClearColor(0x050a1a, 1);
+    renderer.setClearColor(0x000000, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMapping = THREE.NoToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;border-radius:var(--radius-sm);';
     wrap.insertBefore(renderer.domElement, wrap.firstChild);

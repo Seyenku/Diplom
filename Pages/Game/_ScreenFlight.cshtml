@@ -15,9 +15,10 @@
         <!-- Верхний блок: статы + прогресс волны -->
         <div class="flight-hud-top-wrap">
             <div class="flight-hud-top">
-                <div class="flight-stat-group">
+                <div class="flight-stat-group" title="Кристаллы в трюме / ёмкость">
                     <span class="flight-stat-icon">💎</span>
                     <span id="flight-crystals-count" class="flight-stat-value">0</span>
+                    <span id="flight-capacity-label" style="font-size:0.75rem;color:var(--color-text-muted);margin-left:2px;">/ 20</span>
                 </div>
                 <div class="flight-stat-group" style="font-size:0.75rem;">
                     <span id="flight-crystal-type" style="color:var(--color-text-muted);">💎 Программирование</span>
@@ -26,6 +27,12 @@
                     <span class="flight-stat-icon">🛡</span>
                     <div class="flight-bar-track">
                         <div id="flight-shield-bar" class="flight-bar-fill flight-bar-shield" style="width:100%"></div>
+                    </div>
+                </div>
+                <div class="flight-stat-group" title="Энергия буста">
+                    <span class="flight-stat-icon">⚡</span>
+                    <div class="flight-bar-track">
+                        <div id="flight-energy-bar" class="flight-bar-fill" style="width:100%;background:linear-gradient(90deg,#39ff14,#a3e635);"></div>
                     </div>
                 </div>
                 <div class="flight-stat-group">

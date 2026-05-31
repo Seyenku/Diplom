@@ -44,7 +44,7 @@ registerSceneBuilder('flight', () => {
     scene.add(backLight);
     
     if (profile.flightPostProcessing && globalRenderer) {
-        globalRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+        globalRenderer.toneMapping = THREE.NoToneMapping;
         globalRenderer.toneMappingExposure = 1.0;
     }
     
@@ -75,20 +75,25 @@ function _addFlightDustLayer(scene: THREE.Scene, tag: string, count: number, siz
 }
 
 // ── Константы ────────────────────────────────────
-const WAVE_DURATION_S = 20;
 const WAVE_COUNT = 3;
-const FLIGHT_DURATION_S = WAVE_DURATION_S * WAVE_COUNT;
 const BASE_SHIELD = 100;
 const BASE_OBJ_SPEED = 25;
 const COMBO_TIMEOUT = 2.5;
+
+// Длительность задаётся LiveOps-настройкой flight_duration_s.
+// Подставляется в init(); fallback 60 сек.
+let WAVE_DURATION_S = 20;
+let FLIGHT_DURATION_S = WAVE_DURATION_S * WAVE_COUNT;
 
 // Волновые множители
 const WAVE_SPEED_MULT  = [1.0, 1.35, 1.8];
 const WAVE_SPAWN_MULT  = [1.0, 1.4, 2.0];
 
-// Разгон: базовая длительность и бонус от апгрейда
+// Разгон: базовая длительность и бонус от апгрейда.
+// speedBonus — это проценты (20/40/70 для Engine I/II/III).
+// При speedBonus=100% разгон сократится в 4 раза (с 3 с до минимума 1.5 с).
 const BASE_ACCEL_DURATION_S = 3.0;
-const SPEED_BONUS_ACCEL_REDUCTION = 0.25; // каждый уровень speedBonus сокращает разгон на 25%
+const SPEED_BONUS_ACCEL_REDUCTION = 1 / 400; // на каждый % speedBonus разгон сокращается на 0.25%
 
 type FlightState = 'idle' | 'accelerating' | 'playing' | 'results';
 
@@ -105,6 +110,7 @@ let _shield = BASE_SHIELD;
 let _maxShield = BASE_SHIELD;
 let _collected = 0;
 let _crystalType: CrystalType = 'programming';
+let _overflowNotified = false;
 
 let _combo = 1;
 let _maxCombo = 1;
@@ -113,6 +119,14 @@ let _dodged = 0;
 
 let _iFramesRemaining = 0;
 let _hitStunRemaining = 0;
+
+// Энергия буста: 0–100, восстанавливается в простое.
+const BOOST_MAX_ENERGY = 100;
+const BOOST_DRAIN_PER_S = 25;       // ≈ 4 сек непрерывного буста
+const BOOST_REGEN_PER_S = 15;       // ≈ 6.7 сек полная регенерация
+const BOOST_MIN_TO_ACTIVATE = 10;   // нельзя жать буст ниже этого порога
+let _energy = BOOST_MAX_ENERGY;
+let _boostActive = false;
 
 // Объекты сцены
 let _shipModel: THREE.Group | null = null;
@@ -148,7 +162,12 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
         transition(Screen.GALAXY_MAP);
         return;
     }
-    
+
+    // Длительность полёта берём из LiveOps; делим на WAVE_COUNT для длины волны.
+    const totalDuration = Math.max(15, sd.liveOps?.flightDurationS ?? 60);
+    FLIGHT_DURATION_S = totalDuration;
+    WAVE_DURATION_S = totalDuration / WAVE_COUNT;
+
     _crystalType = sd.crystalType || 'programming';
     
     // Статы апгрейдов
@@ -158,7 +177,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _scanRange = st?.scanRange ?? 1;
     _capacity = st?.capacity ?? 1;
 
-    _maxShield = BASE_SHIELD * (1 + _shieldBonus * 0.25);
+    _maxShield = BASE_SHIELD * (1 + _shieldBonus / 100);
     _shield = _maxShield;
 
     // Длительность разгона зависит от speedBonus (каждый уровень -25%, мин 1.5с)
@@ -196,7 +215,7 @@ function _initSubsystems(): void {
 
     if (profile.flightPostProcessing && globalRenderer && scene && cam) {
         _composer = createComposer(globalRenderer, scene, cam, {
-            bloom: { strength: 0.35, radius: 0.2, threshold: 0.85 },
+            bloom: { strength: 0.35, radius: 0.2, threshold: 0.92 },
             vignette: true
         });
     }
@@ -276,7 +295,7 @@ function _gameLoop(now: number): void {
 
         // Корабль управляем во время разгона
         if (_shipModel) {
-            const speedBonusMult = 1 + _speedBonus * 0.3;
+            const speedBonusMult = 1 + _speedBonus / 100;
             updateShipPhysics(_shipModel, _velocity, dt, FLIGHT_SHIP_CONFIG, 1.0, speedBonusMult);
         }
 
@@ -330,9 +349,20 @@ function _gameLoop(now: number): void {
             Ui.updateComboDisplay(_combo);
         }
 
+        // Энергия буста: расход при удержании, регенерация в простое.
+        const wantsBoost = isBoostPressed();
+        if (wantsBoost && (_boostActive ? _energy > 0 : _energy >= BOOST_MIN_TO_ACTIVATE)) {
+            _boostActive = true;
+            _energy = Math.max(0, _energy - BOOST_DRAIN_PER_S * dt);
+        } else {
+            _boostActive = false;
+            _energy = Math.min(BOOST_MAX_ENERGY, _energy + BOOST_REGEN_PER_S * dt);
+        }
+        Ui.updateEnergyBar(_energy, BOOST_MAX_ENERGY);
+
         if (_shipModel) {
-            const boostMult = isBoostPressed() ? 2.2 : 1.0;
-            const speedBonusMult = 1 + _speedBonus * 0.3;
+            const boostMult = _boostActive ? 2.2 : 1.0;
+            const speedBonusMult = 1 + _speedBonus / 100;
             updateShipPhysics(_shipModel, _velocity, dt, FLIGHT_SHIP_CONFIG, boostMult, speedBonusMult);
         }
 
@@ -345,7 +375,8 @@ function _gameLoop(now: number): void {
                 const res = checkCollisions({
                     scene, camera: cam, shipModel: _shipModel, vfxState: _vfxState, elapsed: _elapsed,
                     asteroids: _asteroids, crystals: _crystals, bonuses: _bonuses,
-                    capacity: _capacity, combo: _combo, iFramesRemaining: _iFramesRemaining,
+                    capacity: _capacity, currentCargo: _collected,
+                    combo: _combo, iFramesRemaining: _iFramesRemaining,
                     crystalColorHex: CRYSTAL_COLORS[_crystalType]?.color ?? 0x4fc3f7
                 });
 
@@ -355,6 +386,10 @@ function _gameLoop(now: number): void {
                     _combo = Math.min(5, _combo + 1);
                     if (_combo > _maxCombo) _maxCombo = _combo;
                     Ui.updateComboDisplay(_combo);
+                }
+                if (res.cargoOverflow && !_overflowNotified) {
+                    _overflowNotified = true;
+                    (window as any).showNotification?.(`Трюм полон (${_capacity})! Часть кристаллов потеряна.`, 'warning');
                 }
                 if (res.damageTaken > 0) {
                     _shield = Math.max(0, _shield - res.damageTaken);
@@ -382,7 +417,7 @@ function _gameLoop(now: number): void {
     }
 
     if (_vfxState) {
-        updateVfx(_vfxState, dt, rawDt, isBoostPressed(), _hitStunRemaining, _shield, _maxShield, _elapsed, _currentWave, _shipModel, getProfile(), _state === 'playing', 1.0);
+        updateVfx(_vfxState, dt, rawDt, _boostActive, _hitStunRemaining, _shield, _maxShield, _elapsed, _currentWave, _shipModel, getProfile(), _state === 'playing', 1.0);
     }
 
     const scene = window.__threeScene;
@@ -477,7 +512,8 @@ function _endFlight(): void {
     dispatch('INCREMENT_STAT', { key: 'flights' });
 
     Ui.showResults({
-        collected: _collected, shield: _shield, maxShield: _maxShield,
+        collected: _collected, capacity: _capacity, shield: _shield, maxShield: _maxShield,
+        energy: _energy, maxEnergy: BOOST_MAX_ENERGY,
         currentWave: _currentWave, waveCount: WAVE_COUNT, elapsed: _elapsed,
         waveDurationS: WAVE_DURATION_S, combo: _combo, maxCombo: _maxCombo,
         dodged: _dodged, crystalType: _crystalType
@@ -486,7 +522,8 @@ function _endFlight(): void {
 
 function _updateUi(): void {
     Ui.updateHud({
-        collected: _collected, shield: _shield, maxShield: _maxShield,
+        collected: _collected, capacity: _capacity, shield: _shield, maxShield: _maxShield,
+        energy: _energy, maxEnergy: BOOST_MAX_ENERGY,
         currentWave: _currentWave, waveCount: WAVE_COUNT, elapsed: _elapsed,
         waveDurationS: WAVE_DURATION_S, combo: _combo, maxCombo: _maxCombo,
         dodged: _dodged, crystalType: _crystalType
@@ -506,6 +543,9 @@ function _cleanupState(): void {
     _hitStunRemaining = 0;
     _velocity.set(0, 0);
     _throttle = 0;
+    _overflowNotified = false;
+    _energy = BOOST_MAX_ENERGY;
+    _boostActive = false;
 
     const scene = window.__threeScene;
     if (scene) {
