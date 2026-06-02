@@ -73,6 +73,7 @@ html {
     position: relative;
     width: 100%;
     height: 80vh;
+    height: 80dvh; /* dynamic viewport — корректно учитывает мобильные тулбары */
     min-height: 480px;
     max-height: none;
     overflow: hidden;
@@ -80,6 +81,20 @@ html {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    /* Безопасные зоны под notch / island */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* На узких/портретных экранах игра занимает всю доступную высоту */
+@media (max-width: 720px), (pointer: coarse) and (max-height: 600px) {
+    #game-root {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        border-radius: 0;
+        border: none;
+    }
 }
 
 #game-root:fullscreen {
@@ -199,6 +214,81 @@ html {
 /* ── Утилита hidden ────────────────────────────── */
 .hidden {
     display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Touch / Mobile overrides
+   ─────────────────────────────────────────────────────────────── */
+
+/* iOS: input с font-size < 16px вызывает авто-zoom при фокусе */
+@media (max-width: 720px) {
+    input, select, textarea {
+        font-size: max(16px, 0.95rem) !important;
+    }
+}
+
+/* Все интерактивные элементы — мин. 44×44 px (Apple HIG / Material 48dp) */
+@media (pointer: coarse) {
+    button,
+    .btn-game,
+    .nav-btn,
+    .settings-keybind-btn,
+    .ach-export-btn,
+    .ship-up-btn,
+    [role="button"],
+    a.btn-game {
+        min-height: 44px;
+    }
+
+    button:not(.btn-action):not(.btn-game),
+    .nav-btn {
+        min-width: 44px;
+    }
+
+    /* Тап-фидбек вместо синего highlight на iOS */
+    a, button, .planet-card, .ship-up, .ach-badge {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* Анти-«sticky hover» на тач-устройствах: убираем все трансформы
+   и подсветки, которые срабатывали бы при :hover и «застревали»
+   после тапа до следующего тапа в пустоту.
+   Перечислены классы интерактивных элементов из всех экранов. */
+@media (hover: none) {
+    .btn-game:hover,
+    .btn-primary:hover,
+    .btn-secondary:hover,
+    .nav-btn:hover,
+    .ach-stat-card:hover,
+    .ach-stat:hover,
+    .ach-badge--earned:hover,
+    .ach-cta:hover,
+    .ach-export-btn:hover,
+    .ship-stat:hover,
+    .ship-up:hover,
+    .ship-up--available:hover,
+    .ship-up-btn[data-state="buy"]:hover,
+    .settings-card:hover,
+    .settings-save-pill:hover,
+    .settings-keybind-btn:hover,
+    .planet-card:hover,
+    .planet-card[data-card]:hover,
+    .planet-skill-item:hover,
+    .crystal-req-badge:hover {
+        transform: none !important;
+    }
+
+    /* Box-shadow при hover становится таким же, как в обычном состоянии */
+    .planet-card:hover {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+    .ach-cta:hover,
+    .ach-badge--earned:hover,
+    .ship-up--available:hover,
+    .settings-save-pill:hover {
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.30);
+    }
 }
 
 .opacity-hidden {

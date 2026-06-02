@@ -11,6 +11,7 @@ import { getProfile, onQualityChange, offQualityChange, QualityProfile } from '.
 import { CRYSTAL_COLORS } from '../clusterConfig.js';
 import { playSfx, playMusic } from '../audioManager.js';
 import { isBoostPressed } from '../inputManager.js';
+import { getDevice } from '../deviceProfile.js';
 
 import { FLIGHT_SHIP_CONFIG, updateShipPhysics } from '../systems/shipController.js';
 import { loadShipGroup } from '../systems/shipLoader.js';
@@ -193,6 +194,9 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _initSubsystems();
     onQualityChange(_onQualityChanged);
 
+    // Подсказки управления — рендерим под актуальную схему и горячие клавиши
+    Ui.renderControlHints(store.settings ?? null);
+
     playMusic('ambient_flight');
     _startAccelerating();
 }
@@ -241,6 +245,9 @@ function _startAccelerating(): void {
     const hudEl = document.getElementById('flight-hud');
     if (hudEl) hudEl.classList.remove('hidden');
 
+    // Подсказки управления видны только в фазе разгона
+    Ui.setControlHintsVisible(true);
+
     // Показываем оверлей разгона
     const accelEl = document.getElementById('flight-accel-overlay');
     if (accelEl) {
@@ -259,6 +266,9 @@ function _finishAcceleration(): void {
     _state = 'playing';
     _throttle = 1;
 
+    // Подсказки управления больше не нужны — фаза разгона закончилась
+    Ui.setControlHintsVisible(false);
+
     // Плавный fade-out оверлея разгона
     const accelEl = document.getElementById('flight-accel-overlay');
     if (accelEl) {
@@ -274,8 +284,20 @@ function _easeInQuad(t: number): number {
     return t * t;
 }
 
+// Frame-rate cap для слабых устройств — 30 FPS вместо 60 (двое-кратная
+// экономия CPU/GPU). На обычных и десктопе работает на нативной частоте.
+const FRAME_TARGET_MS_LOW = 33;
+let _lastFrameRenderMs = 0;
+
 function _gameLoop(now: number): void {
     if (_state !== 'accelerating' && _state !== 'playing' && _state !== 'results') return;
+
+    // На слабых устройствах пропускаем «лишние» кадры до целевой частоты.
+    if (getDevice().isLowEnd && (now - _lastFrameRenderMs) < FRAME_TARGET_MS_LOW) {
+        _animId = requestAnimationFrame(_gameLoop);
+        return;
+    }
+    _lastFrameRenderMs = now;
 
     let rawDt = (now - _lastTime) / 1000;
     rawDt = Math.min(rawDt, 0.1);
@@ -566,6 +588,9 @@ function _cleanup(): void {
     if (_animId) cancelAnimationFrame(_animId);
     _animId = null;
     _state = 'idle';
+
+    // Подсказки управления скрываем при выходе из экрана
+    Ui.setControlHintsVisible(false);
 
     if (globalRenderer) {
         globalRenderer.domElement.style.transform = '';

@@ -72,6 +72,21 @@ window._galaxyMap = {
         });
     },
 
+    /** Циклическое переключение состояний bottom-sheet/drawer (handle tap) */
+    toggleNebulaState() {
+        Ui.cycleNebulaState();
+    },
+
+    /** Развернуть панель (из FAB-кнопки) до peek-режима */
+    expandNebula() {
+        Ui.setNebulaState('peek');
+    },
+
+    /** Свернуть панель (backdrop tap) до collapsed-режима */
+    collapseNebula() {
+        Ui.setNebulaState('collapsed');
+    },
+
     openPlanet(planetId: string) {
         if (!_cameraState || _cameraState.state === 'zooming-to-planet') return;
 

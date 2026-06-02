@@ -119,3 +119,111 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 20px rgba(79, 195, 247, 0.3);
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Landscape mobile — компактная вёрстка, чтобы всё помещалось
+   на низкое окно (телефон в горизонтальной ориентации).
+   ───────────────────────────────────────────────────────────────── */
+@media (orientation: landscape) and (max-height: 540px),
+       (orientation: landscape) and (max-width: 900px) {
+
+    .main-menu-screen {
+        padding: 0.85rem 1rem;
+        gap: 0.9rem;
+        justify-content: flex-start;
+        min-height: auto;
+    }
+
+    .main-menu-heading {
+        max-width: 100%;
+    }
+
+    .main-menu-subtitle {
+        margin-bottom: 0.3rem;
+        font-size: 0.75rem;
+    }
+
+    .main-menu-title {
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        line-height: 1.0;
+    }
+
+    /* Брейк <br> в заголовке убираем визуально — текст пишется в одну строку */
+    .main-menu-title br { display: none; }
+    .main-menu-title { white-space: nowrap; }
+
+    .main-menu-description {
+        margin-top: 0.4rem;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        max-width: 560px;
+    }
+
+    .main-menu-description br { display: none; }
+
+    .main-menu-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        max-width: 640px;
+    }
+
+    .main-menu-actions .btn-game {
+        flex: 1 1 160px;
+        padding: 0.55rem 1.2rem;
+        font-size: 0.85rem;
+        min-height: 44px;
+    }
+
+    .lore-cards {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.55rem;
+        width: 100%;
+        max-width: 760px;
+    }
+
+    .lore-card {
+        padding: 0.65rem 0.7rem;
+        gap: 0.35rem;
+    }
+
+    .lore-card-icon {
+        font-size: 1.6rem;
+    }
+
+    .lore-card-title {
+        font-size: 0.88rem;
+    }
+
+    .lore-card-text {
+        font-size: 0.74rem;
+        line-height: 1.35;
+    }
+
+    .btn-cta-university {
+        padding: 0.55rem 1.2rem;
+        font-size: 0.82rem;
+    }
+
+    /* Версия не absolute, чтобы не перекрывать контент при scroll */
+    .main-menu-version {
+        position: static;
+        margin-top: 0.4rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* На совсем маленьких landscape (iPhone SE) — скрываем lore-cards
+   и описание для большей компактности */
+@media (orientation: landscape) and (max-height: 380px) {
+    .main-menu-description,
+    .lore-cards {
+        display: none;
+    }
+    .main-menu-screen {
+        justify-content: center;
+        gap: 0.6rem;
+    }
+}

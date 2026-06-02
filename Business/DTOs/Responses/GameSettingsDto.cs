@@ -9,7 +9,6 @@ public class GameSettingsDto
     public bool Subtitles       { get; init; } = false;
     public bool ColorblindMode  { get; init; } = false;
     public float UiScale        { get; init; } = 1.0f;
-    public bool GuideEnabled    { get; init; } = true;
 
     public static readonly GameSettingsDto Default = new();
 }

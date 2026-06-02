@@ -12,24 +12,53 @@
                 <div id="galaxy-tooltip-hint" class="galaxy-tooltip-hint">ЛКМ — выбрать</div>
             </div>
 
-            <!-- Панель выбранного региона / туманности -->
-            <div id="nebula-info-panel" class="nebula-info-panel hidden">
-                <div class="nebula-info-header">
-                    <span id="nebula-info-icon" class="nebula-info-icon">🌀</span>
-                    <div>
-                        <div id="nebula-info-name" class="nebula-info-name">Туманность</div>
-                        <div id="nebula-info-desc" class="nebula-info-desc"></div>
-                    </div>
-                </div>
-                <div class="nebula-info-stats">
-                    <span id="nebula-info-crystal" class="nebula-info-stat">💎 Кристаллы: —</span>
-                    <span id="nebula-info-planets" class="nebula-info-stat">🪐 Планет: —</span>
-                </div>
-                <button id="btn-nebula-fly" class="btn-game btn-primary nebula-fly-btn" onclick="window._galaxyMap?.flyToRegion()">
-                    🚀 Полёт
+            <!-- Backdrop (только в mobile-режиме за панелью) -->
+            <div id="nebula-backdrop" class="nebula-backdrop hidden"
+                 onclick="window._galaxyMap?.collapseNebula()"
+                 aria-hidden="true"></div>
+
+            <!-- FAB-стек для свёрнутого режима на mobile (когда панель полностью скрыта).
+                 Содержит кнопку «список планет» + кнопку «Полёт» в одной группе. -->
+            <div id="nebula-fab-stack" class="nebula-fab-stack hidden">
+                <button id="nebula-fab-fly" class="nebula-fab nebula-fab--fly" type="button"
+                        onclick="window._galaxyMap?.flyToRegion()"
+                        aria-label="Перейти к полёту">
+                    <span class="nebula-fab-icon">🚀</span>
                 </button>
-                <!-- Сетка планет региона -->
-                <div id="nebula-planet-grid" class="nebula-planet-grid"></div>
+                <button id="nebula-fab" class="nebula-fab" type="button"
+                        onclick="window._galaxyMap?.expandNebula()"
+                        aria-label="Открыть список планет">
+                    <span class="nebula-fab-icon" id="nebula-fab-icon">📋</span>
+                    <span class="nebula-fab-count" id="nebula-fab-count">0</span>
+                </button>
+            </div>
+
+            <!-- Панель выбранного региона / туманности -->
+            <div id="nebula-info-panel" class="nebula-info-panel hidden" data-state="full">
+                <!-- Handle: drag-to-resize + tap-toggle через pointer events (galaxyUi.ts) -->
+                <button id="nebula-handle" class="nebula-handle" type="button"
+                        aria-label="Перетащить или коснуться, чтобы изменить размер">
+                    <span class="nebula-handle-grip"></span>
+                </button>
+
+                <div class="nebula-info-scroll">
+                    <div class="nebula-info-header">
+                        <span id="nebula-info-icon" class="nebula-info-icon">🌀</span>
+                        <div>
+                            <div id="nebula-info-name" class="nebula-info-name">Туманность</div>
+                            <div id="nebula-info-desc" class="nebula-info-desc"></div>
+                        </div>
+                    </div>
+                    <div class="nebula-info-stats">
+                        <span id="nebula-info-crystal" class="nebula-info-stat">💎 Кристаллы: —</span>
+                        <span id="nebula-info-planets" class="nebula-info-stat">🪐 Планет: —</span>
+                    </div>
+                    <button id="btn-nebula-fly" class="btn-game btn-primary nebula-fly-btn" onclick="window._galaxyMap?.flyToRegion()">
+                        🚀 Полёт
+                    </button>
+                    <!-- Сетка планет региона -->
+                    <div id="nebula-planet-grid" class="nebula-planet-grid"></div>
+                </div>
             </div>
 
             <!-- Подсказка по навигации -->

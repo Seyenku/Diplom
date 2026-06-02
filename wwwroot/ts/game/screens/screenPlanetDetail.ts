@@ -56,6 +56,27 @@ let _currentPlanet: PlanetDto | null = null;
 let _activeTextureProfile: TextureProfile | null = null;
 let _activeTextureUrls: string[] = [];
 
+// ── Reading mode ────────────────────────────────────────────────────────────
+type DetailMode = 'overview' | 'reading';
+let _mode: DetailMode = 'overview';
+
+// ── Drag-to-rotate state ────────────────────────────────────────────────────
+let _isDragging = false;
+let _dragPointerId: number | null = null;
+let _dragLastX = 0;
+let _dragLastY = 0;
+let _rotVelY = 0;   // инерция вокруг Y (горизонталь)
+let _rotVelX = 0;   // инерция вокруг X (вертикаль)
+let _accumDragPx = 0;
+let _idleSinceMs = 0;
+let _dragHandlers: { type: string; fn: (e: Event) => void }[] = [];
+
+const DRAG_SENSITIVITY = 0.005;
+const INERTIA_DECAY = 0.92;
+const INERTIA_MIN = 0.0002;
+const IDLE_BEFORE_AUTO_MS = 1500;
+const CLICK_DRAG_THRESHOLD_PX = 5;
+
 // ── Реактивное обновление UI при изменении баланса кристаллов ────────────────
 
 function _refreshUI(): void {
@@ -140,9 +161,9 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
     // Навыки — скрываем до открытия планеты
     if (discovered) {
-        _renderList('hard-skills-list', planet.hardSkills ?? [], '🔧');
-        _renderList('soft-skills-list', planet.softSkills ?? [], '✨');
-        _renderList('risks-list', planet.risks ?? [], '⚠️');
+        _renderList('hard-skills-list', planet.hardSkills ?? []);
+        _renderList('soft-skills-list', planet.softSkills ?? []);
+        _renderList('risks-list', planet.risks ?? []);
     } else {
         _renderLockedList('hard-skills-list');
         _renderLockedList('soft-skills-list');
@@ -181,7 +202,7 @@ function _init3DPlanet(planet: PlanetDto, clusterMeta: { label: string; color: n
     const h = viewport.clientHeight || 300;
 
     _planetRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    _planetRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    _planetRenderer.setPixelRatio(getQualityProfile().pixelRatio);
     _planetRenderer.setSize(w, h, false);
     _planetRenderer.setClearColor(0x000000, 0);
     _planetRenderer.domElement.style.cssText = 'width:100%;height:100%;display:block;';
@@ -189,8 +210,9 @@ function _init3DPlanet(planet: PlanetDto, clusterMeta: { label: string; color: n
 
     _planetScene = new THREE.Scene();
 
+    // FOV 40°, z=7 → видимая ширина ≈ 5.10 units, кольцо помещается с запасом.
     _planetCamera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
-    _planetCamera.position.set(0, 0, 6);
+    _planetCamera.position.set(0, 0, 7);
 
     // ── Профиль текстуры (учитываем уровень качества) ───────────────────
     const qualityProfile = getQualityProfile();
@@ -265,7 +287,8 @@ function _init3DPlanet(planet: PlanetDto, clusterMeta: { label: string; color: n
     _planetScene.add(new THREE.Mesh(atmoGeo, atmoMat));
 
     // ── Орбитальное кольцо ─────────────────────────────────────────────
-    const ringGeo = new THREE.RingGeometry(2.2, 2.35, 64);
+    // Внешний радиус 2.10 (диаметр 4.20) — помещается в кадр камеры с запасом.
+    const ringGeo = new THREE.RingGeometry(2.00, 2.10, 64);
     const ringMat = new THREE.MeshBasicMaterial({
         color: atmoColorHex,
         side: THREE.DoubleSide,
@@ -287,17 +310,162 @@ function _init3DPlanet(planet: PlanetDto, clusterMeta: { label: string; color: n
     });
     _resizeObs.observe(viewport);
 
+    _attachDragHandlers(_planetRenderer.domElement);
+
     _planetAnimId = requestAnimationFrame(_planetRenderLoop);
+}
+
+// ── Drag handlers ───────────────────────────────────────────────────────────
+
+function _attachDragHandlers(canvas: HTMLCanvasElement): void {
+    canvas.style.touchAction = 'none';
+    canvas.style.cursor = 'grab';
+    canvas.style.pointerEvents = 'auto';
+
+    const onPointerDown = (e: PointerEvent): void => {
+        _isDragging = true;
+        _dragPointerId = e.pointerId;
+        _dragLastX = e.clientX;
+        _dragLastY = e.clientY;
+        _accumDragPx = 0;
+        _rotVelY = 0;
+        _rotVelX = 0;
+        canvas.style.cursor = 'grabbing';
+        try { canvas.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    };
+
+    const onPointerMove = (e: PointerEvent): void => {
+        if (!_isDragging || _dragPointerId !== e.pointerId) return;
+        // В reading-режиме drag отключён — но обновляем accum, чтобы клик не превратился в drag
+        if (_mode === 'reading') {
+            _dragLastX = e.clientX;
+            _dragLastY = e.clientY;
+            return;
+        }
+        const dx = e.clientX - _dragLastX;
+        const dy = e.clientY - _dragLastY;
+        _dragLastX = e.clientX;
+        _dragLastY = e.clientY;
+        _accumDragPx += Math.abs(dx) + Math.abs(dy);
+
+        const yDelta = dx * DRAG_SENSITIVITY;
+        const xDelta = dy * DRAG_SENSITIVITY;
+
+        if (_planetMesh) {
+            _planetMesh.rotation.y += yDelta;
+            _planetMesh.rotation.x = Math.max(-1.2, Math.min(1.2, _planetMesh.rotation.x + xDelta));
+        }
+        if (_cloudMesh) {
+            _cloudMesh.rotation.y += yDelta;
+            _cloudMesh.rotation.x = Math.max(-1.2, Math.min(1.2, _cloudMesh.rotation.x + xDelta));
+        }
+
+        // Сохраняем последнюю «скорость» для инерции
+        _rotVelY = yDelta;
+        _rotVelX = xDelta;
+    };
+
+    const onPointerUp = (e: PointerEvent): void => {
+        if (_dragPointerId !== null && _dragPointerId !== e.pointerId) return;
+        const wasClick = _accumDragPx < CLICK_DRAG_THRESHOLD_PX;
+        _isDragging = false;
+        _dragPointerId = null;
+        _idleSinceMs = performance.now();
+        canvas.style.cursor = 'grab';
+        try { canvas.releasePointerCapture?.(e.pointerId); } catch { /* noop */ }
+
+        if (wasClick) {
+            // Hook для будущего reading-mode (этап 5)
+            _onPlanetClick();
+            // Инерция не нужна — пользователь не «крутил»
+            _rotVelY = 0;
+            _rotVelX = 0;
+        }
+    };
+
+    const onPointerCancel = (): void => {
+        _isDragging = false;
+        _dragPointerId = null;
+        _idleSinceMs = performance.now();
+        canvas.style.cursor = 'grab';
+    };
+
+    canvas.addEventListener('pointerdown',   onPointerDown   as EventListener);
+    canvas.addEventListener('pointermove',   onPointerMove   as EventListener);
+    canvas.addEventListener('pointerup',     onPointerUp     as EventListener);
+    canvas.addEventListener('pointercancel', onPointerCancel as EventListener);
+    canvas.addEventListener('pointerleave',  onPointerCancel as EventListener);
+
+    _dragHandlers = [
+        { type: 'pointerdown',   fn: onPointerDown   as EventListener },
+        { type: 'pointermove',   fn: onPointerMove   as EventListener },
+        { type: 'pointerup',     fn: onPointerUp     as EventListener },
+        { type: 'pointercancel', fn: onPointerCancel as EventListener },
+        { type: 'pointerleave',  fn: onPointerCancel as EventListener },
+    ];
+}
+
+function _detachDragHandlers(): void {
+    const canvas = _planetRenderer?.domElement;
+    if (!canvas) { _dragHandlers = []; return; }
+    _dragHandlers.forEach(h => canvas.removeEventListener(h.type, h.fn));
+    _dragHandlers = [];
+}
+
+/** Клик по планете переключает overview ↔ reading. */
+function _onPlanetClick(): void {
+    _setMode(_mode === 'overview' ? 'reading' : 'overview');
+}
+
+function _setMode(mode: DetailMode): void {
+    if (_mode === mode) return;
+    _mode = mode;
+    const root = document.getElementById('screen-planet-detail');
+    if (!root) return;
+    root.classList.toggle('planet-mode--reading', mode === 'reading');
+    root.classList.toggle('planet-mode--overview', mode === 'overview');
+
+    // В reading сбрасываем «накрученное» вращение, чтобы планета смотрела ровно
+    if (mode === 'reading' && _planetMesh) {
+        _rotVelY = 0;
+        _rotVelX = 0;
+    }
+
+    const canvas = _planetRenderer?.domElement;
+    if (canvas) {
+        canvas.style.cursor = mode === 'reading' ? 'pointer' : 'grab';
+    }
 }
 
 function _planetRenderLoop(): void {
     if (!_planetRenderer || !_planetScene || !_planetCamera) return;
 
-    const surfSpeed = _activeTextureProfile?.surfaceRotSpeed ?? 0.003;
-    const cloudSpeed = _activeTextureProfile?.cloudRotSpeed ?? 0.0045;
+    const surfSpeed  = _activeTextureProfile?.surfaceRotSpeed ?? 0.003;
+    const cloudSpeed = _activeTextureProfile?.cloudRotSpeed   ?? 0.0045;
 
-    if (_planetMesh) _planetMesh.rotation.y += surfSpeed;
-    if (_cloudMesh)  _cloudMesh.rotation.y  += cloudSpeed;
+    const sinceIdle = performance.now() - _idleSinceMs;
+    const inertiaActive =
+        !_isDragging && (Math.abs(_rotVelY) > INERTIA_MIN || Math.abs(_rotVelX) > INERTIA_MIN);
+
+    if (_isDragging) {
+        // Во время drag — пользователь сам крутит, авто отключаем
+    } else if (inertiaActive) {
+        // Затухающая инерция после release
+        if (_planetMesh) {
+            _planetMesh.rotation.y += _rotVelY;
+            _planetMesh.rotation.x = Math.max(-1.2, Math.min(1.2, _planetMesh.rotation.x + _rotVelX));
+        }
+        if (_cloudMesh) {
+            _cloudMesh.rotation.y += _rotVelY;
+            _cloudMesh.rotation.x = Math.max(-1.2, Math.min(1.2, _cloudMesh.rotation.x + _rotVelX));
+        }
+        _rotVelY *= INERTIA_DECAY;
+        _rotVelX *= INERTIA_DECAY;
+    } else if (sinceIdle > IDLE_BEFORE_AUTO_MS) {
+        // Авто-rotation с параллаксом (разные скорости для surface и cloud)
+        if (_planetMesh) _planetMesh.rotation.y += surfSpeed;
+        if (_cloudMesh)  _cloudMesh.rotation.y  += cloudSpeed;
+    }
 
     _planetRenderer.render(_planetScene, _planetCamera);
     _planetAnimId = requestAnimationFrame(_planetRenderLoop);
@@ -306,6 +474,20 @@ function _planetRenderLoop(): void {
 function _cleanup3D(): void {
     if (_planetAnimId) cancelAnimationFrame(_planetAnimId);
     _planetAnimId = null;
+
+    _detachDragHandlers();
+    _isDragging = false;
+    _dragPointerId = null;
+    _rotVelY = 0;
+    _rotVelX = 0;
+    _accumDragPx = 0;
+    _idleSinceMs = 0;
+
+    // Сбрасываем reading-mode (чтобы следующий вход на экран начался с overview)
+    _mode = 'overview';
+    const root = document.getElementById('screen-planet-detail');
+    root?.classList.remove('planet-mode--reading');
+    root?.classList.remove('planet-mode--overview');
 
     if (_resizeObs) { _resizeObs.disconnect(); _resizeObs = null; }
 
@@ -349,11 +531,11 @@ function _set(id: string, text: string): void {
     if (el) el.textContent = text;
 }
 
-function _renderList(listId: string, items: string[], icon: string): void {
+function _renderList(listId: string, items: string[]): void {
     const el = document.getElementById(listId);
     if (!el) return;
     el.innerHTML = items.length
-        ? items.map(s => `<li class="planet-skill-item">${icon} ${s}</li>`).join('')
+        ? items.map(s => `<li class="planet-skill-item">${_escapeHtml(s)}</li>`).join('')
         : `<li class="planet-skill-item" style="opacity:0.5;">— нет данных</li>`;
 }
 
@@ -361,9 +543,13 @@ function _renderLockedList(listId: string): void {
     const el = document.getElementById(listId);
     if (!el) return;
     el.innerHTML = `
-        <li class="planet-skill-item planet-skill-locked">🔒 Скрыто до открытия</li>
-        <li class="planet-skill-item planet-skill-locked">🔒 ??????????</li>
-        <li class="planet-skill-item planet-skill-locked">🔒 ??????????</li>`;
+        <li class="planet-skill-item planet-skill-locked">Скрыто до открытия</li>
+        <li class="planet-skill-item planet-skill-locked">??????????</li>
+        <li class="planet-skill-item planet-skill-locked">??????????</li>`;
+}
+
+function _escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function _renderUnlockCost(planet: PlanetDto): void {

@@ -59,31 +59,251 @@
     opacity: 0.7;
 }
 
-/* ── Nebula info panel ─────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════
+   Nebula info panel — адаптивный гибрид:
+   - tablet+ (>720px): угловая панель слева сверху (по умолчанию)
+   - phone-portrait: Bottom Sheet с 3 состояниями (collapsed/peek/full)
+   - phone-landscape: Side Drawer справа с handle
+   ════════════════════════════════════════════════════════════════════ */
+
 .nebula-info-panel {
     position: absolute;
     top: 0.75rem;
     left: 0.75rem;
-    z-index: 10;
+    z-index: 12;
     width: min(420px, 88vw);
     max-height: calc(100% - 1.5rem);
-    overflow-y: auto;
-    overflow-x: hidden;
     background: rgba(5, 10, 26, 0.88);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    animation: slideInLeft 0.3s ease-out;
+    /* --nebula-offset: 0 → полностью открыто, 1 → полностью закрыто.
+       Используется только в мобильных режимах (см. ниже). */
+    --nebula-offset: 0;
+}
+
+/* Когда идёт drag — отключаем transition для плавности слежения за пальцем */
+.nebula-info-panel.nebula-dragging {
+    transition: none !important;
+}
+
+/* Wrapper для скролл-области — сам panel не скроллится, скроллится контент */
+.nebula-info-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    animation: slideInLeft 0.3s ease-out;
+    overscroll-behavior: contain;
 }
+
+/* Handle: на tablet+ невидим, на mobile — drag-полоска или кнопка */
+.nebula-handle {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.nebula-handle-grip {
+    display: block;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.nebula-handle:hover .nebula-handle-grip,
+.nebula-handle:active .nebula-handle-grip {
+    background: rgba(79, 195, 247, 0.6);
+}
+
+/* Backdrop (только в мобильных режимах) */
+.nebula-backdrop {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    background: rgba(2, 8, 20, 0.4);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+.nebula-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* FAB-стек — контейнер для FAB-кнопок (список + Flight) */
+.nebula-fab-stack {
+    display: none;
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 13;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+.nebula-fab-stack.hidden { display: none !important; }
+
+/* FAB кнопка — только если панель полностью свёрнута на mobile */
+.nebula-fab {
+    display: flex;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4fc3f7, #818cf8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #050a1a;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(79, 195, 247, 0.35);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Кнопка «Полёт» — рядом со списком; другой gradient */
+.nebula-fab--fly {
+    background: linear-gradient(135deg, #fbbf24, #fb923c);
+    box-shadow: 0 10px 24px rgba(251, 146, 60, 0.40);
+}
+.nebula-fab--fly:hover {
+    box-shadow: 0 12px 28px rgba(251, 146, 60, 0.55);
+}
+.nebula-fab .nebula-fab-icon { font-size: 1.4rem; line-height: 1; }
+.nebula-fab .nebula-fab-count {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-top: 0.1rem;
+}
+.nebula-fab:hover, .nebula-fab:active { transform: scale(1.05); }
 
 @keyframes slideInLeft {
     from { transform: translateX(-20px); opacity: 0; }
     to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PHONE PORTRAIT — Bottom Sheet (drag-to-resize)
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 720px) and (orientation: portrait) {
+    .nebula-info-panel {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        height: 80dvh;
+        max-height: 80dvh;
+        border-radius: 1rem 1rem 0 0;
+        border-bottom: none;
+        animation: slideInBottom 0.3s ease-out;
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        /* offset 0 → виден полностью; 1 → полностью спрятан вниз */
+        transform: translateY(calc(var(--nebula-offset, 0) * 100%));
+        touch-action: none;
+        will-change: transform;
+    }
+
+    /* Handle сверху — тач-зона для drag */
+    .nebula-handle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 32px;
+        padding: 0;
+        cursor: grab;
+        touch-action: none;
+    }
+    .nebula-handle:active { cursor: grabbing; }
+    .nebula-handle-grip {
+        width: 44px;
+        height: 5px;
+    }
+
+    @keyframes slideInBottom {
+        from { transform: translateY(100%); opacity: 0; }
+        to   { transform: translateY(calc(var(--nebula-offset, 0) * 100%)); opacity: 1; }
+    }
+
+    /* Backdrop виден когда панель открыта хотя бы наполовину */
+    .nebula-backdrop.visible { display: block; }
+    .nebula-info-panel.nebula-fully-closed ~ .nebula-backdrop.visible { display: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PHONE LANDSCAPE — Side Drawer (drag-to-resize)
+   ────────────────────────────────────────────────────────────────── */
+@media (max-height: 540px) and (orientation: landscape),
+       (max-width: 900px) and (orientation: landscape) {
+    .nebula-info-panel {
+        top: 0;
+        left: auto;
+        right: 0;
+        bottom: 0;
+        height: 100%;
+        max-height: 100%;
+        width: min(360px, 50vw);
+        border-radius: 1rem 0 0 1rem;
+        border-right: none;
+        animation: slideInRight 0.3s ease-out;
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        /* offset 0 → виден полностью; 1 → полностью спрятан вправо */
+        transform: translateX(calc(var(--nebula-offset, 0) * 100%));
+        touch-action: none;
+        will-change: transform;
+    }
+
+    /* Handle слева — вертикальная полоска, тач-зона для drag */
+    .nebula-handle {
+        position: absolute;
+        top: 50%;
+        left: -17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 64px;
+        cursor: grab;
+        touch-action: none;
+        /* translateY чтобы handle сам себя не двигал по transform parent'a */
+        transform: translateY(-50%);
+    }
+    .nebula-handle:active { cursor: grabbing; }
+    .nebula-handle-grip {
+        width: 4px;
+        height: 44px;
+    }
+
+    .nebula-info-scroll {
+        padding-left: 1.6rem; /* место под handle */
+    }
+
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to   { transform: translateX(0);    opacity: 1; }
+    }
+}
+
+/* В мобильных режимах когда панель свёрнута до невидимости — показываем FAB-стек */
+@media (max-width: 720px), (max-height: 540px) and (orientation: landscape) {
+    .nebula-fab-stack.nebula-fab-stack--show { display: flex; }
+    .nebula-fab.nebula-fab--show { display: flex; }
 }
 
 .nebula-info-header {
@@ -222,11 +442,4 @@
     color: var(--color-text-muted);
 }
 
-/* ── Responsive ────────────────────────────────── */
-@media (max-width: 768px) {
-    .nebula-info-panel {
-        width: 90vw;
-        top: 0.5rem;
-        left: 0.5rem;
-    }
-}
+/* Адаптивные правила для .nebula-info-panel вынесены выше — Bottom Sheet / Side Drawer */

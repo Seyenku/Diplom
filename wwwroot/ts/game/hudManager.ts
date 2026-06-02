@@ -8,7 +8,6 @@
 
 import { getStore, on, computeShipStats } from './stateManager.js';
 import { PlayerState, UpgradeDto, CrystalType } from './types.js';
-import { addMessage } from './guideManager.js';
 import { CRYSTAL_ICONS } from './clusterConfig.js';
 
 let _updateInterval: ReturnType<typeof setInterval> | null = null;

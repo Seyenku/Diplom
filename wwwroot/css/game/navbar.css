@@ -2,9 +2,12 @@
    Stellar Vocation — Game Navbar
    ============================================= */
 
-/* Высота навбара + воздух, чтобы заголовки экранов не уходили под него */
+/* Высота навбара + воздух, чтобы заголовки экранов не уходили под него.
+   Значение динамически пересчитывается из JS (см. stateManager._syncNavbarOverlaySpace)
+   при показе navbar, resize окна и смене UI scale.
+   Здесь стоит лишь fallback на случай, если JS-измерение ещё не прошло. */
 :root {
-    --navbar-overlay-space: 4rem;
+    --navbar-overlay-space: 5.5rem;
 }
 
 /* Когда оверлей-навбар виден, заголовок .game-title первого порядка
@@ -12,6 +15,20 @@
    Опт-аут: добавить .no-navbar-clearance на конкретный элемент. */
 body.has-navbar #screen-dynamic-content .game-title:first-of-type:not(.no-navbar-clearance) {
     margin-top: var(--navbar-overlay-space);
+}
+
+/* Универсальный clearance для всех DOM-экранов, использующих новый шаблон
+   (.ship-shell / .ach-shell / .settings-shell и т.п.). Карта и полёт исключены
+   намеренно — у них полноэкранная 3D-сцена без верхнего content-bar.
+   !important — чтобы перебить inline-style padding (например, vocation). */
+body.has-navbar #screen-dynamic-content > .screen:not(#screen-galaxy-map):not(#screen-flight):not(#screen-char-creation):not(#screen-onboarding):not(#screen-main-menu):not(#screen-planet-detail) {
+    padding-top: calc(var(--navbar-overlay-space) + 0.5rem) !important;
+}
+
+/* Planet-detail: viewport абсолютно центрирован — общий padding-top сместил бы
+   планету вниз. Поэтому здесь сдвигаем только верхний header. */
+body.has-navbar .planet-detail-overlay .planet-detail-header {
+    margin-top: calc(var(--navbar-overlay-space) + 0.5rem);
 }
 
 .game-navbar {
@@ -103,5 +120,62 @@ body.has-navbar #screen-dynamic-content .game-title:first-of-type:not(.no-navbar
     }
     .nav-label {
         display: none;
+    }
+}
+
+/* ── Landscape mobile: navbar вертикально слева ──────────────────────
+   Срабатывает на телефонах в горизонтальной ориентации (низкое окно
+   и landscape). На таком экране верхняя горизонтальная панель
+   занимает критичные пиксели — переносим в боковую колонку. */
+@media (orientation: landscape) and (max-height: 540px),
+       (orientation: landscape) and (max-width: 900px) {
+    /* Сбрасываем navbar-overlay-space — на landscape navbar сбоку,
+       JS-измерение даст огромное значение (high vertical bar). */
+    body.has-navbar { --navbar-overlay-space: 0.75rem; }
+
+    .game-navbar {
+        flex-direction: column;
+        top: 50%;
+        left: max(0.5rem, env(safe-area-inset-left));
+        transform: translateY(-50%);
+        padding: 0.5rem 0.4rem;
+        gap: 0.45rem;
+        border-radius: 1rem;
+    }
+
+    /* Кнопки только-иконки, квадратные */
+    .nav-btn {
+        padding: 0.55rem;
+        aspect-ratio: 1;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .nav-label { display: none; }
+    .nav-icon  { font-size: 1.3rem; }
+
+    /* Back-overlay: переезжает сверху над колонкой */
+    .nav-btn--back-overlay {
+        position: absolute;
+        right: auto;
+        top: auto;
+        left: 50%;
+        bottom: calc(100% + 0.4rem);
+        transform: translateX(-50%);
+        margin: 0;
+    }
+
+    /* Заголовкам экранов больше не нужен navbar-overlay-space сверху,
+       т.к. navbar сбоку — но JS уже динамически считает высоту.
+       Дополнительно сдвигаем контент вправо, чтобы не перекрывался. */
+    body.has-navbar #screen-dynamic-content > .screen:not(#screen-galaxy-map):not(#screen-flight):not(#screen-char-creation):not(#screen-onboarding):not(#screen-main-menu):not(#screen-planet-detail) {
+        padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
+        padding-left: calc(64px + env(safe-area-inset-left)) !important;
+    }
+
+    body.has-navbar .planet-detail-overlay .planet-detail-header {
+        margin-top: max(0.75rem, env(safe-area-inset-top));
+        margin-left: 64px;
     }
 }

@@ -93,3 +93,19 @@ body.game-fullscreen .game-sys-menu {
 #screen-dynamic-content:empty {
     pointer-events: none;
 }
+
+/* ── Landscape mobile: бургер в левый верхний угол ─────────────────── */
+@media (orientation: landscape) and (max-height: 540px),
+       (orientation: landscape) and (max-width: 900px) {
+    .game-sys-menu {
+        right: auto;
+        left: max(0.5rem, env(safe-area-inset-left));
+        top: max(0.5rem, env(safe-area-inset-top));
+        align-items: flex-start;
+    }
+
+    /* Выпадающий список items раскрывается вправо-вниз */
+    .game-sys-menu-items {
+        align-items: flex-start;
+    }
+}

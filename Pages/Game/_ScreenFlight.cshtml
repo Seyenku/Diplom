@@ -49,10 +49,9 @@
             </div>
         </div>
 
-        <!-- Правый нижний — подсказки управления -->
-        <div class="flight-hints">
-            <div class="flight-hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span>Маневрирование</span></div>
-            <div class="flight-hint-row"><kbd>Space</kbd> <span>Ускорение</span></div>
+        <!-- Подсказки управления — заполняются JS, видны только во время разгона -->
+        <div id="flight-hints" class="flight-hints">
+            <!-- renderControlHints() -->
         </div>
 
         <!-- Комбо-множитель -->
@@ -66,14 +65,43 @@
     <div id="flight-damage-overlay" class="flight-damage-overlay"></div>
 
     <!-- Оверлей результатов (Стейт 3) -->
-    <div id="flight-results" class="flight-results-overlay hidden">
-        <div class="game-card" style="max-width:420px;text-align:center;padding:2rem;">
-            <h2 class="game-title" style="font-size:1.5rem;margin-bottom:1rem;">Полёт завершён!</h2>
-            <div id="flight-results-stats" style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.5rem;"></div>
-            <div style="display:flex;gap:1rem;justify-content:center;">
-                <button class="btn-game btn-primary" onclick="window._flightScreen?.restart()">🔄 Ещё раз</button>
-                <button class="btn-game btn-secondary" data-spa="goto" data-screen="galaxy-map">🌌 К карте</button>
+    <div id="flight-results" class="flight-results-overlay hidden" aria-modal="true" role="dialog">
+        <article class="flight-results-card" data-rating="C">
+            <header class="flight-results-head">
+                <span class="flight-results-eyebrow">Полёт завершён</span>
+                <div class="flight-results-rating" id="result-rating">C</div>
+                <p class="flight-results-rating-label" id="result-rating-label">Дебют</p>
+            </header>
+
+            <div class="flight-results-stats">
+                <div class="flight-results-stat" data-stat="crystals">
+                    <span class="flight-results-stat-value" id="result-crystals">+0</span>
+                    <span class="flight-results-stat-label" id="result-crystals-label">Кристаллов</span>
+                </div>
+                <div class="flight-results-stat" data-stat="shield">
+                    <span class="flight-results-stat-value" id="result-shield">100%</span>
+                    <span class="flight-results-stat-label">Щитов</span>
+                </div>
+                <div class="flight-results-stat" data-stat="combo">
+                    <span class="flight-results-stat-value" id="result-combo">×1</span>
+                    <span class="flight-results-stat-label">Макс. комбо</span>
+                </div>
+                <div class="flight-results-stat" data-stat="dodged">
+                    <span class="flight-results-stat-value" id="result-dodged">0</span>
+                    <span class="flight-results-stat-label">Уклонений</span>
+                </div>
             </div>
-        </div>
+
+            <div class="flight-results-actions">
+                <button type="button" class="flight-results-btn flight-results-btn--primary"
+                        onclick="window._flightScreen?.restart()">
+                    Ещё раз
+                </button>
+                <button type="button" class="flight-results-btn flight-results-btn--secondary"
+                        data-spa="goto" data-screen="galaxy-map">
+                    К карте
+                </button>
+            </div>
+        </article>
     </div>
 </div>

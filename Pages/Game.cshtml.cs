@@ -97,7 +97,6 @@ public class GameModel(IPlanetRepository planets, IGameSettingsRepository gameSe
             "achievements"           => "_ScreenAchievements",
             "settings"               => "_ScreenSettings",
             "offline-error"          => "_ScreenOfflineError",
-            "guide"                  => "_GuidePanel",
             _                        => null
         };
 

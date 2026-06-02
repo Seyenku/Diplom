@@ -717,6 +717,11 @@
 
 @media (max-width: 480px) {
     .ach-stats { grid-template-columns: 1fr; }
+    .ach-badges-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+    .ach-badge { min-height: 64px; padding: 0.7rem 0.8rem; }
+    .ach-radar-svg { width: min(280px, 92%); }
+    .ach-export-btn { padding: 0.45rem 0.8rem; font-size: 0.7rem; }
+    .ach-counter { font-size: 0.7rem; padding: 0.3rem 0.7rem; }
 }
 
 /* ── Reduced motion ───────────────────────────────────── */

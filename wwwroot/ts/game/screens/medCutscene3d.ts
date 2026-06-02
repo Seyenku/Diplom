@@ -20,6 +20,7 @@ import { loadShipGroup } from '../systems/shipLoader.js';
 import { spawnHitParticles, spawnParticleBurst } from '../systems/particleEffects.js';
 import { disposeSceneGraph } from '../threeUtils.js';
 import { playSfx } from '../audioManager.js';
+import { getProfile as getQualityProfile } from '../qualityPresets.js';
 
 // ── Константы сцены ─────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ export function createMedCutscene(
             alpha: false,
             powerPreference: 'high-performance',
         });
-        _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        _renderer.setPixelRatio(getQualityProfile().pixelRatio);
         _renderer.setClearColor(0x020710, 1);
         _renderer.setSize(w, h, false);
 

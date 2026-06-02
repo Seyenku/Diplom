@@ -30,6 +30,9 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    /* 100vw на full-bleed-блоках (.hero-wrapper) шире viewport на ширину
+       скроллбара — без overflow-x:hidden появляется горизонтальный скролл. */
+    overflow-x: hidden;
 }
 
 main {

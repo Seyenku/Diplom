@@ -159,7 +159,7 @@ on('ADD_BADGE', (s, { badge }) => {
 const NAVBAR_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
     Screen.HUD, Screen.GALAXY_MAP, Screen.PLANET_DETAIL,
     Screen.SHIP_UPGRADE, Screen.ACHIEVEMENTS, Screen.SETTINGS,
-    Screen.VOCATION_CONST, Screen.GUIDE,
+    Screen.VOCATION_CONST,
 ]);
 
 const SYS_MENU_HIDDEN_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
@@ -185,10 +185,15 @@ on('SCREEN_CHANGED', () => {
     if (gameNavbar) gameNavbar.classList.toggle('hidden', !navbarVisible);
     document.body.classList.toggle('has-navbar', navbarVisible);
 
+    // Динамическая высота navbar — учитывает UI scale, безопасные зоны и шрифт.
+    if (navbarVisible) _syncNavbarOverlaySpace();
+
     // Кнопка «Назад» в навбаре актуальна только на карте галактики;
-    // на остальных экранах принудительно прячем
+    // на остальных экранах принудительно прячем и возвращаем кнопку «Карта»
     if (_store.currentScreen !== Screen.GALAXY_MAP) {
         document.getElementById('nav-btn-back')?.classList.add('hidden');
+        document.getElementById('nav-btn-map-back')?.classList.add('hidden');
+        document.getElementById('nav-btn-map')?.classList.remove('hidden');
     }
 
     const sysMenu = document.getElementById('game-sys-menu');
@@ -204,6 +209,42 @@ on('SCREEN_CHANGED', () => {
         playSfx('screen_transition');
     }
 });
+
+// ── Высота navbar → CSS variable ────────────────────────────────────────────
+// Реальная высота navbar зависит от UI scale, safe-area-inset и контента.
+// Устанавливаем --navbar-overlay-space как (top + height + buffer) в пикселях.
+
+export function _syncNavbarOverlaySpace(): void {
+    const navbar = document.getElementById('game-navbar');
+    if (!navbar || navbar.classList.contains('hidden')) return;
+    // offsetTop учитывает безопасные отступы и абсолютное позиционирование родителя.
+    const top = navbar.offsetTop;
+    const h   = navbar.offsetHeight;
+    if (h <= 0) return;
+    // Буфер 12px — небольшое визуальное «дыхание» между навбаром и заголовком.
+    const space = top + h + 12;
+    document.documentElement.style.setProperty('--navbar-overlay-space', `${space}px`);
+}
+
+let _navbarResizeObs: ResizeObserver | null = null;
+
+function _setupNavbarObservers(): void {
+    if (_navbarResizeObs) return;
+    const navbar = document.getElementById('game-navbar');
+    if (!navbar) return;
+    _navbarResizeObs = new ResizeObserver(() => _syncNavbarOverlaySpace());
+    _navbarResizeObs.observe(navbar);
+    window.addEventListener('resize', _syncNavbarOverlaySpace);
+}
+
+// Подписки запускаем после DOM ready.
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _setupNavbarObservers);
+    } else {
+        _setupNavbarObservers();
+    }
+}
 
 const ScreenModules: Record<string, ScreenModule> = {};
 

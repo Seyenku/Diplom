@@ -14,6 +14,7 @@ import { loadShipGroup } from '../systems/shipLoader.js';
 import { spawnParticleBurst } from '../systems/particleEffects.js';
 import { disposeSceneGraph } from '../threeUtils.js';
 import { playSfx } from '../audioManager.js';
+import { getProfile as getQualityProfile } from '../qualityPresets.js';
 
 // ── Константы ────────────────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ export function createGeoCutscene(
         const h = parent.clientHeight || 600;
 
         _renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
-        _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        _renderer.setPixelRatio(getQualityProfile().pixelRatio);
         _renderer.setClearColor(0x020710, 1);
         _renderer.setSize(w, h, false);
 

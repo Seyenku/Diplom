@@ -3,7 +3,74 @@
  */
 
 import { CRYSTAL_COLORS } from '../clusterConfig.js';
-import { CrystalType } from '../types.js';
+import { CrystalType, GameSettingsDto } from '../types.js';
+import { getDevice } from '../deviceProfile.js';
+
+// ── Control hints ──────────────────────────────────────────────────────────
+
+/** Преобразует KeyboardEvent.code в читаемую метку клавиши. */
+function _formatKey(code: string): string {
+    if (!code) return '?';
+    if (code === 'Space') return 'Space';
+    if (code.startsWith('Key'))   return code.substring(3);
+    if (code.startsWith('Digit')) return code.substring(5);
+    if (code.startsWith('Arrow')) return ({
+        ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+    } as Record<string, string>)[code] ?? code;
+    return code;
+}
+
+/**
+ * Рендерит блок подсказок управления исходя из схемы и горячих клавиш.
+ * Динамически подстраивается под controlScheme и keybindings.
+ */
+export function renderControlHints(settings: Partial<GameSettingsDto> | null): void {
+    const host = document.getElementById('flight-hints');
+    if (!host) return;
+
+    const dev    = getDevice();
+    const scheme = settings?.controlScheme ?? (dev.isTouch ? 'mouse' : 'keyboard');
+    const kb     = settings?.keybindings ?? {
+        up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', boost: 'Space',
+    };
+
+    let html: string;
+    if (dev.isTouch && scheme !== 'keyboard') {
+        // Тач / мышь
+        html = `
+            <div class="flight-hint-row"><kbd>↑↓←→</kbd><span>Свайп — манёвр</span></div>
+            <div class="flight-hint-row"><kbd>TAP</kbd><span>Тап — ускорение</span></div>
+        `;
+    } else if (scheme === 'mouse') {
+        // Десктоп с мышью
+        html = `
+            <div class="flight-hint-row"><kbd>🖱</kbd><span>Курсор — манёвр</span></div>
+            <div class="flight-hint-row"><kbd>${_formatKey(kb.boost)}</kbd><span>Ускорение</span></div>
+        `;
+    } else {
+        // Клавиатура — фактические биндинги
+        const up    = _formatKey(kb.up);
+        const left  = _formatKey(kb.left);
+        const down  = _formatKey(kb.down);
+        const right = _formatKey(kb.right);
+        const boost = _formatKey(kb.boost);
+        html = `
+            <div class="flight-hint-row">
+                <kbd>${up}</kbd><kbd>${left}</kbd><kbd>${down}</kbd><kbd>${right}</kbd>
+                <span>Манёвр</span>
+            </div>
+            <div class="flight-hint-row"><kbd>${boost}</kbd><span>Ускорение</span></div>
+        `;
+    }
+
+    host.innerHTML = html;
+}
+
+/** Показать/скрыть hints (с плавной анимацией через .flight-hints--visible) */
+export function setControlHintsVisible(visible: boolean): void {
+    const host = document.getElementById('flight-hints');
+    if (host) host.classList.toggle('flight-hints--visible', visible);
+}
 
 export interface FlightUiState {
     collected: number;
@@ -97,6 +164,26 @@ export function updateComboDisplay(combo: number): void {
     }
 }
 
+// Текстовые метки для каждого ранга — соответствуют data-rating CSS-переменным
+const RATING_LABELS: Record<'S' | 'A' | 'B' | 'C', string> = {
+    S: 'Превосходно',
+    A: 'Отлично',
+    B: 'Хорошо',
+    C: 'Дебют',
+};
+
+function _computeRating(collected: number, shieldPct: number): 'S' | 'A' | 'B' | 'C' {
+    if (collected >= 30 && shieldPct > 60) return 'S';
+    if (collected >= 20 && shieldPct > 40) return 'A';
+    if (collected >= 10) return 'B';
+    return 'C';
+}
+
+function _setText(id: string, value: string): void {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
 export function showResults(state: FlightUiState): void {
     const hudEl = document.getElementById('flight-hud');
     const resultsEl = document.getElementById('flight-results');
@@ -104,36 +191,24 @@ export function showResults(state: FlightUiState): void {
     if (resultsEl) resultsEl.classList.remove('hidden');
 
     const shieldPct = Math.round((state.shield / state.maxShield) * 100);
-    const rating = state.collected >= 30 && shieldPct > 60 ? 'S'
-        : state.collected >= 20 && shieldPct > 40 ? 'A'
-        : state.collected >= 10 ? 'B' : 'C';
-    const ratingColor = rating === 'S' ? '#fbbf24' : rating === 'A' ? '#4ade80' : rating === 'B' ? '#4fc3f7' : '#94a3b8';
+    const rating = _computeRating(state.collected, shieldPct);
 
     const ct = CRYSTAL_COLORS[state.crystalType] ?? CRYSTAL_COLORS.programming;
-    const statsEl = document.getElementById('flight-results-stats');
-    
-    if (statsEl) {
-        const row = (label: string, value: string, color = 'var(--color-primary)') => `
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span>${label}</span>
-                <span style="font-family:var(--font-display);color:${color};">${value}</span>
-            </div>`;
 
-        const lines: string[] = [];
-        lines.push(`<div style="font-size:2.5rem;font-family:var(--font-display);color:${ratingColor};text-align:center;margin-bottom:0.5rem;text-shadow:0 0 20px ${ratingColor}60;">${rating}</div>`);
+    // Hero rating: буква + лейбл + цвет (через data-rating)
+    const card = document.querySelector<HTMLElement>('.flight-results-card');
+    if (card) card.dataset.rating = rating;
+    _setText('result-rating', rating);
+    _setText('result-rating-label', RATING_LABELS[rating]);
 
-        if (state.collected > 0) {
-            lines.push(row(`${ct.emoji} ${ct.label}`, `+${state.collected}`));
-        } else {
-            lines.push('<p style="color:var(--color-text-muted);">Кристаллы не собраны. Попробуй ещё!</p>');
-        }
-        
-        lines.push(row('🛡 Щиты', `${shieldPct}%`, shieldPct > 50 ? '#4ade80' : '#f87171'));
-        lines.push(row('⚡ Макс. комбо', `×${state.maxCombo}`, state.maxCombo >= 4 ? '#fbbf24' : 'var(--color-text-muted)'));
-        lines.push(row('💨 Уклонений', String(state.dodged), 'var(--color-text-muted)'));
-
-        statsEl.innerHTML = lines.join('');
-    }
+    // Stats — 4 значения в подготовленных слотах
+    _setText('result-crystals',
+        state.collected > 0 ? `+${state.collected}` : '0');
+    _setText('result-crystals-label',
+        state.collected > 0 ? `${ct.label} ${ct.emoji}` : 'Кристаллов');
+    _setText('result-shield',  `${shieldPct}%`);
+    _setText('result-combo',   `×${state.maxCombo}`);
+    _setText('result-dodged',  String(state.dodged));
 }
 
 export function updateAccelIndicator(throttle: number): void {
@@ -150,7 +225,3 @@ export function updateAccelIndicator(throttle: number): void {
     }
 }
 
-function _setText(id: string, v: string): void {
-    const el = document.getElementById(id);
-    if (el) el.textContent = v;
-}

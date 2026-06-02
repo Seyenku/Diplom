@@ -9,6 +9,7 @@ import { loadModel } from '../gltfLoader.js';
 import { CrystalType, GameStore } from '../types.js';
 import { applyShipColor, createFallbackShip } from '../shipUtils.js';
 import { disposeSceneGraph } from '../threeUtils.js';
+import { getProfile as getQualityProfile } from '../qualityPresets.js';
 
 let _step: 1 | 2 = 1;
 let _selectedShipColor: string | null = null;
@@ -167,8 +168,9 @@ async function _ensurePreview(): Promise<void> {
         const viewport = document.getElementById('ship-preview-viewport');
         if (!viewport) return;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        const qp = getQualityProfile();
+        const renderer = new THREE.WebGLRenderer({ antialias: qp.antialias, alpha: true });
+        renderer.setPixelRatio(qp.pixelRatio);
         renderer.setClearColor(0x000000, 0);
         renderer.domElement.style.width = '100%';
         renderer.domElement.style.height = '100%';

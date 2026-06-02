@@ -3,7 +3,7 @@
 
     <!-- 3D planet viewport (background center) -->
     <div id="planet-3d-viewport" class="planet-3d-viewport">
-        <div class="skeleton-shimmer" style="width:100%;height:100%;border-radius:50%;"></div>
+        <div class="skeleton-shimmer"></div>
     </div>
 
     <!-- UI overlay -->
@@ -20,40 +20,40 @@
 
             <!-- Left column: hard + soft -->
             <div class="planet-detail-side">
-                <div class="game-card planet-detail-card glass-panel">
-                    <div class="planet-card-header">
-                        <span class="planet-card-icon">🔧</span>
-                        <h3 class="planet-card-title" style="color:var(--color-primary);">HARD SKILLS</h3>
-                    </div>
+                <article class="planet-card" data-card="hard">
+                    <header class="planet-card-head">
+                        <span class="planet-card-eyebrow">Hard skills</span>
+                        <h3 class="planet-card-title">Что нужно знать</h3>
+                    </header>
                     <ul id="hard-skills-list" class="planet-skill-list"></ul>
-                </div>
+                </article>
 
-                <div class="game-card planet-detail-card glass-panel">
-                    <div class="planet-card-header">
-                        <span class="planet-card-icon">✨</span>
-                        <h3 class="planet-card-title" style="color:var(--color-accent);">SOFT SKILLS</h3>
-                    </div>
+                <article class="planet-card" data-card="soft">
+                    <header class="planet-card-head">
+                        <span class="planet-card-eyebrow">Soft skills</span>
+                        <h3 class="planet-card-title">Личные качества</h3>
+                    </header>
                     <ul id="soft-skills-list" class="planet-skill-list"></ul>
-                </div>
+                </article>
             </div>
 
             <!-- Right column: risks + programs -->
             <div class="planet-detail-side">
-                <div class="game-card planet-detail-card glass-panel">
-                    <div class="planet-card-header">
-                        <span class="planet-card-icon">⚠️</span>
-                        <h3 class="planet-card-title" style="color:#f87171;">РИСКИ</h3>
-                    </div>
+                <article class="planet-card" data-card="risks">
+                    <header class="planet-card-head">
+                        <span class="planet-card-eyebrow">Risks</span>
+                        <h3 class="planet-card-title">Чего стоит опасаться</h3>
+                    </header>
                     <ul id="risks-list" class="planet-skill-list"></ul>
-                </div>
+                </article>
 
-                <div id="planet-programs" class="game-card planet-detail-card glass-panel hidden">
-                    <div class="planet-card-header">
-                        <span class="planet-card-icon">🎓</span>
-                        <h3 class="planet-card-title" style="color:#a78bfa;">ПРОГРАММЫ</h3>
-                    </div>
+                <article id="planet-programs" class="planet-card hidden" data-card="programs">
+                    <header class="planet-card-head">
+                        <span class="planet-card-eyebrow">Programs</span>
+                        <h3 class="planet-card-title">Где учиться</h3>
+                    </header>
                     <div id="programs-list" class="planet-programs-list"></div>
-                </div>
+                </article>
             </div>
 
         </div>

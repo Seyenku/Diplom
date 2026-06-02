@@ -20,7 +20,6 @@ export const Screen = Object.freeze({
     VOCATION_CONST:   'vocation-constellation',
     ACHIEVEMENTS:     'achievements',
     SETTINGS:         'settings',
-    GUIDE:            'guide',
     OFFLINE_ERROR:    'offline-error',
 } as const);
 
@@ -63,7 +62,6 @@ export interface GameSettingsDto {
     useBloom: boolean;
     controlScheme: 'keyboard' | 'mouse';
     uiScale: number;
-    guideEnabled: boolean;
     keybindings?: {
         up: string;
         down: string;
@@ -245,6 +243,9 @@ declare global {
             resetCamera: () => void;
             flyToRegion: () => void;
             openPlanet: (planetId: string) => void;
+            toggleNebulaState: () => void;
+            expandNebula: () => void;
+            collapseNebula: () => void;
         };
         _planetDetail: {
             startMiniGame: () => void;
@@ -265,9 +266,6 @@ _settings: {
             update: (key: string, value: string | number | boolean) => void;
             saveAndApply: () => void;
             startBind?: (action: string) => void;
-        };
-        _guide: {
-            askHint: (id: string) => void;
         };
         _flightScreen: {
             restart: () => void;

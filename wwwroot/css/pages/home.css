@@ -6,6 +6,8 @@
 /* ── Hero ───────────────────────────────────────── */
 .hero-wrapper {
     position: relative;
+    /* Растягиваем на всю ширину окна (выходим за родительский .container
+       через margin-trick). overflow: hidden защищает от выпирания контента. */
     width: 100vw;
     min-height: 70vh;
     display: flex;
@@ -16,8 +18,11 @@
     margin-right: calc(50% - 50vw);
     margin-top: -64px; /* Compensate for the sticky nav */
     padding-top: 64px;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     margin-bottom: 0;
     background: transparent;
+    box-sizing: border-box;
 }
 
 #particles-js {
@@ -359,4 +364,23 @@
         padding: 24px;
         border-radius: 24px;
     }
+
+    /* Hero-карточка ужимается под узкий экран: уменьшаем боковой padding,
+       фиксируем box-sizing и оставляем боковой воздух — карточка остаётся
+       по центру родителя (flex justify-content:center на .hero-wrapper). */
+    .hero-content {
+        padding: 28px 18px;
+        max-width: min(800px, calc(100vw - 24px));
+        box-sizing: border-box;
+        --clay-card-radius: 24px;
+    }
+    .hero-title  { margin-bottom: 18px; overflow-wrap: anywhere; }
+    .hero-subtitle { margin-bottom: 28px; }
+    .hero-actions  { gap: 12px; }
+}
+
+@media (max-width: 420px) {
+    .hero-content { padding: 22px 14px; }
+    .hero-title { font-size: clamp(28px, 8vw, 36px); }
+    .hero-subtitle { font-size: 15px; }
 }

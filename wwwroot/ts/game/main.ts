@@ -22,7 +22,6 @@ import {
 } from './stateManager.js';
 
 import { initThreeScene } from './threeScene.js';
-import { initGuide }      from './guideManager.js';
 import { initHud }        from './hudManager.js';
 import { telemetry }      from './telemetryCollector.js';
 import { initQuality, QualityLevel } from './qualityPresets.js';
@@ -128,11 +127,20 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     }
 
     // Загружаем настройки из localStorage перед инициализацией подсистем
-    loadSavedSettings();
+    const hadSavedSettings = loadSavedSettings();
 
-    // 2. Инициализация качества графики ДО создания рендерера
-    const savedQuality = (getStore().settings?.graphicsQuality ?? 'medium') as QualityLevel;
-    initQuality(savedQuality);
+    // 2. Инициализация качества графики ДО создания рендерера.
+    // Если у пользователя нет сохранённых настроек, выбираем рекомендованный
+    // профиль по характеристикам устройства (mobile → low, weak desktop → medium).
+    const { recommendedQuality } = await import('./deviceProfile.js');
+    const savedQuality = hadSavedSettings
+        ? (getStore().settings?.graphicsQuality as QualityLevel | undefined)
+        : undefined;
+    const initialQuality: QualityLevel = savedQuality ?? recommendedQuality();
+    initQuality(initialQuality);
+    if (!savedQuality) {
+        dispatch('SET_SETTINGS', { graphicsQuality: initialQuality } as Parameters<typeof dispatch<'SET_SETTINGS'>>[1]);
+    }
 
     // 2.5. Инициализация менеджера ввода
     initInputManager();
@@ -146,10 +154,9 @@ import * as OfflineError  from './screens/screenOfflineError.js';
         return;
     }
 
-    // 4. Глобальные оверлеи: HUD + Guide (независимо от экранов)
+    // 4. Глобальный HUD-оверлей (независимо от экранов)
     await Promise.allSettled([
         initHud(),
-        initGuide(),
     ]);
 
     // 5. Телеметрия
@@ -209,9 +216,6 @@ document.addEventListener('click', (e) => {
         if (target) transition(target);
     } else if (action === 'goBack') {
         import('./stateManager.js').then(m => m.goBack());
-    } else if (action === 'toggleGuide') {
-        const panel = document.getElementById('guide-panel');
-        panel?.classList.toggle('hidden');
     } else if (action === 'pause') {
         transition(Screen.PAUSE ?? Screen.SETTINGS);
     } else if (action === 'newGame') {

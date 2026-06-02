@@ -31,7 +31,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="wwwroot\ts\game\gltfLoader.ts" />
-    <None Include="wwwroot\ts\game\guideManager.ts" />
     <None Include="wwwroot\ts\game\hudManager.ts" />
     <None Include="wwwroot\ts\game\main.ts" />
     <None Include="wwwroot\ts\game\screens\screenAchievements.ts" />

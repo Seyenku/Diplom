@@ -9,14 +9,44 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: min(600px, 120vw);
-    height: min(600px, 120vw);
-    border-radius: 50%;
-    overflow: hidden;
+    width: min(80vmin, 760px);
+    height: min(80vmin, 760px);
     z-index: 0;
     pointer-events: none;
-    box-shadow: 0 0 80px rgba(79, 195, 247, 0.15),
-                inset 0 0 60px rgba(79, 195, 247, 0.1);
+    /* Без border-radius и overflow:hidden — иначе сфера обрезается по контуру */
+    background: radial-gradient(closest-side,
+        rgba(79, 195, 247, 0.10) 0%,
+        rgba(79, 195, 247, 0.05) 45%,
+        transparent 70%);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                height 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                top 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                left 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Внешний halo вокруг планеты — мягкое свечение без обрезки контента */
+.planet-3d-viewport::before {
+    content: '';
+    position: absolute;
+    inset: -10%;
+    background: radial-gradient(closest-side,
+        transparent 50%,
+        rgba(79, 195, 247, 0.08) 65%,
+        transparent 80%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Плейсхолдер загрузки — должен сам обрезаться в круг, не зависит от viewport */
+.planet-3d-viewport > .skeleton-shimmer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(360px, 70%);
+    height: min(360px, 70%);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
 }
 
 /* ── Detail overlay ────────────────────────────── */
@@ -32,6 +62,17 @@
     gap: clamp(1rem, 1.8vh, 2rem);
     background:
         linear-gradient(180deg, rgba(2, 8, 20, 0.78) 0%, rgba(2, 8, 20, 0.24) 22%, rgba(2, 8, 20, 0.22) 78%, rgba(2, 8, 20, 0.75) 100%);
+    /* Overlay сам прозрачен для событий — клики проваливаются на canvas.
+       Интерактивные дочерние блоки явно включают pointer-events: auto. */
+    pointer-events: none;
+}
+
+/* Возвращаем интерактивность только тому, где есть hover/click/выделение.
+   Header и player-crystals остаются прозрачными для событий — клики через них
+   проваливаются на canvas (увеличивает «попадаемую» площадь по планете). */
+.planet-detail-overlay .planet-detail-side,
+.planet-detail-overlay .planet-detail-actions {
+    pointer-events: auto;
 }
 
 .planet-player-crystals {
@@ -95,15 +136,17 @@ body.has-navbar .planet-detail-header {
 /* ── Content grid ──────────────────────────────── */
 .planet-detail-content {
     display: grid;
-    grid-template-columns: minmax(260px, 360px) minmax(360px, 46vw) minmax(260px, 360px);
+    grid-template-columns: minmax(280px, 380px) minmax(280px, 38vw) minmax(280px, 380px);
     justify-content: center;
     align-items: center;
     flex: 1;
     width: 100%;
     max-width: min(1680px, 98vw);
     margin: 0 auto;
-    gap: clamp(0.8rem, 2.4vw, 3.2rem);
+    gap: clamp(0.5rem, 1.2vw, 1.6rem);
     pointer-events: none;
+    position: relative;
+    z-index: 5;
 }
 
 .planet-detail-side {
@@ -113,88 +156,148 @@ body.has-navbar .planet-detail-header {
     width: 100%;
     max-width: 100%;
     pointer-events: auto;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.planet-detail-side:first-child { grid-column: 1; }
-.planet-detail-side:last-child { grid-column: 3; }
-
-/* ── Glass panels ──────────────────────────────── */
-.glass-panel {
-    background: rgba(15, 23, 42, 0.6) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    transition: transform 0.3s ease, background 0.3s ease;
+/* Карточки слегка наезжают на планету по краям */
+.planet-detail-side:first-child {
+    grid-column: 1;
+    transform: translateX(clamp(0.5rem, 2vw, 2.4rem));
 }
 
-.glass-panel:hover {
-    background: rgba(15, 23, 42, 0.75) !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
+.planet-detail-side:last-child {
+    grid-column: 3;
+    transform: translateX(clamp(-2.4rem, -2vw, -0.5rem));
 }
 
-/* ── Detail card ───────────────────────────────── */
-.planet-detail-card {
+/* Лёгкая «направленная» тень — будто карточки парят над сферой */
+.planet-detail-side:first-child .planet-card {
+    box-shadow:
+        12px 16px 36px rgba(0, 0, 0, 0.45),
+        0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.planet-detail-side:last-child .planet-card {
+    box-shadow:
+        -12px 16px 36px rgba(0, 0, 0, 0.45),
+        0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Card (modern, no icons) ───────────────────── */
+.planet-card {
+    --card-accent: #4fc3f7;
+    pointer-events: auto;
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
-    padding: clamp(0.95rem, 1.1vw, 1.35rem);
+    padding: clamp(1rem, 1.3vw, 1.4rem);
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(8, 15, 30, 0.85));
+    border: 1px solid color-mix(in srgb, var(--card-accent) 22%, rgba(99, 102, 241, 0.18));
+    border-radius: 1rem;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    isolation: isolate;
+    transition: border-color 250ms ease, transform 250ms ease, box-shadow 250ms ease;
 }
 
-.planet-card-header {
+.planet-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(420px 220px at 100% 0%,
+        color-mix(in srgb, var(--card-accent) 12%, transparent),
+        transparent 60%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.planet-card:hover {
+    border-color: color-mix(in srgb, var(--card-accent) 50%, transparent);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.40),
+                0 0 24px color-mix(in srgb, var(--card-accent) 14%, transparent);
+}
+
+.planet-card[data-card="hard"]     { --card-accent: #4fc3f7; }
+.planet-card[data-card="soft"]     { --card-accent: #a78bfa; }
+.planet-card[data-card="risks"]    { --card-accent: #f87171; }
+.planet-card[data-card="programs"] { --card-accent: #fbbf24; }
+
+/* Card header: eyebrow-pill + title */
+.planet-card-head {
     display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    margin-bottom: 0.25rem;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.2rem;
 }
 
-.planet-card-icon {
-    font-size: 1.15rem;
-    line-height: 1;
+.planet-card-eyebrow {
+    align-self: flex-start;
+    padding: 0.2rem 0.65rem;
+    font-family: var(--font-display);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--card-accent);
+    background: color-mix(in srgb, var(--card-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--card-accent) 32%, transparent);
+    border-radius: 999px;
 }
 
 .planet-card-title {
     font-family: var(--font-display);
-    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
-    letter-spacing: 0.06em;
+    font-size: clamp(1rem, 0.25vw + 0.9rem, 1.18rem);
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    margin: 0;
 }
 
-/* ── Skills ────────────────────────────────────── */
+/* ── Skills (pill-chip without bullet) ─────────── */
 .planet-skill-list {
     list-style: none;
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    margin: 0;
+    padding: 0;
 }
 
 .planet-skill-item {
-    font-size: clamp(0.88rem, 0.15vw + 0.84rem, 1rem);
-    color: var(--color-text-muted);
+    padding: 0.5rem 0.85rem;
+    font-size: clamp(0.82rem, 0.15vw + 0.78rem, 0.95rem);
+    color: var(--color-text);
     line-height: 1.4;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.65rem;
+    background: rgba(8, 15, 30, 0.55);
+    border-left: 2px solid color-mix(in srgb, var(--card-accent) 55%, transparent);
+    border-radius: 0.5rem;
+    transition: background 200ms ease, border-left-color 200ms ease, transform 200ms ease;
 }
 
 .planet-skill-item::before {
-    content: "•";
-    color: var(--color-primary);
-    font-weight: bold;
+    content: none;
+}
+
+.planet-skill-item:hover {
+    background: color-mix(in srgb, var(--card-accent) 7%, rgba(8, 15, 30, 0.7));
+    border-left-color: var(--card-accent);
+    transform: translateX(3px);
 }
 
 /* ── Locked skills (planet not yet discovered) ── */
 .planet-skill-locked {
-    color: #334155;
+    color: #475569;
     font-style: italic;
     filter: blur(2px);
     user-select: none;
-    opacity: 0.55;
     pointer-events: none;
-}
-
-.planet-skill-locked::before {
-    content: "";
-    display: none;
+    background: rgba(8, 15, 30, 0.4);
+    border-left-color: rgba(99, 102, 241, 0.18);
 }
 
 .planet-skills-locked-notice {
@@ -298,6 +401,107 @@ body.has-navbar .planet-detail-header {
     padding: 0.7rem 1rem;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Reading mode — клик по планете отправляет её в левый верхний угол
+   и раскладывает карточки в сетку 2×2 во весь центр экрана.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Планета уходит в угол и сжимается */
+.planet-mode--reading .planet-3d-viewport {
+    top: 4vh;
+    left: 3vw;
+    width: clamp(140px, 22vmin, 240px);
+    height: clamp(140px, 22vmin, 240px);
+    transform: translate(0, 0);
+    z-index: 15;
+    cursor: pointer;
+}
+
+/* В reading хало вокруг маленькой планеты становится мягче */
+.planet-mode--reading .planet-3d-viewport::before {
+    inset: -20%;
+    background: radial-gradient(closest-side,
+        transparent 50%,
+        rgba(79, 195, 247, 0.16) 65%,
+        transparent 85%);
+}
+
+/* Заголовок отодвигается вправо от угловой планеты */
+.planet-mode--reading .planet-detail-header {
+    margin-left: clamp(140px, 24vmin, 260px);
+    margin-right: 0;
+    text-align: left;
+    max-width: min(720px, calc(94vw - 24vmin));
+    transition: margin 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Контент: 2×2 сетка карточек */
+.planet-mode--reading .planet-detail-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: auto;
+    gap: clamp(0.75rem, 1.4vw, 1.4rem);
+    max-width: min(1080px, 96vw);
+}
+
+/* Контейнеры колонок «исчезают» — карточки попадают в сетку напрямую */
+.planet-mode--reading .planet-detail-side {
+    display: contents;
+}
+
+/* Сбрасываем overlap-сдвиги и направленные тени, симметричный shadow */
+.planet-mode--reading .planet-detail-side:first-child,
+.planet-mode--reading .planet-detail-side:last-child {
+    transform: none;
+}
+
+.planet-mode--reading .planet-detail-side:first-child .planet-card,
+.planet-mode--reading .planet-detail-side:last-child .planet-card {
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.40);
+}
+
+/* По умолчанию у карточки нет transition transform; включаем в reading */
+.planet-card {
+    transition: border-color 250ms ease, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 250ms ease, opacity 0.5s ease;
+}
+
+/* Stagger-появление карточек при входе в reading-mode */
+.planet-mode--reading .planet-card {
+    animation: planet-card-fadein 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.planet-mode--reading .planet-card[data-card="hard"]     { animation-delay: 0.10s; }
+.planet-mode--reading .planet-card[data-card="soft"]     { animation-delay: 0.20s; }
+.planet-mode--reading .planet-card[data-card="risks"]    { animation-delay: 0.30s; }
+.planet-mode--reading .planet-card[data-card="programs"] { animation-delay: 0.40s; }
+
+@keyframes planet-card-fadein {
+    0%   { opacity: 0; transform: translateY(28px) scale(0.94); filter: blur(4px); }
+    60%  { filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0); }
+}
+
+/* Маленькая планета в reading: subtle pulse-glow,
+   подсказка «можно кликнуть, чтобы вернуться» */
+.planet-mode--reading .planet-3d-viewport {
+    animation: planet-corner-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes planet-corner-pulse {
+    0%, 100% { filter: drop-shadow(0 0 12px rgba(79, 195, 247, 0.20)); }
+    50%      { filter: drop-shadow(0 0 24px rgba(79, 195, 247, 0.45)); }
+}
+
+/* Reduced-motion: убираем все анимации появления */
+@media (prefers-reduced-motion: reduce) {
+    .planet-mode--reading .planet-card,
+    .planet-mode--reading .planet-3d-viewport {
+        animation: none !important;
+    }
+}
+
 /* ── Responsive ────────────────────────────────── */
 @media (max-width: 768px) {
     .planet-3d-viewport {
@@ -331,8 +535,16 @@ body.has-navbar .planet-detail-header {
         max-width: 100%;
     }
 
-    .planet-detail-side {
+    .planet-detail-side,
+    .planet-detail-side:first-child,
+    .planet-detail-side:last-child {
         max-width: 100%;
+        transform: none;
+    }
+
+    .planet-detail-side:first-child .planet-card,
+    .planet-detail-side:last-child .planet-card {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
     }
 
     .planet-detail-actions {
@@ -344,5 +556,31 @@ body.has-navbar .planet-detail-header {
         width: 100%;
         max-width: 100%;
         flex: 1 1 auto;
+    }
+
+    /* Reading на мобиле: планета абсолютная в углу, карточки в одну колонку */
+    .planet-mode--reading .planet-3d-viewport {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        width: 120px;
+        height: 120px;
+        max-width: none;
+        margin: 0;
+    }
+
+    .planet-mode--reading .planet-detail-header {
+        margin-left: 130px;
+        max-width: calc(100vw - 140px);
+        font-size: 0.9em;
+    }
+
+    .planet-mode--reading .planet-detail-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .planet-mode--reading .planet-detail-side {
+        display: flex;
     }
 }

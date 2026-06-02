@@ -580,7 +580,14 @@
 }
 
 @media (max-width: 480px) {
+    /* На phone-portrait скрываем декоративную иконку-корабль,
+       статы получают полную ширину */
+    .ship-hero-craft { display: none; }
     .ship-hero-stats { grid-template-columns: 1fr; }
+    .ship-track-head { gap: 0.5rem; }
+    .ship-track-head-info { gap: 0.5rem; }
+    .ship-track-progress { font-size: 0.65rem; }
+    .ship-progress-counter { font-size: 0.7rem; padding: 0.3rem 0.7rem; }
 }
 
 /* ── Reduced motion ───────────────────────────────────── */
