@@ -3,27 +3,35 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using KosmosCore.Business.Services.Interfaces;
 using KosmosCore.Data.Repositories.Interfaces;
-using KosmosCore.Data.Models;
 using KosmosCore.Business.DTOs.Requests;
 using KosmosCore.Business.DTOs.Responses;
+using KosmosCore.Data.Models;
 
 namespace KosmosCore.Pages;
 
 /// <summary>
 /// PageModel для SPA-хоста игры Stellar Vocation.
-///  - OnGet()            → начальный bootstrap JSON (кластеры + каталог планет)
-///  - OnGetPartial()     → AJAX-подгрузка HTML экрана
-///  - OnGetCatalog()     → JSON каталога планет
+///  - OnGet()                → начальный bootstrap JSON (кластеры + каталог планет)
+///  - OnGetPartial()         → AJAX-подгрузка HTML экрана
+///  - OnGetCatalog()         → JSON каталога планет
 ///  - OnPostMiniGameResult() → расчёт наград
-///  - OnPostSaveProgress()   → запись прогресса в game_saves
+///  - OnPostTelemetry()      → приём батча телеметрии в фоновую очередь
+///
+/// Прогресс игрока на сервере не сохраняется — он живёт только в браузере
+/// (localStorage, см. stateManager._persistPlayer). Сервер хранит лишь телеметрию.
 /// </summary>
 [IgnoreAntiforgeryToken]
-public class GameModel(IPlanetRepository planets, IGameSettingsRepository gameSettings, IMiniGameService miniGameService, ITelemetryRepository telemetry, ILogger<GameModel> logger) : PageModel
+public class GameModel(
+    IPlanetRepository planets,
+    IGameSettingsRepository gameSettings,
+    IMiniGameService miniGameService,
+    ITelemetryQueue telemetryQueue,
+    ILogger<GameModel> logger) : PageModel
 {
     private readonly IPlanetRepository _planets = planets;
     private readonly IGameSettingsRepository _gameSettings = gameSettings;
     private readonly IMiniGameService _miniGameService = miniGameService;
-    private readonly ITelemetryRepository _telemetry = telemetry;
+    private readonly ITelemetryQueue _telemetryQueue = telemetryQueue;
     private readonly ILogger<GameModel> _logger = logger;
 
     /// <summary>JSON-строка начальных данных для клиентского bootstrapping.</summary>
@@ -34,9 +42,21 @@ public class GameModel(IPlanetRepository planets, IGameSettingsRepository gameSe
     // ──────────────────────────────────────────────
     public async Task OnGetAsync()
     {
-        var planetList  = await _planets.GetAllAsync();
-        var clusterList = await _planets.GetClustersAsync();
-        var settings    = await _gameSettings.GetAllAsync();
+        // Параллельный fan-out: 3 независимых запроса в БД, у каждого своё
+        // SqlConnection (см. Func<IDbConnection>-фабрика в Program.cs).
+        var planetsTask  = _planets.GetAllAsync();
+        var clustersTask = _planets.GetClustersAsync();
+        var settingsTask = _gameSettings.GetAllAsync();
+        await Task.WhenAll(planetsTask, clustersTask, settingsTask);
+
+        var planetList  = planetsTask.Result;
+        var clusterList = clustersTask.Result;
+        var settings    = settingsTask.Result;
+
+        // Один проход по planetList вместо O(K*P) подсчётов внутри Select.
+        var planetCountByCluster = planetList
+            .GroupBy(p => p.ClusterId)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         var initData = new GameInitDto
         {
@@ -47,7 +67,7 @@ public class GameModel(IPlanetRepository planets, IGameSettingsRepository gameSe
                 DisplayName = c.DisplayName,
                 CrystalType = c.CrystalType,
                 Description = c.Description,
-                PlanetCount = planetList.Count(p => p.ClusterId == c.Id)
+                PlanetCount = planetCountByCluster.TryGetValue(c.Id, out var n) ? n : 0
             }).ToList().AsReadOnly(),
             Catalog         = planetList.Select(MapPlanet).ToList().AsReadOnly(),
             DefaultSettings = GameSettingsDto.Default,
@@ -131,53 +151,22 @@ public class GameModel(IPlanetRepository planets, IGameSettingsRepository gameSe
 
     // ──────────────────────────────────────────────
     //  POST /game?handler=Telemetry
+    //  Кладём батч в фоновую очередь — клиент не ждёт DB.
+    //  Реальную запись делает TelemetryWorker (BackgroundService).
     // ──────────────────────────────────────────────
-    public async Task<IActionResult> OnPostTelemetry([FromBody] TelemetryBatchDto? batch)
+    public IActionResult OnPostTelemetry([FromBody] TelemetryBatchDto? batch)
     {
         if (batch?.Events is null || batch.Events.Count == 0)
             return new JsonResult(new { ok = true, count = 0 }, JsonOptions);
 
-        // Группируем события по сессиям
-        foreach (var sessionGroup in batch.Events.GroupBy(e => e.SessionId))
+        if (!_telemetryQueue.TryEnqueue(batch))
         {
-            if (!Guid.TryParse(sessionGroup.Key, out var sessionId)) continue;
-
-            var startEvt = sessionGroup.FirstOrDefault(e => e.ActionType == "SESSION_START");
-            var deviceType = "desktop";
-            if (startEvt != null && !string.IsNullOrEmpty(startEvt.Details))
-            {
-                try {
-                    using var doc = JsonDocument.Parse(startEvt.Details);
-                    if (doc.RootElement.TryGetProperty("deviceType", out var dt))
-                        deviceType = dt.GetString() ?? "desktop";
-                } catch {}
-            }
-            
-            var firstEventTimeStr = sessionGroup.First().CreatedAt;
-            var startTime = DateTime.TryParse(firstEventTimeStr, out var st) ? st : DateTime.UtcNow;
-
-            await _telemetry.EnsureSessionExistsAsync(sessionId, deviceType, startTime);
-
-            var logsToInsert = sessionGroup.Select(e => new ActionLog
-            {
-                SessionId = sessionId,
-                ActionType = e.ActionType ?? "UNKNOWN",
-                TargetId = e.TargetId,
-                CreatedAt = DateTime.TryParse(e.CreatedAt, out var ct) ? ct : DateTime.UtcNow,
-                Details = e.Details ?? "{}"
-            }).ToList();
-
-            await _telemetry.InsertActionLogsAsync(logsToInsert);
-
-            var endEvt = sessionGroup.FirstOrDefault(e => e.ActionType == "SESSION_END");
-            if (endEvt != null)
-            {
-                var endTime = DateTime.TryParse(endEvt.CreatedAt, out var et) ? et : DateTime.UtcNow;
-                await _telemetry.UpdateSessionEndAsync(sessionId, endTime);
-            }
+            // Очередь переполнена — backpressure, клиент попробует позже.
+            _logger.LogWarning("Telemetry queue full, dropping batch of {Count} events", batch.Events.Count);
+            return StatusCode(503, new { ok = false, reason = "telemetry-queue-full" });
         }
 
-        return new JsonResult(new { ok = true, count = batch.Events.Count }, JsonOptions);
+        return StatusCode(202, new { ok = true, count = batch.Events.Count });
     }
 
     // ──────────────────────────────────────────────

@@ -7,15 +7,9 @@
 }
 
 @section Head {
-    <!-- Three.js + addons (GLTFLoader и др.) -->
-    @Html.Raw(@"<script type=""importmap"">
-    {
-        ""imports"": {
-            ""three"": ""https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.js"",
-            ""three/addons/"": ""https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/""
-        }
-    }
-    </script>")
+    @* Three.js теперь забандлен в main.js (npm-зависимость, бандлится esbuild'ом).
+       importmap и CDN-зависимость от jsdelivr убраны — никаких внешних сетевых
+       запросов перед стартом игры. *@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -90,13 +84,8 @@
         @Html.Raw(ViewData["GameInitData"] ?? "null")
     </script>
 
-    <!-- Загружаем библиотеки Three.js и пробрасываем в window -->
-    <script type="module">
-        import * as THREE from 'three';
-        
-        window.THREE = THREE;
-    </script>
-    
-    <!-- Точка входа SPA -->
-    <script type="module" src="~/js/game/main.js" asp-append-version="true"></script>
+    @* Точка входа SPA. Бандл собирается esbuild'ом в ~/js/game/dist/main.js.
+       Lazy-чанки (редкие экраны, мини-игры) грузятся по требованию из
+       ~/js/game/dist/chunks/. *@
+    <script type="module" src="~/js/game/dist/main.js" asp-append-version="true"></script>
 }

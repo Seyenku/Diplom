@@ -236,8 +236,10 @@ export function buildPlanetsForCluster(
 }
 
 export function updatePlanets(state: GalaxyPlanetsState, dt: number): void {
+    // 0.3 rad/sec ≈ 0.005 рад/кадр при 60fps (старое поведение).
+    const SELF_ROT_SPEED = 0.3;
     state.planetMeshes.forEach(mesh => {
-        mesh.rotation.y += 0.005;
+        mesh.rotation.y += SELF_ROT_SPEED * dt;
         const ud = mesh.userData as Record<string, number>;
         const speed = ud.orbitSpeed;
         if (speed) {

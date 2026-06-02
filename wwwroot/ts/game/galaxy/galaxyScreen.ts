@@ -230,8 +230,13 @@ function _init3DMap(): void {
 
 // ── Render loop ─────────────────────────────────────────────────────────────
 
+let _lastMapRafTs = 0;
 function _mapRenderLoop(): void {
     if (!_rendererState || !_cameraState || !_nebulaeState || !_planetsState) return;
+
+    const now = performance.now();
+    const dt = _lastMapRafTs ? Math.min((now - _lastMapRafTs) / 1000, 0.1) : 0.016;
+    _lastMapRafTs = now;
 
     _cameraState.update();
 
@@ -259,9 +264,9 @@ function _mapRenderLoop(): void {
         }
     }
 
-    const time = performance.now() / 1000;
-    updateNebulae(_nebulaeState, time, _cameraState.state, _focusedCluster);
-    updatePlanets(_planetsState, 0.016);
+    const time = now / 1000;
+    updateNebulae(_nebulaeState, time, dt, _cameraState.state, _focusedCluster);
+    updatePlanets(_planetsState, dt);
 
     if (_mouseMovedSinceLastRaycast && _raycaster) {
         _mouseMovedSinceLastRaycast = false;
@@ -392,6 +397,7 @@ function _refreshNebulaPanel(): void {
 function _cleanup3D(): void {
     if (_mapAnimId) cancelAnimationFrame(_mapAnimId);
     _mapAnimId = null;
+    _lastMapRafTs = 0;
 
     if (_cameraState) { _cameraState.dispose(); _cameraState = null; }
     if (_rendererState) {

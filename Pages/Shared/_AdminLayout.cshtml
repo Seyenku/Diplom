@@ -1,9 +1,11 @@
 @namespace KosmosCore.Pages.Admin
+@using KosmosCore.Helpers
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
     var page = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isSuperAdmin = User.IsInRole("SuperAdmin");
     string Active(string target) => page.Equals(target, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    var nonce = CspNonce.Value(Context);
 }
 
 <!DOCTYPE html>
@@ -12,7 +14,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - KosmosCore</title>
-    <script>
+    <script nonce="@nonce">
         (() => {
             const savedTheme = localStorage.getItem('kosmos-theme');
             const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
@@ -85,7 +87,8 @@
         </main>
     </div>
 
-    <script>
+    <script src="~/js/admin-forms.js" asp-append-version="true"></script>
+    <script nonce="@nonce">
         (() => {
             const buttons = document.querySelectorAll('[data-theme-toggle]');
             if (!buttons.length) return;

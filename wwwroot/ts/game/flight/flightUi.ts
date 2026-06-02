@@ -101,19 +101,21 @@ export function updateHud(state: FlightUiState): void {
     updateWaveProgress(state.currentWave, state.waveCount, state.elapsed, state.waveDurationS);
 }
 
+const _ENERGY_CLASSES = ['flight-bar--energy-full', 'flight-bar--energy-mid', 'flight-bar--energy-low'];
+const _SHIELD_CLASSES = ['flight-bar--healthy', 'flight-bar--warning', 'flight-bar--critical'];
+
+function _applyState(bar: HTMLElement, classes: readonly string[], idx: number): void {
+    for (let i = 0; i < classes.length; i++) {
+        bar.classList.toggle(classes[i], i === idx);
+    }
+}
+
 export function updateEnergyBar(energy: number, maxEnergy: number): void {
     const bar = document.getElementById('flight-energy-bar');
     if (!bar) return;
     const pct = Math.max(0, Math.min(100, (energy / maxEnergy) * 100));
     bar.style.width = `${pct}%`;
-
-    if (pct > 50) {
-        bar.style.background = 'linear-gradient(90deg, #39ff14, #a3e635)';
-    } else if (pct > 20) {
-        bar.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
-    } else {
-        bar.style.background = 'linear-gradient(90deg, #f87171, #ef4444)';
-    }
+    _applyState(bar, _ENERGY_CLASSES, pct > 50 ? 0 : pct > 20 ? 1 : 2);
 }
 
 export function updateShieldBar(shield: number, maxShield: number): void {
@@ -121,14 +123,7 @@ export function updateShieldBar(shield: number, maxShield: number): void {
     if (!bar) return;
     const pct = Math.max(0, Math.min(100, (shield / maxShield) * 100));
     bar.style.width = `${pct}%`;
-    
-    if (pct > 60) {
-        bar.style.background = 'linear-gradient(90deg, #4fc3f7, #818cf8)';
-    } else if (pct > 30) {
-        bar.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
-    } else {
-        bar.style.background = 'linear-gradient(90deg, #f87171, #ef4444)';
-    }
+    _applyState(bar, _SHIELD_CLASSES, pct > 60 ? 0 : pct > 30 ? 1 : 2);
 }
 
 export function updateWaveProgress(

@@ -30,20 +30,17 @@ import { initAudio, playSfx } from './audioManager.js';
 import { init as initInputManager } from './inputManager.js';
 
 // ── Модули экранов ───────────────────────────────────────────────────────────
+// Eager-импорт только для «горячих» экранов, через которые пользователь почти
+// гарантированно проходит при старте: главное меню, создание персонажа,
+// онбординг, основной игровой контур (полёт/карта/планета), офлайн-фолбэк.
 import * as MainMenu      from './screens/screenMainMenu.js';
 import * as CharCreation  from './screens/screenCharCreation.js';
 import * as Onboarding    from './screens/screenOnboarding.js';
 import * as Flight        from './flight/flightScreen.js';
 import * as GalaxyMap     from './galaxy/galaxyScreen.js';
 import * as PlanetDetail  from './screens/screenPlanetDetail.js';
-import * as MiniGameMed   from './screens/screenMiniGameMedicine.js';
-import * as MiniGameProg  from './screens/screenMiniGameProgramming.js';
-import * as MiniGameGeo   from './screens/screenMiniGameGeology.js';
-import * as ShipUpgrade   from './screens/screenShipUpgrade.js';
-import * as VocationConst from './screens/screenVocationConstellation.js';
-import * as Achievements  from './screens/screenAchievements.js';
-import * as Settings      from './screens/screenSettings.js';
 import * as OfflineError  from './screens/screenOfflineError.js';
+// Остальные экраны грузим лениво через dynamic import (см. registerScreen ниже).
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -176,14 +173,16 @@ import * as OfflineError  from './screens/screenOfflineError.js';
     registerScreen(Screen.FLIGHT,         Flight);
     registerScreen(Screen.GALAXY_MAP,     GalaxyMap);
     registerScreen(Screen.PLANET_DETAIL,  PlanetDetail);
-    registerScreen(Screen.MINIGAME_MEDICINE,  MiniGameMed);
-    registerScreen(Screen.MINIGAME_PROGRAMMING, MiniGameProg);
-    registerScreen(Screen.MINIGAME_GEOLOGY,     MiniGameGeo);
-    registerScreen(Screen.SHIP_UPGRADE,   ShipUpgrade);
-    registerScreen(Screen.VOCATION_CONST, VocationConst);
-    registerScreen(Screen.ACHIEVEMENTS,   Achievements);
-    registerScreen(Screen.SETTINGS,       Settings);
     registerScreen(Screen.OFFLINE_ERROR,  OfflineError);
+    // Lazy: грузятся при первом переходе, дальше — из кеша. Каждый — отдельный
+    // chunk у бандлера / отдельный fetch у браузера без бандлера.
+    registerScreen(Screen.MINIGAME_MEDICINE,    () => import('./screens/screenMiniGameMedicine.js'));
+    registerScreen(Screen.MINIGAME_PROGRAMMING, () => import('./screens/screenMiniGameProgramming.js'));
+    registerScreen(Screen.MINIGAME_GEOLOGY,     () => import('./screens/screenMiniGameGeology.js'));
+    registerScreen(Screen.SHIP_UPGRADE,         () => import('./screens/screenShipUpgrade.js'));
+    registerScreen(Screen.VOCATION_CONST,       () => import('./screens/screenVocationConstellation.js'));
+    registerScreen(Screen.ACHIEVEMENTS,         () => import('./screens/screenAchievements.js'));
+    registerScreen(Screen.SETTINGS,             () => import('./screens/screenSettings.js'));
 
     // 7. Восстанавливаем сохранение
     loadSavedPlayer();
@@ -223,6 +222,93 @@ document.addEventListener('click', (e) => {
     } else if (action === 'continueGame') {
         transition(Screen.GALAXY_MAP);
     }
+});
+
+// ── data-action / data-action-change мост ────────────────────────────────────
+// Заменяет inline onclick=/onchange= обработчики в Razor (которые требуют
+// 'unsafe-inline' в CSP).
+//
+// Конвенция:
+//   data-action="ns.method"                     → window._<ns>.<method>()
+//   data-arg="x"                                → передать "x" первым аргументом
+//   data-pass="element|value|checked"           → ещё один аргумент из элемента
+//   data-action="reload"                        → location.reload()
+//
+// data-action  — для click
+// data-action-change — для change
+function _invokeAction(el: HTMLElement, action: string): void {
+    if (action === 'reload') {
+        location.reload();
+        return;
+    }
+    const dot = action.indexOf('.');
+    if (dot < 0) return;
+    const ns = action.slice(0, dot);
+    const method = action.slice(dot + 1);
+    const obj = (window as unknown as Record<string, Record<string, unknown> | undefined>)[`_${ns}`];
+    const fn = obj?.[method];
+    if (typeof fn !== 'function') return;
+
+    const args: unknown[] = [];
+    if (el.dataset.arg !== undefined) args.push(el.dataset.arg);
+    const pass = el.dataset.pass;
+    if (pass === 'element') args.push(el);
+    else if (pass === 'value') args.push((el as HTMLInputElement | HTMLSelectElement).value);
+    else if (pass === 'checked') args.push((el as HTMLInputElement).checked);
+
+    (fn as (...a: unknown[]) => void).apply(obj, args);
+}
+
+document.addEventListener('click', (e) => {
+    const el = (e.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
+    if (!el) return;
+    _invokeAction(el, el.dataset.action!);
+});
+
+document.addEventListener('change', (e) => {
+    const el = (e.target as HTMLElement).closest('[data-action-change]') as HTMLElement | null;
+    if (!el) return;
+    _invokeAction(el, el.dataset.actionChange!);
+});
+
+document.addEventListener('input', (e) => {
+    const el = (e.target as HTMLElement).closest('[data-action-input]') as HTMLElement | null;
+    if (!el) return;
+    _invokeAction(el, el.dataset.actionInput!);
+});
+
+// Submit-обёртки: data-prevent-submit просто отменяет, data-confirm-submit
+// показывает confirm() и отменяет при отказе. Заменяют inline onsubmit="..."
+// (которые блокируются CSP без 'unsafe-inline').
+document.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    if (form.dataset.preventSubmit !== undefined) {
+        e.preventDefault();
+        return;
+    }
+    const msg = form.dataset.confirmSubmit;
+    if (msg && !confirm(msg)) {
+        e.preventDefault();
+    }
+});
+
+// data-hide-on-error для <img>: error не bubble'ит, поэтому слушаем в capture-фазе.
+document.addEventListener('error', (e) => {
+    const el = e.target as HTMLElement;
+    if (el && 'dataset' in el && el.dataset.hideOnError !== undefined) {
+        el.style.display = 'none';
+    }
+}, true);
+
+// data-clear-error="ID": очищает текст в указанном элементе при любом input
+// в источнике (используется на name-input в char-creation).
+document.addEventListener('input', (e) => {
+    const el = (e.target as HTMLElement).closest('[data-clear-error]') as HTMLElement | null;
+    if (!el) return;
+    const targetId = el.dataset.clearError;
+    if (!targetId) return;
+    const target = document.getElementById(targetId);
+    if (target) target.textContent = '';
 });
 
 // ── Хелперы ──────────────────────────────────────────────────────────────────

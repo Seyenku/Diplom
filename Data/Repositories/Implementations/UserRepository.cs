@@ -7,9 +7,8 @@ using KosmosCore.Data.Repositories.Interfaces;
 
 namespace KosmosCore.Data.Repositories.Implementations;
 
-public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : IUserRepository
+public class UserRepository(Func<IDbConnection> dbFactory, ILogger<UserRepository> logger) : IUserRepository
 {
-
     public async Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct = default)
     {
         try
@@ -24,6 +23,7 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
                 LEFT JOIN dbo.AdminRoles r ON a.RoleId = r.Id
                 WHERE a.Login = @Username";
 
+            using var db = dbFactory();
             return await db.QuerySingleOrDefaultAsync<User>(
                 new CommandDefinition(sql, new { Username = username }, cancellationToken: ct));
         }
@@ -39,6 +39,7 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
         try
         {
             const string sql = "SELECT COUNT(1) FROM dbo.Admins WHERE Login = @Username";
+            using var db = dbFactory();
             var count = await db.ExecuteScalarAsync<int>(
                 new CommandDefinition(sql, new { Username = username }, cancellationToken: ct));
             return count > 0;
@@ -64,6 +65,7 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
                 LEFT JOIN dbo.AdminRoles r ON a.RoleId = r.Id
                 ORDER BY a.Id";
 
+            using var db = dbFactory();
             var result = await db.QueryAsync<User>(
                 new CommandDefinition(sql, cancellationToken: ct));
             return result.ToList().AsReadOnly();
@@ -80,6 +82,7 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
         try
         {
             const string sql = "SELECT Id, RoleName FROM dbo.AdminRoles ORDER BY Id";
+            using var db = dbFactory();
             var result = await db.QueryAsync<AdminRole>(
                 new CommandDefinition(sql, cancellationToken: ct));
             return result.ToList().AsReadOnly();
@@ -99,6 +102,7 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
                 INSERT INTO dbo.Admins (Login, PasswordHash, RoleId)
                 VALUES (@Login, @PasswordHash, @RoleId);";
 
+            using var db = dbFactory();
             await db.ExecuteAsync(new CommandDefinition(sql, new { Login = login, PasswordHash = passwordHash, RoleId = roleId }, cancellationToken: ct));
         }
         catch (DbException ex)
@@ -119,6 +123,7 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
                        PasswordHash = COALESCE(@PasswordHash, PasswordHash)
                  WHERE Id = @Id;";
 
+            using var db = dbFactory();
             await db.ExecuteAsync(new CommandDefinition(sql, new { Id = id, Login = login, RoleId = roleId, PasswordHash = passwordHash }, cancellationToken: ct));
         }
         catch (DbException ex)
@@ -133,6 +138,7 @@ public class UserRepository(IDbConnection db, ILogger<UserRepository> logger) : 
         try
         {
             const string sql = "DELETE FROM dbo.Admins WHERE Id = @Id";
+            using var db = dbFactory();
             await db.ExecuteAsync(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
         }
         catch (DbException ex)

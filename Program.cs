@@ -2,9 +2,13 @@ using KosmosCore.Data.Repositories.Interfaces;
 using KosmosCore.Data.Repositories.Implementations;
 using KosmosCore.Business.Services.Interfaces;
 using KosmosCore.Business.Services.Implementations;
+using KosmosCore.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Data.SqlClient;
 using System.Data;
+using System.IO.Compression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +16,11 @@ var builder = WebApplication.CreateBuilder(args);
 string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(connectionString));
+// IDbConnection как фабрика: репозиторий открывает соединение по требованию
+// в using-блоке. Это снимает scoped-связку «одно соединение на запрос», которая
+// блокировала параллельные SQL (нельзя было сделать Task.WhenAll по нескольким
+// репозиториям из-за «There is already an open DataReader»).
+builder.Services.AddScoped<Func<IDbConnection>>(_ => () => new SqlConnection(connectionString));
 
 // --- Memory Cache (для кэширования каталогов планет и апгрейдов) ---
 builder.Services.AddMemoryCache();
@@ -28,7 +36,16 @@ builder.Services.AddScoped<IGameSettingsRepository, GameSettingsRepository>();
 builder.Services.AddSingleton<IPasswordHasher, HmacPasswordHasher>();
 builder.Services.AddScoped<IMiniGameService, MiniGameService>();
 
+// --- Telemetry pipeline ---
+// Очередь — singleton (общая для эндпоинта и воркера).
+// Воркер — hosted background service; внутри создаёт scope под каждый батч,
+// чтобы получить scoped репозиторий и IDbConnection.
+builder.Services.AddSingleton<ITelemetryQueue, TelemetryQueue>();
+builder.Services.AddHostedService<TelemetryWorker>();
+
 // --- Authentication (Cookie-based) ---
+// SameSite=Strict — основная защита от CSRF на cookie-уровне.
+// SecurePolicy=SameAsRequest позволяет работать в Dev (http), в Prod автоматически Secure (https).
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -36,6 +53,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Error";
         options.ExpireTimeSpan   = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
+        options.Cookie.SameSite  = SameSiteMode.Strict;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.HttpOnly  = true;
     });
 
 // --- Session (for non-auth transient data) ---
@@ -45,16 +65,34 @@ builder.Services.AddSession(options =>
     options.IdleTimeout        = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly    = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SameSite    = SameSiteMode.Strict;
 });
 
 // --- Razor Pages ---
 builder.Services.AddRazorPages();
 
 // --- Response Compression (gzip/brotli) ---
+// Дефолтные MimeTypes покрывают только text/html, text/css, application/json и пару других.
+// Для SPA с десятками JS-файлов, шрифтов и SVG-иконок этого мало — расширяем явно.
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/javascript",
+        "text/javascript",
+        "image/svg+xml",
+        "application/wasm",
+        "application/font-woff",
+        "application/font-woff2",
+        "font/woff",
+        "font/woff2",
+    });
 });
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.SmallestSize);
 
 var app = builder.Build();
 
@@ -66,9 +104,14 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseResponseCompression();
+// Security-заголовки (CSP, X-Frame-Options, и т.д.) ставим до роутинга и
+// до auth, чтобы они применялись ко всем ответам, включая редиректы.
+app.UseSecurityHeaders();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+// Origin-валидация CSRF — после auth, чтобы знать пользователя в логе.
+app.UseOriginValidation();
 app.UseSession();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();

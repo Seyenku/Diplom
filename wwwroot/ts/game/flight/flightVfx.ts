@@ -106,8 +106,13 @@ export function updateVfx(
         _applyCameraShake(state.cameraShakeIntensity);
     }
 
+    // Координаты корабля для рецентрирования speed lines и пыли вокруг него
+    // (иначе при долгом боковом дрейфе игрок улетит из стартового облака точек).
+    const shipX = shipModel?.position.x ?? 0;
+    const shipY = shipModel?.position.y ?? 0;
+
     if (state.speedLinesMesh && state.speedLinesGeo) {
-        _updateSpeedLines(state, dt, boosting, currentWave, throttle);
+        _updateSpeedLines(state, dt, boosting, currentWave, throttle, shipX, shipY);
     }
     if (state.engineTrailPoints && state.engineTrailPositions && state.engineTrailAlphas) {
         _updateEngineTrail(state, dt, boosting, shipModel, throttle);
@@ -118,7 +123,7 @@ export function updateVfx(
         mat.uniforms.time.value = elapsed;
     }
 
-    _updateParallaxDust(state, dt, boosting, currentWave, throttle);
+    _updateParallaxDust(state, dt, boosting, currentWave, throttle, shipX, shipY);
 
     if (profile.flightDamageOverlay) {
         _updateDamageOverlay(shield, maxShield, isPlaying);
@@ -184,11 +189,11 @@ function _initSpeedLines(state: FlightVfxState, count: number, scene: THREE.Scen
     scene.add(state.speedLinesMesh);
 }
 
-function _updateSpeedLines(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number): void {
+function _updateSpeedLines(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number, shipX: number, shipY: number): void {
     const geo = state.speedLinesGeo!;
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const arr = pos.array as Float32Array;
-    
+
     // Fallback to array bounds if wave is larger than mult list
     const mult = WAVE_SPEED_MULT[currentWave] ?? WAVE_SPEED_MULT[WAVE_SPEED_MULT.length - 1];
     const speed = (boosting ? 80 : 30) * mult * dt * throttle;
@@ -210,8 +215,8 @@ function _updateSpeedLines(state: FlightVfxState, dt: number, boosting: boolean,
         if (arr[idx + 2] > 15) {
             const angle = Math.random() * Math.PI * 2;
             const r = 4 + Math.random() * 12;
-            const x = Math.cos(angle) * r;
-            const y = Math.sin(angle) * r;
+            const x = shipX + Math.cos(angle) * r;
+            const y = shipY + Math.sin(angle) * r;
             const z = -(100 + Math.random() * 150);
             arr[idx]     = x;
             arr[idx + 1] = y;
@@ -318,10 +323,10 @@ function _triggerShieldRipple(state: FlightVfxState, hitPos: THREE.Vector3, elap
     mat.uniforms.hitPoint.value.copy(hitPos);
 }
 
-function _updateParallaxDust(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number): void {
+function _updateParallaxDust(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number, shipX: number, shipY: number): void {
     const boostMult = boosting ? 1.5 : 1.0;
     const waveMult = WAVE_SPEED_MULT[currentWave] ?? WAVE_SPEED_MULT[WAVE_SPEED_MULT.length - 1];
-    
+
     for (let l = 0; l < state.dustLayers.length; l++) {
         const layer = state.dustLayers[l];
         const speed = BASE_OBJ_SPEED * layer.speedMult * waveMult * dt * boostMult * throttle;
@@ -331,8 +336,8 @@ function _updateParallaxDust(state: FlightVfxState, dt: number, boosting: boolea
         for (let i = 0; i < count; i++) {
             arr[i * 3 + 2] += speed;
             if (arr[i * 3 + 2] > 15) {
-                arr[i * 3]     = (Math.random() - 0.5) * 40;
-                arr[i * 3 + 1] = (Math.random() - 0.5) * 25;
+                arr[i * 3]     = shipX + (Math.random() - 0.5) * 40;
+                arr[i * 3 + 1] = shipY + (Math.random() - 0.5) * 25;
                 arr[i * 3 + 2] = -(200 + Math.random() * 400);
             }
         }

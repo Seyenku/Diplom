@@ -1,0 +1,71 @@
+/* =============================================
+   Stellar Vocation — In-game toast notifications
+   ============================================= */
+
+#game-notifications-container {
+    position: absolute;
+    top: 5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    z-index: 10000;
+    pointer-events: none;
+    width: min(340px, 90vw);
+}
+
+.game-toast {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.2rem;
+    border: 1px solid;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+    transition: opacity 250ms ease, transform 250ms ease;
+}
+
+.game-toast--visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.game-toast--leaving {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+}
+
+.game-toast__icon { font-size: 1.1rem; line-height: 1; }
+.game-toast__msg  { line-height: 1.35; white-space: pre-line; }
+
+/* Цветовые состояния — заменяют большой inline style.cssText на каждый тост. */
+.game-toast--info {
+    background: rgba(15, 23, 42, 0.95);
+    border-color: rgba(79, 195, 247, 0.4);
+    color: #e2e8f0;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.4), 0 0 12px rgba(79, 195, 247, 0.2);
+}
+.game-toast--success {
+    background: rgba(10, 30, 20, 0.95);
+    border-color: rgba(74, 222, 128, 0.4);
+    color: #4ade80;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.4), 0 0 12px rgba(74, 222, 128, 0.2);
+}
+.game-toast--warning {
+    background: rgba(30, 30, 10, 0.95);
+    border-color: rgba(250, 204, 21, 0.4);
+    color: #facc15;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.4), 0 0 12px rgba(250, 204, 21, 0.2);
+}
+.game-toast--error {
+    background: rgba(30, 10, 10, 0.95);
+    border-color: rgba(248, 113, 113, 0.4);
+    color: #f87171;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.4), 0 0 12px rgba(248, 113, 113, 0.2);
+}

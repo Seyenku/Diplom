@@ -111,7 +111,7 @@
                             <td><span class="admin-code">@item.UnlockCost</span></td>
                             <td class="admin-table-actions">
                                 <a class="admin-icon-btn" asp-page="/Admin/Planets" asp-route-editId="@item.Id" title="Редактировать">✎</a>
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" onsubmit="return confirm('Удалить планету?');">
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" data-confirm-submit="Удалить планету?">
                                     <button type="submit" class="admin-icon-btn admin-icon-btn--danger" title="Удалить">×</button>
                                 </form>
                             </td>

@@ -11,6 +11,7 @@
     "outDir": "./wwwroot/js/game",
     "rootDir": "./wwwroot/ts/game",
     "sourceMap": true,
+    "noEmit": true,
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,

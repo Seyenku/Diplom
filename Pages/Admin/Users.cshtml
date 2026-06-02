@@ -91,7 +91,7 @@
                             <td><span class="admin-role-pill @(item.RoleName == "SuperAdmin" ? "admin-role-pill--super" : "")">@(item.RoleName == "SuperAdmin" ? "Суперадмин" : "Админ")</span></td>
                             <td class="admin-table-actions">
                                 <a class="admin-icon-btn" asp-page="/Admin/Users" asp-route-editId="@item.Id" title="Редактировать">✎</a>
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" onsubmit="return confirm('Удалить администратора?');">
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" data-confirm-submit="Удалить администратора?">
                                     <button type="submit" class="admin-icon-btn admin-icon-btn--danger" title="Удалить">×</button>
                                 </form>
                             </td>

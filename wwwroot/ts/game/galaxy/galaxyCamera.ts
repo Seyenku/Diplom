@@ -36,6 +36,14 @@ export class GalaxyCamera {
     private _lastInteractX = 0;
     private _lastInteractY = 0;
     private _lastPinchDist = 0;
+    // Drag-vs-tap дисамбигуация: запоминаем стартовую точку касания и сбрасываем
+    // флаг «это всё ещё тап», как только палец ушёл дальше порога. Без этого
+    // вращение камеры на мобильных, начатое на туманности/планете, заканчивалось
+    // случайным переходом по отпусканию.
+    private _touchStartX = 0;
+    private _touchStartY = 0;
+    private _touchCouldBeTap = false;
+    private static readonly TAP_DRAG_THRESHOLD_PX = 10;
 
     constructor(config: GalaxyCameraConfig) {
         this._camera = config.camera;
@@ -170,10 +178,16 @@ export class GalaxyCamera {
     private _onTouchStart = (e: TouchEvent): void => {
         if (e.touches.length === 1) {
             this._isTouchDown = true;
+            this._touchCouldBeTap = true;
+            this._touchStartX = e.touches[0].clientX;
+            this._touchStartY = e.touches[0].clientY;
             this._lastInteractX = e.touches[0].clientX;
             this._lastInteractY = e.touches[0].clientY;
         } else if (e.touches.length === 2) {
+            // Multi-touch (pinch zoom) — не считаем тапом, чтобы pinch не оборачивался
+            // переходом по отпусканию.
             this._isTouchDown = false;
+            this._touchCouldBeTap = false;
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             this._lastPinchDist = Math.sqrt(dx * dx + dy * dy);
@@ -191,6 +205,16 @@ export class GalaxyCamera {
         if (e.touches.length === 1 || e.touches.length === 2) e.preventDefault();
 
         if (this._isTouchDown && e.touches.length === 1) {
+            // Если палец ушёл от старта дальше порога — это драг, а не тап.
+            // Снимаем флаг tap, но продолжаем крутить камеру.
+            if (this._touchCouldBeTap) {
+                const totalDx = e.touches[0].clientX - this._touchStartX;
+                const totalDy = e.touches[0].clientY - this._touchStartY;
+                const thr = GalaxyCamera.TAP_DRAG_THRESHOLD_PX;
+                if (totalDx * totalDx + totalDy * totalDy > thr * thr) {
+                    this._touchCouldBeTap = false;
+                }
+            }
             const deltaX = e.touches[0].clientX - this._lastInteractX;
             const deltaY = e.touches[0].clientY - this._lastInteractY;
             this.spherical.theta -= deltaX * 0.005;
@@ -225,8 +249,13 @@ export class GalaxyCamera {
 
     private _onTouchEnd = (e: TouchEvent): void => {
         if (e.touches.length === 0) {
-            if (this._isTouchDown) this._onClick();
+            // onClick срабатывает только если палец почти не сдвинулся (tap),
+            // а не после вращения камеры.
+            if (this._isTouchDown && this._touchCouldBeTap) {
+                this._onClick();
+            }
             this._isTouchDown = false;
+            this._touchCouldBeTap = false;
         }
     }
 

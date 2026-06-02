@@ -63,9 +63,26 @@ export function dispatch<T extends ActionType>(action: T, payload: ActionPayload
     }
 
     if (_PLAYER_ACTIONS.has(action)) {
-        if (_persistTimeout) clearTimeout(_persistTimeout);
-        _persistTimeout = setTimeout(_persistPlayer, 300);
+        _schedulePersist();
     }
+}
+
+// requestIdleCallback с fallback на setTimeout. ric пишет в idle-окне браузера,
+// не конкурируя с рендером игры.
+type IdleId = number;
+const _ric: (cb: () => void, options?: { timeout: number }) => IdleId =
+    (typeof window !== 'undefined' && 'requestIdleCallback' in window)
+        ? ((window as unknown as { requestIdleCallback: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback.bind(window))
+        : ((cb: () => void) => window.setTimeout(cb, 1) as unknown as IdleId);
+
+function _schedulePersist(): void {
+    if (_persistTimeout) clearTimeout(_persistTimeout);
+    // 300ms debounce + idle-окно: между «всплеском» событий и фактической записью
+    // в localStorage всегда проходит хотя бы один idle slot.
+    _persistTimeout = setTimeout(() => {
+        _persistTimeout = null;
+        _ric(_persistPlayer, { timeout: 1000 });
+    }, 300);
 }
 
 on('SET_PLAYER', (s, p) => {
@@ -246,10 +263,28 @@ if (typeof document !== 'undefined') {
     }
 }
 
-const ScreenModules: Record<string, ScreenModule> = {};
+/**
+ * Регистрация экранов поддерживает два режима:
+ *  - готовый ScreenModule (нужен сразу, eager-import)
+ *  - loader-функция, возвращающая Promise<ScreenModule> (lazy, через dynamic import)
+ * Результат загрузки кэшируется в _screenCache, чтобы повторных fetch'ей не было.
+ */
+type ScreenLoader = ScreenModule | (() => Promise<ScreenModule>);
+const _screenLoaders: Record<string, ScreenLoader> = {};
+const _screenCache: Record<string, ScreenModule> = {};
 
-export function registerScreen(screenId: ScreenId, module: ScreenModule): void {
-    ScreenModules[screenId] = module;
+export function registerScreen(screenId: ScreenId, loader: ScreenLoader): void {
+    _screenLoaders[screenId] = loader;
+}
+
+async function _resolveScreen(screenId: ScreenId): Promise<ScreenModule | undefined> {
+    const cached = _screenCache[screenId];
+    if (cached) return cached;
+    const loader = _screenLoaders[screenId];
+    if (!loader) return undefined;
+    const mod = typeof loader === 'function' ? await loader() : loader;
+    _screenCache[screenId] = mod;
+    return mod;
 }
 
 let _activeModule: ScreenModule | null = null;
@@ -311,8 +346,8 @@ export async function transition(screenId: ScreenId, payload: Partial<SessionDat
             try { await _switchThreeScene('starfield'); } catch (e) { console.error(e); }
         }
 
-        // Инициализируем модуль экрана
-        const mod = ScreenModules[screenId];
+        // Инициализируем модуль экрана (lazy-загрузка для редких экранов)
+        const mod = await _resolveScreen(screenId);
         if (mod) {
             _activeModule = mod;
             await mod.init?.(getStore());
@@ -353,25 +388,40 @@ function _updateHudVisibility(screenId: ScreenId): void {
 async function _renderOfflineError(err: unknown): Promise<void> {
     const container = document.getElementById('screen-dynamic-content');
     if (container) {
-        const message = err instanceof Error ? err.message : 'РќРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°';
+        const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
+        // Без inline onclick — data-action="reload" обрабатывается делегированным
+        // listener'ом в main.ts (совместимо с CSP без 'unsafe-inline').
         container.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1rem;padding:2rem;">
                 <h2 class="game-title" style="color:#f87171;">Error</h2>
                 <p style="color:var(--color-text-muted);text-align:center;">${message}</p>
-                <button class="btn-game btn-secondary" onclick="location.reload()">Retry</button>
+                <button class="btn-game btn-secondary" data-action="reload">Retry</button>
             </div>`;
     }
 }
 
 const SAVE_KEY = 'stellar_vocation_save';
 
-function _persistPlayer(): void {
-    if (_store.player) {
-        try {
-            const payload = JSON.stringify(_store.player);
-            localStorage.setItem(SAVE_KEY, payload);
-        } catch { }
+// Поля, которые не сохраняем — они либо derived (восстанавливаются), либо
+// относятся к session-state и в localStorage им не место.
+const _DERIVED_FIELDS = new Set<string>(['shipStats']);
+
+function _serializePlayer(player: PlayerState): string {
+    // Один проход: копируем ключи, кроме derived. Дешевле, чем clone + delete.
+    const src = player as unknown as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(src)) {
+        if (_DERIVED_FIELDS.has(key)) continue;
+        out[key] = src[key];
     }
+    return JSON.stringify(out);
+}
+
+function _persistPlayer(): void {
+    if (!_store.player) return;
+    try {
+        localStorage.setItem(SAVE_KEY, _serializePlayer(_store.player));
+    } catch { }
 }
 export function savePlayerNow(): boolean {
     if (_persistTimeout) {
@@ -438,86 +488,52 @@ window.addEventListener('beforeunload', () => {
 
 // ── Custom In-Game Notifications (Toasts) ────────────────────────────────────
 
+const _TOAST_ICONS: Record<'info' | 'success' | 'warning' | 'error', string> = {
+    info:    'ℹ️',
+    success: '✅',
+    warning: '⚠️',
+    error:   '🚨',
+};
+
 export function showNotification(
-    message: string, 
+    message: string,
     type: 'info' | 'success' | 'warning' | 'error' = 'info'
 ): void {
     let container = document.getElementById('game-notifications-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'game-notifications-container';
-        container.style.cssText = `
-            position: absolute;
-            top: 5rem;
-            right: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            z-index: 10000;
-            pointer-events: none;
-            width: min(340px, 90vw);
-        `;
         document.getElementById('game-root')?.appendChild(container);
     }
 
     const toast = document.createElement('div');
-    toast.className = 'game-toast';
-    
-    const colors = {
-        info: { bg: 'rgba(15, 23, 42, 0.95)', border: 'rgba(79, 195, 247, 0.4)', text: '#e2e8f0', icon: 'ℹ️', glow: 'rgba(79, 195, 247, 0.2)' },
-        success: { bg: 'rgba(10, 30, 20, 0.95)', border: 'rgba(74, 222, 128, 0.4)', text: '#4ade80', icon: '✅', glow: 'rgba(74, 222, 128, 0.2)' },
-        warning: { bg: 'rgba(30, 30, 10, 0.95)', border: 'rgba(250, 204, 21, 0.4)', text: '#facc15', icon: '⚠️', glow: 'rgba(250, 204, 21, 0.2)' },
-        error: { bg: 'rgba(30, 10, 10, 0.95)', border: 'rgba(248, 113, 113, 0.4)', text: '#f87171', icon: '🚨', glow: 'rgba(248, 113, 113, 0.2)' }
-    };
-    const c = colors[type] || colors.info;
+    toast.className = `game-toast game-toast--${type}`;
 
-    toast.style.cssText = `
-        display: grid;
-        grid-template-columns: auto 1fr;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.85rem 1.2rem;
-        background: ${c.bg};
-        border: 1px solid ${c.border};
-        border-radius: var(--radius-sm);
-        color: ${c.text};
-        font-family: var(--font-body);
-        font-size: 0.9rem;
-        box-shadow: 0 10px 24px rgba(0,0,0,0.4), 0 0 12px ${c.glow};
-        backdrop-filter: blur(8px);
-        pointer-events: auto;
-        opacity: 0;
-        transform: translateY(-10px) scale(0.98);
-        transition: opacity 250ms ease, transform 250ms ease;
-    `;
-    
-    toast.innerHTML = `
-        <span style="font-size: 1.1rem; line-height: 1;">${c.icon}</span>
-        <span style="line-height: 1.35; white-space: pre-line;">${message}</span>
-    `;
+    const icon = document.createElement('span');
+    icon.className = 'game-toast__icon';
+    icon.textContent = _TOAST_ICONS[type] ?? _TOAST_ICONS.info;
 
+    const msg = document.createElement('span');
+    msg.className = 'game-toast__msg';
+    msg.textContent = message;
+
+    toast.append(icon, msg);
     container.appendChild(toast);
 
+    // Force reflow + класс-триггер для CSS-перехода
     void toast.offsetWidth;
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateY(0) scale(1)';
+    toast.classList.add('game-toast--visible');
 
     import('./audioManager.js').then(({ playSfx }) => {
-        if (type === 'error' || type === 'warning') {
-            playSfx('ui_error');
-        } else if (type === 'success') {
-            playSfx('ui_success');
-        } else {
-            playSfx('ui_click');
-        }
+        if (type === 'error' || type === 'warning') playSfx('ui_error');
+        else if (type === 'success') playSfx('ui_success');
+        else playSfx('ui_click');
     }).catch(() => {});
 
     setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(10px) scale(0.98)';
-        setTimeout(() => {
-            toast.remove();
-        }, 250);
+        toast.classList.remove('game-toast--visible');
+        toast.classList.add('game-toast--leaving');
+        setTimeout(() => toast.remove(), 250);
     }, 4000);
 }
 

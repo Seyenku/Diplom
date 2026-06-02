@@ -221,7 +221,7 @@ Seed-данные: 3 кластера, 31 планета-профессия с h
 Серверная архитектура (3-уровневая):
 
 Слой данных (Data/):
-• Модели: User, Planet, Cluster, ActionLog, PlayerSession, PlayerSaveRecord, GameSetting + 16 legacy-моделей в Data/Models/_Legacy/
+• Модели: User, Planet, Cluster, ActionLog, PlayerSession, GameSetting + 16 legacy-моделей в Data/Models/_Legacy/
 • Репозитории (Dapper, raw SQL):
   — IUserRepository / UserRepository (Scoped) — CRUD админов, JOIN Admins+AdminRoles
   — IPlanetRepository / PlanetRepository (Scoped, MemoryCache 30 мин) — чтение планет с JOIN skills/risks как JSON-массивы, CRUD планет, чтение кластеров; кэш инвалидируется при CRUD

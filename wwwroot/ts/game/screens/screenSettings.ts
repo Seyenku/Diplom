@@ -176,6 +176,29 @@ export async function init(store: Readonly<import('../types.js').GameStore>): Pr
     if (boostBtn) boostBtn.textContent = _formatKey(_currentBinds.boost);
 
     _updateKeybindBlockState(s.controlScheme ?? 'keyboard');
+
+    // Привязываем нативный input listener ко всем слайдерам с data-setting-key.
+    // Заменяет inline oninput="window._settings?.update(key, this.value); ..."
+    // (раньше было два действия — обновление стейта и метки — теперь оба внутри).
+    document.querySelectorAll<HTMLInputElement>('[data-setting-key]').forEach(el => {
+        el.addEventListener('input', _onSliderInput);
+    });
+}
+
+function _onSliderInput(this: HTMLInputElement): void {
+    const key = this.dataset.settingKey;
+    if (!key) return;
+    const raw = parseFloat(this.value);
+    // data-setting-scale="0.01" → масштабируем raw перед update (для uiScale).
+    const scale = this.dataset.settingScale ? parseFloat(this.dataset.settingScale) : 1;
+    window._settings?.update(key, scale === 1 ? this.value : raw * scale);
+
+    // Текст для парной метки.
+    const displayId = this.dataset.settingDisplay;
+    if (displayId) {
+        const display = document.getElementById(displayId);
+        if (display) display.textContent = `${Math.round(raw)}%`;
+    }
 }
 
 export function destroy(): void {
@@ -183,6 +206,9 @@ export function destroy(): void {
         document.removeEventListener('keydown', _onKeyDownBind, true);
         _bindingAction = null;
     }
+    document.querySelectorAll<HTMLInputElement>('[data-setting-key]').forEach(el => {
+        el.removeEventListener('input', _onSliderInput);
+    });
 }
 
 function _setVal(id: string, v: string | number): void {

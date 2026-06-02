@@ -4,7 +4,7 @@
          Видима только в режиме просмотра туманности на карте галактики. -->
     <button id="nav-btn-back" class="nav-btn nav-btn--icon nav-btn--back-overlay hidden"
             type="button" title="Назад" aria-label="Назад"
-            onclick="window._galaxyMap?.backToOverview()">
+            data-action="galaxyMap.backToOverview">
         <span class="nav-icon">←</span>
     </button>
     <button id="nav-btn-map" class="nav-btn" data-spa="goto" data-screen="galaxy-map" title="Звёздная карта">
@@ -15,7 +15,7 @@
          Показывается только на mobile когда выбрана туманность (focused cluster). -->
     <button id="nav-btn-map-back" class="nav-btn hidden" type="button"
             title="Вернуться к обзору галактики"
-            onclick="window._galaxyMap?.backToOverview()">
+            data-action="galaxyMap.backToOverview">
         <span class="nav-icon">←</span>
         <span class="nav-label">Назад</span>
     </button>

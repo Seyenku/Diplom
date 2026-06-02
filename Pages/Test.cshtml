@@ -65,7 +65,7 @@
 </section>
 
 @section Scripts {
-    <script>
+    <script nonce="@KosmosCore.Helpers.CspNonce.Value(ViewContext.HttpContext)">
         (() => {
             const questions = [
                 {

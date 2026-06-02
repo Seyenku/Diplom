@@ -1,8 +1,10 @@
 @namespace KosmosCore.Pages
+@using KosmosCore.Helpers
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
     var pagePath = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isGamePage = pagePath.Equals("/Game", StringComparison.OrdinalIgnoreCase);
+    var nonce = CspNonce.Value(Context);
 }
 
 <!DOCTYPE html>
@@ -11,10 +13,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - KosmosCore</title>
-    
-    <meta http-equiv="X-Frame-Options" content="DENY" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net http://localhost:* https://localhost:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://cdn.jsdelivr.net http://localhost:* https://localhost:* ws://localhost:* wss://localhost:*;" />
-    <script>
+
+    @* Security-заголовки ставятся в SecurityHeadersMiddleware на серверной стороне
+       (CSP, X-Frame-Options, Referrer-Policy и др.). HTTP-заголовок сильнее чем
+       <meta>, и при этом env-зависимый. *@
+    <script nonce="@nonce">
         (() => {
             const savedTheme = localStorage.getItem('kosmos-theme');
             const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
@@ -56,7 +59,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
     <!-- stats.js removed to prevent 404 error -->
-    <script>
+    <script nonce="@nonce">
         (() => {
             const buttons = document.querySelectorAll('[data-theme-toggle]');
             if (!buttons.length) return;
@@ -106,7 +109,7 @@
             });
         })();
     </script>
-    <script>
+    <script nonce="@nonce">
         (() => {
             if (!document.body.classList.contains('standard-layout')) return;
 

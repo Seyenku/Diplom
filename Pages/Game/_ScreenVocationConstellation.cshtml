@@ -24,10 +24,10 @@
 
     <!-- Кнопки -->
     <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;max-width:500px;width:100%;">
-        <button id="btn-export-pdf" class="btn-game btn-primary" onclick="window._vocationConst?.exportPdf()" style="flex:1;min-width:160px;">
+        <button id="btn-export-pdf" class="btn-game btn-primary" data-action="vocationConst.exportPdf" style="flex:1;min-width:160px;">
             📄 Экспорт в PDF
         </button>
-        <button class="btn-game btn-secondary" onclick="window._vocationConst?.showPath()" style="flex:1;min-width:160px;">
+        <button class="btn-game btn-secondary" data-action="vocationConst.showPath" style="flex:1;min-width:160px;">
             🗺 Путь развития
         </button>
         <button class="btn-game btn-secondary" data-spa="goto" data-screen="galaxy-map" style="flex:1;min-width:120px;">

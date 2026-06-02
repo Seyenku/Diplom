@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { getProfile, onQualityChange } from './qualityPresets.js';
+import { getProfile, onQualityChange, QualityProfile } from './qualityPresets.js';
 import { disposeSceneGraph } from './threeUtils.js';
 
 export type SceneBuilder = () => { scene: THREE.Scene; camera: THREE.PerspectiveCamera };
@@ -17,6 +17,11 @@ let _currentScene: { scene: THREE.Scene; camera: THREE.PerspectiveCamera } | nul
 let _animFrameId: number | null = null;
 let _starfieldPoints: THREE.Points | null = null;
 let _lastSceneName: string = 'none';
+
+// Снапшот «cold» полей профиля (тех, что требуют полной перестройки WebGLRenderer).
+// Сравниваем при смене качества; если ни одно не изменилось — обходимся inplace-обновлением
+// pixelRatio. Это убирает чёрный экран 200–500 мс при тонкой настройке качества.
+let _lastColdSnapshot: { antialias: boolean } | null = null;
 
 const _builders = new Map<string, SceneBuilder>();
 
@@ -41,15 +46,33 @@ export async function initThreeScene(canvasId: string): Promise<void> {
     _renderer.setPixelRatio(profile.pixelRatio);
     _renderer.setSize((canvas.parentNode as HTMLElement)!.clientWidth, (canvas.parentNode as HTMLElement)!.clientHeight, false);
     _renderer.setClearColor(0x000000, 1);
+    _lastColdSnapshot = { antialias: profile.antialias };
 
     window.addEventListener('resize', _onResize);
 
-    onQualityChange(() => {
-        recreateRenderer();
-    });
+    onQualityChange(_onQualityChange);
 
     // Стартовая сцена
     await switchScene('starfield');
+}
+
+/**
+ * Hot path: только меняем pixelRatio (и любые другие cheap-параметры WebGLRenderer'а).
+ * Cold path: меняется antialias — без recreate нельзя, это аргумент конструктора.
+ */
+function _onQualityChange(profile: Readonly<QualityProfile>): void {
+    if (!_renderer) return;
+    const coldChanged = !_lastColdSnapshot || _lastColdSnapshot.antialias !== profile.antialias;
+    if (coldChanged) {
+        recreateRenderer();
+        _lastColdSnapshot = { antialias: profile.antialias };
+        return;
+    }
+    // Inplace: чёрный экран не мелькает, контекст WebGL сохраняется,
+    // текстуры/геометрия не теряются.
+    _renderer.setPixelRatio(profile.pixelRatio);
+    // Сцена пересоберётся при следующем switchScene с обновлёнными starfieldCount
+    // и прочими «контент»-полями — это уже делают builders через getProfile().
 }
 
 export async function switchScene(sceneName: string): Promise<void> {
@@ -94,13 +117,14 @@ export function recreateRenderer(): void {
     _renderer.setPixelRatio(profile.pixelRatio);
     _renderer.setSize(container.clientWidth, container.clientHeight, false);
     _renderer.setClearColor(0x000000, 1);
+    _lastColdSnapshot = { antialias: profile.antialias };
 
     const builder = _builders.get(_lastSceneName);
     if (builder) {
         _currentScene = builder();
         _starfieldPoints = _currentScene.scene.children.find(c => c.userData?.type === 'starfield') as THREE.Points ?? null;
     }
-    
+
     _startRenderLoop();
 }
 
@@ -154,12 +178,18 @@ function _startRenderLoop(): void {
 
     if (_lastSceneName === 'galaxy-map' || _lastSceneName === 'flight') return;
 
-    function render(): void {
+    // 0.009 rad/sec = 0.00015 rad на кадр при 60fps. Нормализуем по dt,
+    // чтобы 144Hz-мониторы не крутили фон в 2.4 раза быстрее.
+    const STAR_ROT_SPEED = 0.009;
+    let lastTs = 0;
+    function render(ts: number): void {
         _animFrameId = requestAnimationFrame(render);
-        if (_starfieldPoints) _starfieldPoints.rotation.y += 0.00015;
+        const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.1) : 0.016;
+        lastTs = ts;
+        if (_starfieldPoints) _starfieldPoints.rotation.y += STAR_ROT_SPEED * dt;
         _renderer!.render(_currentScene!.scene, _currentScene!.camera);
     }
-    render();
+    _animFrameId = requestAnimationFrame(render);
 }
 
 function _onResize(): void {

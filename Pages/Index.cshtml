@@ -76,7 +76,7 @@
 </div>
 
 @section Scripts {
-    <script>
+    <script nonce="@KosmosCore.Helpers.CspNonce.Value(ViewContext.HttpContext)">
         document.addEventListener("DOMContentLoaded", function () {
             tsParticles.load("particles-js", {
                 fullScreen: { enable: false },

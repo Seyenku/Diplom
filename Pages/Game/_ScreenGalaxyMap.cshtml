@@ -14,19 +14,19 @@
 
             <!-- Backdrop (только в mobile-режиме за панелью) -->
             <div id="nebula-backdrop" class="nebula-backdrop hidden"
-                 onclick="window._galaxyMap?.collapseNebula()"
+                 data-action="galaxyMap.collapseNebula"
                  aria-hidden="true"></div>
 
             <!-- FAB-стек для свёрнутого режима на mobile (когда панель полностью скрыта).
                  Содержит кнопку «список планет» + кнопку «Полёт» в одной группе. -->
             <div id="nebula-fab-stack" class="nebula-fab-stack hidden">
                 <button id="nebula-fab-fly" class="nebula-fab nebula-fab--fly" type="button"
-                        onclick="window._galaxyMap?.flyToRegion()"
+                        data-action="galaxyMap.flyToRegion"
                         aria-label="Перейти к полёту">
                     <span class="nebula-fab-icon">🚀</span>
                 </button>
                 <button id="nebula-fab" class="nebula-fab" type="button"
-                        onclick="window._galaxyMap?.expandNebula()"
+                        data-action="galaxyMap.expandNebula"
                         aria-label="Открыть список планет">
                     <span class="nebula-fab-icon" id="nebula-fab-icon">📋</span>
                     <span class="nebula-fab-count" id="nebula-fab-count">0</span>
@@ -53,7 +53,7 @@
                         <span id="nebula-info-crystal" class="nebula-info-stat">💎 Кристаллы: —</span>
                         <span id="nebula-info-planets" class="nebula-info-stat">🪐 Планет: —</span>
                     </div>
-                    <button id="btn-nebula-fly" class="btn-game btn-primary nebula-fly-btn" onclick="window._galaxyMap?.flyToRegion()">
+                    <button id="btn-nebula-fly" class="btn-game btn-primary nebula-fly-btn" data-action="galaxyMap.flyToRegion">
                         🚀 Полёт
                     </button>
                     <!-- Сетка планет региона -->

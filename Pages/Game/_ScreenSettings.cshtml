@@ -9,7 +9,7 @@
                 <p class="settings-pagesubtitle">Звук, графика, управление, доступность</p>
             </div>
             <button type="button" class="settings-save-pill"
-                    onclick="window._settings?.saveAndApply()">
+                    data-action="settings.saveAndApply">
                 Применить и сохранить
             </button>
         </header>
@@ -29,7 +29,7 @@
                     <div class="settings-range-wrap">
                         <input type="range" class="settings-range" id="setting-sound"
                                min="0" max="100" value="70"
-                               oninput="window._settings?.update('soundVolume', this.value); document.getElementById('setting-sound-val').textContent = this.value + '%';" />
+                               data-setting-key="soundVolume" data-setting-display="setting-sound-val" />
                         <span class="settings-range-value" id="setting-sound-val">70%</span>
                     </div>
                 </div>
@@ -39,7 +39,7 @@
                     <div class="settings-range-wrap">
                         <input type="range" class="settings-range" id="setting-music"
                                min="0" max="100" value="50"
-                               oninput="window._settings?.update('musicVolume', this.value); document.getElementById('setting-music-val').textContent = this.value + '%';" />
+                               data-setting-key="musicVolume" data-setting-display="setting-music-val" />
                         <span class="settings-range-value" id="setting-music-val">50%</span>
                     </div>
                 </div>
@@ -55,7 +55,7 @@
                 <div class="settings-row">
                     <label class="settings-row-label" for="setting-graphics">Качество графики</label>
                     <select id="setting-graphics" class="settings-select"
-                            onchange="window._settings?.update('graphicsQuality', this.value)">
+                            data-action-change="settings.update" data-arg="graphicsQuality" data-pass="value">
                         <option value="low">Низкое</option>
                         <option value="medium" selected>Среднее</option>
                         <option value="high">Высокое</option>
@@ -66,7 +66,7 @@
                     <label class="settings-row-label" for="setting-bloom">Свечение (Bloom)</label>
                     <label class="settings-switch" for="setting-bloom">
                         <input type="checkbox" id="setting-bloom" checked
-                               onchange="window._settings?.update('useBloom', this.checked)" />
+                               data-action-change="settings.update" data-arg="useBloom" data-pass="checked" />
                         <span class="settings-switch-track"></span>
                     </label>
                 </div>
@@ -82,9 +82,9 @@
                 <div class="settings-row">
                     <label class="settings-row-label" for="setting-controls">Способ ввода</label>
                     <select id="setting-controls" class="settings-select"
-                            onchange="window._settings?.update('controlScheme', this.value)">
-                        <option value="keyboard" selected>Клавиатура (WASD)</option>
-                        <option value="mouse">Мышь / тач</option>
+                            data-action-change="settings.update" data-arg="controlScheme" data-pass="value">
+                        <option value="keyboard" selected>Клавиатура / джойстик</option>
+                        <option value="mouse">Мышь / тач по экрану</option>
                     </select>
                 </div>
 
@@ -94,27 +94,27 @@
                         <div class="settings-keybind">
                             <span class="settings-keybind-label">Вперёд</span>
                             <button type="button" class="settings-keybind-btn" id="bind-up"
-                                    onclick="window._settings?.startBind('up')">W</button>
+                                    data-action="settings.startBind" data-arg="up">W</button>
                         </div>
                         <div class="settings-keybind">
                             <span class="settings-keybind-label">Назад</span>
                             <button type="button" class="settings-keybind-btn" id="bind-down"
-                                    onclick="window._settings?.startBind('down')">S</button>
+                                    data-action="settings.startBind" data-arg="down">S</button>
                         </div>
                         <div class="settings-keybind">
                             <span class="settings-keybind-label">Влево</span>
                             <button type="button" class="settings-keybind-btn" id="bind-left"
-                                    onclick="window._settings?.startBind('left')">A</button>
+                                    data-action="settings.startBind" data-arg="left">A</button>
                         </div>
                         <div class="settings-keybind">
                             <span class="settings-keybind-label">Вправо</span>
                             <button type="button" class="settings-keybind-btn" id="bind-right"
-                                    onclick="window._settings?.startBind('right')">D</button>
+                                    data-action="settings.startBind" data-arg="right">D</button>
                         </div>
                         <div class="settings-keybind">
                             <span class="settings-keybind-label">Ускорение</span>
                             <button type="button" class="settings-keybind-btn" id="bind-boost"
-                                    onclick="window._settings?.startBind('boost')">Space</button>
+                                    data-action="settings.startBind" data-arg="boost">Space</button>
                         </div>
                     </div>
                 </div>
@@ -132,7 +132,7 @@
                     <div class="settings-range-wrap">
                         <input type="range" class="settings-range" id="setting-uiscale"
                                min="80" max="130" value="100"
-                               oninput="window._settings?.update('uiScale', this.value / 100); document.getElementById('setting-uiscale-val').textContent = this.value + '%';" />
+                               data-setting-key="uiScale" data-setting-display="setting-uiscale-val" data-setting-scale="0.01" />
                         <span class="settings-range-value" id="setting-uiscale-val">100%</span>
                     </div>
                 </div>

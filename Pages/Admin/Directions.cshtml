@@ -117,7 +117,7 @@
                             <td>@item.YearsEduc г.</td>
                             <td class="admin-table-actions">
                                 <a class="admin-icon-btn" asp-page="/Admin/Directions" asp-route-editId="@item.ProgramId" title="Редактировать">✎</a>
-                                <form method="post" asp-page-handler="Delete" asp-route-programId="@item.ProgramId" onsubmit="return confirm('Удалить направление?');">
+                                <form method="post" asp-page-handler="Delete" asp-route-programId="@item.ProgramId" data-confirm-submit="Удалить направление?">
                                     <button type="submit" class="admin-icon-btn admin-icon-btn--danger" title="Удалить">×</button>
                                 </form>
                             </td>

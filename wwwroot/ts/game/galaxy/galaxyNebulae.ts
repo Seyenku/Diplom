@@ -10,20 +10,24 @@ import { getProfile, getQualityLevel } from '../qualityPresets.js';
 export interface GalaxyNebulaeState {
     textureCache: Map<string, THREE.CanvasTexture>;
     meshes: Record<ClusterType, THREE.Group>;
+    /** Кэш групп туманностей для O(1) обхода в updateNebulae без Object.values per frame. */
+    meshList: THREE.Group[];
 }
 
 export function initNebulaeState(): GalaxyNebulaeState {
     return {
         textureCache: new Map(),
         meshes: {} as Record<ClusterType, THREE.Group>,
+        meshList: [],
     };
 }
 
 export function disposeNebulae(state: GalaxyNebulaeState, scene: THREE.Scene): void {
-    Object.values(state.meshes).forEach(group => scene.remove(group));
+    state.meshList.forEach(group => scene.remove(group));
     state.textureCache.forEach(tex => tex.dispose());
     state.textureCache.clear();
     state.meshes = {} as Record<ClusterType, THREE.Group>;
+    state.meshList = [];
 }
 
 export function buildNebulae(
@@ -166,10 +170,11 @@ export function buildNebulae(
             const ellipseWidth = 80;
             const ellipseHeight = 35;
             
+            // speed теперь в рад/сек (раньше — рад/кадр @60fps, домножили на 60).
             const layersConfig = [
-                { scaleX: ellipseWidth,       scaleY: ellipseHeight,       opacity: 0.45, speed: 0.002 },
-                { scaleX: ellipseWidth * 0.8, scaleY: ellipseHeight * 0.8, opacity: 0.30, speed: -0.003 },
-                { scaleX: ellipseWidth * 0.5, scaleY: ellipseHeight * 0.5, opacity: 0.20, speed: 0.005 }
+                { scaleX: ellipseWidth,       scaleY: ellipseHeight,       opacity: 0.45, speed:  0.12 },
+                { scaleX: ellipseWidth * 0.8, scaleY: ellipseHeight * 0.8, opacity: 0.30, speed: -0.18 },
+                { scaleX: ellipseWidth * 0.5, scaleY: ellipseHeight * 0.5, opacity: 0.20, speed:  0.30 }
             ];
 
             layersConfig.forEach((cfg) => {
@@ -301,22 +306,43 @@ export function buildNebulae(
 
         scene.add(group);
         state.meshes[clusterId] = group;
+        state.meshList.push(group);
     }
 }
 
 export function updateNebulae(
     state: GalaxyNebulaeState,
     time: number,
+    dt: number,
     cameraState: string,
     focusedCluster: ClusterType | null
 ): void {
-    for (const group of Object.values(state.meshes)) {
-        group.rotation.y += 0.001;
-        
+    // 0.06 rad/sec ≈ 0.001 rad/кадр при 60fps (старое поведение).
+    const GROUP_ROT_SPEED = 0.06;
+    const SPARKS_ROT_SPEED = 0.18; // 0.003 рад/кадр @60fps
+    // После ~1 сек невидимости перестаём обновлять children'ов — материалы уже
+    // полностью затухли, дальнейший лерп ничего не меняет.
+    const SETTLED_THRESHOLD_FRAMES = 60;
+    for (let i = 0; i < state.meshList.length; i++) {
+        const group = state.meshList[i];
+        group.rotation.y += GROUP_ROT_SPEED * dt;
+
         const clusterId = group.userData.clusterId as ClusterType;
         const isFocused = cameraState === 'focused' && focusedCluster === clusterId;
         const isOverview = cameraState === 'overview';
-        const targetOpacityMultiplier = (isOverview || isFocused) ? 1.0 : 0.05;
+        const isVisible = isOverview || isFocused;
+        const targetOpacityMultiplier = isVisible ? 1.0 : 0.05;
+
+        // Skip-logic: невидимая туманность через 60 кадров после исчезновения
+        // полностью «осела» — не трогаем pulse/lerp/uniforms.
+        const ud = group.userData as Record<string, unknown>;
+        if (isVisible) {
+            ud._invisibleFrames = 0;
+        } else {
+            const n = ((ud._invisibleFrames as number) ?? 0) + 1;
+            ud._invisibleFrames = n;
+            if (n > SETTLED_THRESHOLD_FRAMES) continue;
+        }
 
         for (const child of group.children) {
             const ud = child.userData as Record<string, unknown>;
@@ -369,8 +395,8 @@ export function updateNebulae(
                 child.children.forEach(layer => {
                     const mesh = layer as THREE.Mesh;
                     const layerUd = mesh.userData;
-                    mesh.rotation.z += layerUd.rotSpeed;
-                    
+                    mesh.rotation.z += (layerUd.rotSpeed as number) * dt;
+
                     const mat = mesh.material as THREE.MeshBasicMaterial;
                     const finalOp = (layerUd.baseOpacity as number) * finalOpRatio;
                     mat.opacity += ((finalOp * targetOpacityMultiplier) - mat.opacity) * 0.05;
@@ -380,7 +406,7 @@ export function updateNebulae(
                 const baseOp = 0.45 + Math.sin(time * 0.6) * 0.05;
                 mat.opacity += ((baseOp * targetOpacityMultiplier) - mat.opacity) * 0.05;
             } else if (ud.type === 'sparks') {
-                (child as THREE.Points).rotation.y += 0.003;
+                (child as THREE.Points).rotation.y += SPARKS_ROT_SPEED * dt;
                 const mat = ((child as THREE.Points).material as THREE.PointsMaterial);
                 const baseOp = 0.6;
                 mat.opacity += ((baseOp * targetOpacityMultiplier) - mat.opacity) * 0.05;

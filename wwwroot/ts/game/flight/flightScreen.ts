@@ -10,12 +10,13 @@ import { GameStore, CrystalType, ClusterType } from '../types.js';
 import { getProfile, onQualityChange, offQualityChange, QualityProfile } from '../qualityPresets.js';
 import { CRYSTAL_COLORS } from '../clusterConfig.js';
 import { playSfx, playMusic } from '../audioManager.js';
-import { isBoostPressed } from '../inputManager.js';
+import { isBoostPressed, attachTouchControls, detachTouchControls } from '../inputManager.js';
 import { getDevice } from '../deviceProfile.js';
 
 import { FLIGHT_SHIP_CONFIG, updateShipPhysics } from '../systems/shipController.js';
 import { loadShipGroup } from '../systems/shipLoader.js';
 import { createComposer, disposeComposer } from '../systems/postProcessing.js';
+import { disposeParticlePool } from '../systems/particleEffects.js';
 
 import { FlightVfxState, initVfx, updateVfx, disposeVfx } from './flightVfx.js';
 import { SpawnerState, initSpawner, spawnWave, disposeSpawner, FIELD_W, FIELD_H } from './flightSpawner.js';
@@ -80,6 +81,11 @@ const WAVE_COUNT = 3;
 const BASE_SHIELD = 100;
 const BASE_OBJ_SPEED = 25;
 const COMBO_TIMEOUT = 2.5;
+
+// Камера мягко привязана к кораблю: оффсет относительно его позиции и
+// скорость интерполяции в 1/сек. Меньше lerp → сильнее лаг → ярче дрейф.
+const CAMERA_OFFSET = new THREE.Vector3(0, 2, 8);
+const CAMERA_LERP_SPEED = 3.5;
 
 // Длительность задаётся LiveOps-настройкой flight_duration_s.
 // Подставляется в init(); fallback 60 сек.
@@ -197,6 +203,18 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     // Подсказки управления — рендерим под актуальную схему и горячие клавиши
     Ui.renderControlHints(store.settings ?? null);
 
+    // Тач-контролы подключаем только при схеме «Клавиатура / джойстик».
+    // При «Мышь / тач» активируется point-to-fly через касания canvas — иначе
+    // джойстик и тач-курсор будут конкурировать. CSS-media также скрывает
+    // элементы на десктопе. Атрибут data-scheme на HUD позволяет CSS показать
+    // или скрыть джойстик соответственно.
+    const scheme = store.settings?.controlScheme ?? 'keyboard';
+    const hudEl = document.getElementById('flight-hud');
+    if (hudEl) hudEl.dataset.scheme = scheme;
+    if (scheme === 'keyboard') {
+        attachTouchControls('flight-joystick', 'flight-joystick-stick', 'flight-boost-btn');
+    }
+
     playMusic('ambient_flight');
     _startAccelerating();
 }
@@ -284,6 +302,16 @@ function _easeInQuad(t: number): number {
     return t * t;
 }
 
+/** Мягко тянет камеру к позиции корабля + CAMERA_OFFSET по X/Y.
+ *  Z и направление взгляда не трогаем — это «спина-камера». */
+function _updateCameraFollow(cam: THREE.PerspectiveCamera, ship: THREE.Group, rawDt: number): void {
+    const k = Math.min(1, rawDt * CAMERA_LERP_SPEED);
+    const targetX = ship.position.x + CAMERA_OFFSET.x;
+    const targetY = ship.position.y + CAMERA_OFFSET.y;
+    cam.position.x += (targetX - cam.position.x) * k;
+    cam.position.y += (targetY - cam.position.y) * k;
+}
+
 // Frame-rate cap для слабых устройств — 30 FPS вместо 60 (двое-кратная
 // экономия CPU/GPU). На обычных и десктопе работает на нативной частоте.
 const FRAME_TARGET_MS_LOW = 33;
@@ -332,6 +360,7 @@ function _gameLoop(now: number): void {
         // Рендер
         const scene = window.__threeScene;
         const cam = (window as any).__threeCamera as THREE.PerspectiveCamera | undefined;
+        if (cam && _shipModel) _updateCameraFollow(cam, _shipModel, rawDt);
         if (_composer) {
             _composer.render();
         } else if (globalRenderer && scene && cam) {
@@ -434,7 +463,9 @@ function _gameLoop(now: number): void {
         const profile = getProfile();
         const waveChance = profile.spawnChancePerFrame * WAVE_SPAWN_MULT[_currentWave];
         if (Math.random() < waveChance && _spawnerState) {
-            spawnWave(_spawnerState, window.__threeScene!, _currentWave, _asteroids, _crystals, _bonuses);
+            const sx = _shipModel?.position.x ?? 0;
+            const sy = _shipModel?.position.y ?? 0;
+            spawnWave(_spawnerState, window.__threeScene!, _currentWave, sx, sy, _asteroids, _crystals, _bonuses);
         }
     }
 
@@ -444,6 +475,7 @@ function _gameLoop(now: number): void {
 
     const scene = window.__threeScene;
     const cam = (window as any).__threeCamera as THREE.PerspectiveCamera | undefined;
+    if (cam && _shipModel) _updateCameraFollow(cam, _shipModel, rawDt);
     if (_composer) {
         _composer.render();
     } else if (globalRenderer && scene && cam) {
@@ -459,64 +491,88 @@ function _moveObjects(dt: number): void {
     const scene = window.__threeScene;
     if (!scene) return;
 
-    _asteroids.forEach(obj => {
-        obj.position.z += speed;
-        obj.rotation.x += dt * 0.5 * waveMult;
-        obj.rotation.y += dt * 0.3 * waveMult;
-    });
-
     const sp = _shipModel?.position;
-    _crystals.forEach(obj => {
+    const astRotX = dt * 0.5 * waveMult;
+    const astRotY = dt * 0.3 * waveMult;
+
+    // Астероиды: движение + вращение (магнит не нужен).
+    for (let i = 0; i < _asteroids.length; i++) {
+        const obj = _asteroids[i];
+        obj.position.z += speed;
+        obj.rotation.x += astRotX;
+        obj.rotation.y += astRotY;
+    }
+
+    // Кристаллы: движение + магнит до sqrt по squared distance.
+    const cMagnetR = _scanRange * 3;
+    const cMagnetRSq = cMagnetR * cMagnetR;
+    for (let i = 0; i < _crystals.length; i++) {
+        const obj = _crystals[i];
         obj.position.z += speed;
         obj.rotation.x += dt * 1.2;
         obj.rotation.y += dt * 0.8;
-
-        if (sp) {
-            const magnetRadius = _scanRange * 3;
-            const dx = sp.x - obj.position.x;
-            const dy = sp.y - obj.position.y;
-            const dz = sp.z - obj.position.z;
-            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            if (dist < magnetRadius && dist > 0.1) {
-                const pull = (1 - dist / magnetRadius) * 8 * dt;
-                obj.position.x += dx / dist * pull;
-                obj.position.y += dy / dist * pull;
-                obj.position.z += dz / dist * pull;
-            }
+        if (!sp) continue;
+        const dx = sp.x - obj.position.x;
+        const dy = sp.y - obj.position.y;
+        const dz = sp.z - obj.position.z;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        if (distSq < cMagnetRSq && distSq > 0.01) {
+            const dist = Math.sqrt(distSq);
+            const pull = (1 - dist / cMagnetR) * 8 * dt / dist;
+            obj.position.x += dx * pull;
+            obj.position.y += dy * pull;
+            obj.position.z += dz * pull;
         }
-    });
+    }
 
-    _bonuses.forEach(obj => {
+    // Бонусы: то же, но без Vector3 clone/normalize.
+    const bMagnetR = _scanRange * 3.5;
+    const bMagnetRSq = bMagnetR * bMagnetR;
+    for (let i = 0; i < _bonuses.length; i++) {
+        const obj = _bonuses[i];
         obj.position.z += speed;
         obj.rotation.x += dt * 0.8;
         obj.rotation.y += dt * 1.0;
-        if (sp) {
-            const magnetRadius = _scanRange * 3.5;
-            const dist = obj.position.distanceTo(sp);
-            if (dist < magnetRadius && dist > 0.1) {
-                const pull = (1 - dist / magnetRadius) * 10 * dt;
-                const dir = sp.clone().sub(obj.position).normalize();
-                obj.position.add(dir.multiplyScalar(pull));
-            }
+        if (!sp) continue;
+        const dx = sp.x - obj.position.x;
+        const dy = sp.y - obj.position.y;
+        const dz = sp.z - obj.position.z;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        if (distSq < bMagnetRSq && distSq > 0.01) {
+            const dist = Math.sqrt(distSq);
+            const pull = (1 - dist / bMagnetR) * 10 * dt / dist;
+            obj.position.x += dx * pull;
+            obj.position.y += dy * pull;
+            obj.position.z += dz * pull;
         }
-    });
+    }
 
-    _asteroids = _asteroids.filter(a => {
+    // In-place свёртка через swap-pop вместо filter (без аллокации новых массивов).
+    for (let i = _asteroids.length - 1; i >= 0; i--) {
+        const a = _asteroids[i];
         if (a.position.z > 10) {
             scene.remove(a);
             if (!(a as any).userData._hit) _dodged++;
-            return false;
+            _asteroids[i] = _asteroids[_asteroids.length - 1];
+            _asteroids.pop();
         }
-        return true;
-    });
-    _crystals = _crystals.filter(c => {
-        if (c.position.z > 10) { scene.remove(c); return false; }
-        return true;
-    });
-    _bonuses = _bonuses.filter(b => {
-        if (b.position.z > 10) { scene.remove(b); return false; }
-        return true;
-    });
+    }
+    for (let i = _crystals.length - 1; i >= 0; i--) {
+        const c = _crystals[i];
+        if (c.position.z > 10) {
+            scene.remove(c);
+            _crystals[i] = _crystals[_crystals.length - 1];
+            _crystals.pop();
+        }
+    }
+    for (let i = _bonuses.length - 1; i >= 0; i--) {
+        const b = _bonuses[i];
+        if (b.position.z > 10) {
+            scene.remove(b);
+            _bonuses[i] = _bonuses[_bonuses.length - 1];
+            _bonuses.pop();
+        }
+    }
 }
 
 function _endFlight(): void {
@@ -582,6 +638,13 @@ function _cleanupState(): void {
         _shipModel.rotation.set(-Math.PI / 2, 0, 0);
         _shipModel.visible = true;
     }
+
+    // Камера тоже едет вместе с кораблём, поэтому при рестарте/чистке
+    // возвращаем её к стартовому оффсету над мировым нулём.
+    const cam = (window as any).__threeCamera as THREE.PerspectiveCamera | undefined;
+    if (cam) {
+        cam.position.set(CAMERA_OFFSET.x, CAMERA_OFFSET.y, CAMERA_OFFSET.z);
+    }
 }
 
 function _cleanup(): void {
@@ -591,6 +654,9 @@ function _cleanup(): void {
 
     // Подсказки управления скрываем при выходе из экрана
     Ui.setControlHintsVisible(false);
+
+    // Отключаем тач-контролы (handlers + сбрасываем joystick state)
+    detachTouchControls();
 
     if (globalRenderer) {
         globalRenderer.domElement.style.transform = '';
@@ -609,8 +675,9 @@ function _cleanup(): void {
     if (scene) {
         if (_shipModel) scene.remove(_shipModel);
         if (_vfxState) disposeVfx(_vfxState, scene);
+        disposeParticlePool(scene);
     }
-    
+
     if (_spawnerState) disposeSpawner(_spawnerState);
     if (_composer) disposeComposer(_composer);
 

@@ -8,7 +8,7 @@ using KosmosCore.Data.Repositories.Interfaces;
 
 namespace KosmosCore.Data.Repositories.Implementations;
 
-public class GameSettingsRepository(IDbConnection db, IMemoryCache cache, ILogger<GameSettingsRepository> logger) : IGameSettingsRepository
+public class GameSettingsRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, ILogger<GameSettingsRepository> logger) : IGameSettingsRepository
 {
     private const string CacheKey = "game_settings";
 
@@ -20,6 +20,7 @@ public class GameSettingsRepository(IDbConnection db, IMemoryCache cache, ILogge
         try
         {
             const string sql = "SELECT KeyName, Value FROM dbo.GameSettings";
+            using var db = dbFactory();
             var rows = await db.QueryAsync<GameSetting>(new CommandDefinition(sql, cancellationToken: ct));
 
             var dict = rows.ToDictionary(r => r.KeyName, r => r.Value);

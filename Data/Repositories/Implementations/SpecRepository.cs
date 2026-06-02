@@ -10,7 +10,7 @@ using KosmosCore.Data.Repositories.Interfaces;
 
 namespace KosmosCore.Data.Repositories.Implementations;
 
-public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRepository> logger) : ISpecRepository
+public class SpecRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, ILogger<SpecRepository> logger) : ISpecRepository
 {
     private const string CacheKey = "spec_directions";
 
@@ -58,6 +58,7 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
                 JOIN dbo.EduForms ef ON p.FormId = ef.Id
                 ORDER BY bs.Code, ef.Name";
 
+            using var db = dbFactory();
             var programs = (await db.QueryAsync<SpecDirectionDto>(
                 new CommandDefinition(sqlPrograms, cancellationToken: ct))).ToList();
 
@@ -109,6 +110,7 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
     public async Task<IReadOnlyList<EduForm>> GetEduFormsAsync(CancellationToken ct = default)
     {
         const string sql = "SELECT Id, Name FROM dbo.EduForms ORDER BY Id";
+        using var db = dbFactory();
         var result = await db.QueryAsync<EduForm>(
             new CommandDefinition(sql, cancellationToken: ct));
         return result.ToList().AsReadOnly();
@@ -116,7 +118,8 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
 
     public async Task CreateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default)
     {
-        EnsureOpen();
+        using var db = dbFactory();
+        if (db.State != ConnectionState.Open) db.Open();
         using var tx = db.BeginTransaction();
 
         await UpsertBaseSpecAsync(direction.Code, direction.Title, tx, ct);
@@ -140,7 +143,8 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
 
     public async Task UpdateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default)
     {
-        EnsureOpen();
+        using var db = dbFactory();
+        if (db.State != ConnectionState.Open) db.Open();
         using var tx = db.BeginTransaction();
 
         await UpsertBaseSpecAsync(direction.Code, direction.Title, tx, ct);
@@ -175,26 +179,24 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
     public async Task DeleteDirectionAsync(int programId, CancellationToken ct = default)
     {
         const string sql = "DELETE FROM dbo.Programs WHERE Id = @ProgramId";
+        using var db = dbFactory();
         await db.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId }, cancellationToken: ct));
         cache.Remove(CacheKey);
     }
 
-    private void EnsureOpen()
-    {
-        if (db.State != ConnectionState.Open) db.Open();
-    }
-
-    private async Task UpsertBaseSpecAsync(string code, string title, IDbTransaction tx, CancellationToken ct)
+    // Helper'ы получают tx, через tx.Connection достаём IDbConnection — гарантируем,
+    // что все операции внутри транзакции идут по тому же физическому соединению.
+    private static Task UpsertBaseSpecAsync(string code, string title, IDbTransaction tx, CancellationToken ct)
     {
         const string sql = @"
             IF NOT EXISTS (SELECT 1 FROM dbo.BaseSpecializations WHERE Code = @Code)
                 INSERT INTO dbo.BaseSpecializations (Code, Title) VALUES (@Code, @Title);
             ELSE
                 UPDATE dbo.BaseSpecializations SET Title = @Title WHERE Code = @Code;";
-        await db.ExecuteAsync(new CommandDefinition(sql, new { Code = code, Title = title }, tx, cancellationToken: ct));
+        return tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { Code = code, Title = title }, tx, cancellationToken: ct));
     }
 
-    private async Task SyncDisciplinesAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
+    private static async Task SyncDisciplinesAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
     {
         const string sql = @"
             DECLARE @Id INT;
@@ -208,10 +210,10 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
                 INSERT INTO dbo.Program_Disciplines_Map (ProgramId, DisciplineId) VALUES (@ProgramId, @Id);";
 
         foreach (var name in Normalize(names))
-            await db.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
+            await tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
     }
 
-    private async Task SyncSpheresAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
+    private static async Task SyncSpheresAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
     {
         const string sql = @"
             DECLARE @Id INT;
@@ -225,7 +227,7 @@ public class SpecRepository(IDbConnection db, IMemoryCache cache, ILogger<SpecRe
                 INSERT INTO dbo.Program_Spheres_Map (ProgramId, SphereId) VALUES (@ProgramId, @Id);";
 
         foreach (var name in Normalize(names))
-            await db.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
+            await tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
     }
 
     private static IEnumerable<string> Normalize(IEnumerable<string> names) =>

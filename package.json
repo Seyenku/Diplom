@@ -4,8 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "bundle": "node build.mjs",
+    "bundle:prod": "node build.mjs --prod",
+    "build": "npm run typecheck && npm run bundle",
+    "build:prod": "npm run typecheck && npm run bundle:prod",
+    "watch": "node build.mjs --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -21,7 +25,11 @@
   "homepage": "https://github.com/Seyenku/Diplom#readme",
   "devDependencies": {
     "@types/three": "^0.183.1",
+    "esbuild": "^0.28.0",
     "eslint": "^10.2.1",
     "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "three": "^0.183.2"
   }
 }

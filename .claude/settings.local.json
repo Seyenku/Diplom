@@ -10,7 +10,12 @@
       "Bash(Remove-Item \"C:\\\\Users\\\\Ars\\\\source\\\\repos\\\\KosmosCore\\\\wwwroot\\\\ts\\\\game\\\\screens\\\\screenMiniGame.ts\" -ErrorAction Stop)",
       "Bash(Remove-Item \"C:\\\\Users\\\\Ars\\\\source\\\\repos\\\\KosmosCore\\\\Pages\\\\Game\\\\_ScreenMiniGame.cshtml\" -ErrorAction Stop)",
       "Bash(Write-Host \"Deleted\")",
-      "Bash(sqlcmd -S . -d diplom -E -i \"Scripts/migrate_add_texture_key.sql\")"
+      "Bash(sqlcmd -S . -d diplom -E -i \"Scripts/migrate_add_texture_key.sql\")",
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(node build.mjs)",
+      "Bash(node build.mjs --prod)",
+      "Bash(npm run *)"
     ]
   }
 }

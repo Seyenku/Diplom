@@ -14,7 +14,7 @@
                 <p id="geo-probe-status" style="color:#facc15;">🛸 В полёте</p>
             </div>
             <button class="btn-game btn-secondary" style="padding:0.375rem 0.75rem;font-size:0.8rem;"
-                    onclick="window._miniGameGeology?.returnToPlanet()">
+                    data-action="miniGameGeology.returnToPlanet">
                 ← Выйти
             </button>
         </div>
@@ -145,7 +145,7 @@
             </div>
 
             <button id="geo-submit-btn" class="geo-submit-btn" disabled
-                    onclick="window._miniGameGeology?.submitMethod()">
+                    data-action="miniGameGeology.submitMethod">
                 ⛏ Начать бурение
             </button>
         </div>
@@ -177,7 +177,7 @@
         </div>
         <div class="geo-result-actions">
             <button id="geo-btn-return" class="btn-game btn-primary"
-                    onclick="window._miniGameGeology?.returnToPlanet()">
+                    data-action="miniGameGeology.returnToPlanet">
                 ← Вернуться к планете
             </button>
         </div>

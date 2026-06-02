@@ -54,6 +54,16 @@
             <!-- renderControlHints() -->
         </div>
 
+        <!-- Виртуальные тач-контролы: джойстик слева, кнопка ускорения справа.
+             Видны только на touch-устройствах через CSS @@media. -->
+        <div id="flight-joystick" class="flight-joystick" aria-hidden="true">
+            <div id="flight-joystick-stick" class="flight-joystick-stick"></div>
+        </div>
+        <button id="flight-boost-btn" class="flight-boost-btn" type="button"
+                aria-label="Ускорение">
+            <span class="flight-boost-btn-icon">⚡</span>
+        </button>
+
         <!-- Комбо-множитель -->
         <div id="flight-combo" class="flight-combo hidden">×1</div>
     </div>
@@ -94,7 +104,7 @@
 
             <div class="flight-results-actions">
                 <button type="button" class="flight-results-btn flight-results-btn--primary"
-                        onclick="window._flightScreen?.restart()">
+                        data-action="flightScreen.restart">
                     Ещё раз
                 </button>
                 <button type="button" class="flight-results-btn flight-results-btn--secondary"

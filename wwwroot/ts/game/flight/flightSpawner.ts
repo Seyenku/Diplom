@@ -47,11 +47,16 @@ export function initSpawner(crystalColor: number): SpawnerState {
     };
 }
 
-/** Спавнит волну объектов, добавляет их в сцену и в переданные массивы */
+/** Спавнит волну объектов, добавляет их в сцену и в переданные массивы.
+ *  centerX/centerY — точка вокруг которой раскидываются X/Y координаты.
+ *  В бесконечном полёте это позиция корабля: объекты всегда появляются
+ *  «впереди» там, где сейчас игрок, даже если он улетел далеко в сторону. */
 export function spawnWave(
     state: SpawnerState,
     scene: THREE.Scene,
     currentWave: number,
+    centerX: number,
+    centerY: number,
     asteroidsArr: THREE.Object3D[],
     crystalsArr: THREE.Object3D[],
     bonusesArr: THREE.Object3D[]
@@ -70,8 +75,8 @@ export function spawnWave(
         const sizeMax = 1.2 + w * 0.4;
         mesh.scale.setScalar(sizeMin + Math.random() * (sizeMax - sizeMin));
         mesh.position.set(
-            (Math.random() - 0.5) * FIELD_W,
-            (Math.random() - 0.5) * FIELD_H,
+            centerX + (Math.random() - 0.5) * FIELD_W,
+            centerY + (Math.random() - 0.5) * FIELD_H,
             -(FIELD_D * 0.3 + Math.random() * FIELD_D * 0.7)
         );
         scene.add(mesh);
@@ -83,8 +88,8 @@ export function spawnWave(
     for (let i = 0; i < cCount; i++) {
         const mesh = new THREE.Mesh(state.crystalGeo, state.crystalMat);
         mesh.position.set(
-            (Math.random() - 0.5) * FIELD_W,
-            (Math.random() - 0.5) * FIELD_H,
+            centerX + (Math.random() - 0.5) * FIELD_W,
+            centerY + (Math.random() - 0.5) * FIELD_H,
             -(FIELD_D * 0.3 + Math.random() * FIELD_D * 0.7)
         );
         scene.add(mesh);
@@ -96,8 +101,8 @@ export function spawnWave(
         const mesh = new THREE.Mesh(state.crystalGeo, state.megaCrystalMat);
         mesh.scale.setScalar(0.6);
         mesh.position.set(
-            (Math.random() - 0.5) * FIELD_W,
-            (Math.random() - 0.5) * FIELD_H,
+            centerX + (Math.random() - 0.5) * FIELD_W,
+            centerY + (Math.random() - 0.5) * FIELD_H,
             -(FIELD_D * 0.4 + Math.random() * FIELD_D * 0.5)
         );
         (mesh as any).userData._bonusType = 'mega';
@@ -110,8 +115,8 @@ export function spawnWave(
             state.repairMat
         );
         mesh.position.set(
-            (Math.random() - 0.5) * FIELD_W,
-            (Math.random() - 0.5) * FIELD_H,
+            centerX + (Math.random() - 0.5) * FIELD_W,
+            centerY + (Math.random() - 0.5) * FIELD_H,
             -(FIELD_D * 0.4 + Math.random() * FIELD_D * 0.5)
         );
         (mesh as any).userData._bonusType = 'repair';

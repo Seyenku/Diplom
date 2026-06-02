@@ -127,13 +127,19 @@ function _startRenderLoop() {
         return;
     if (_lastSceneName === 'galaxy-map' || _lastSceneName === 'flight')
         return;
-    function render() {
+    // 0.009 rad/sec = 0.00015 rad на кадр при 60fps. Нормализуем по dt,
+    // чтобы 144Hz-мониторы не крутили фон в 2.4 раза быстрее.
+    const STAR_ROT_SPEED = 0.009;
+    let lastTs = 0;
+    function render(ts) {
         _animFrameId = requestAnimationFrame(render);
+        const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.1) : 0.016;
+        lastTs = ts;
         if (_starfieldPoints)
-            _starfieldPoints.rotation.y += 0.00015;
+            _starfieldPoints.rotation.y += STAR_ROT_SPEED * dt;
         _renderer.render(_currentScene.scene, _currentScene.camera);
     }
-    render();
+    _animFrameId = requestAnimationFrame(render);
 }
 function _onResize() {
     if (!_renderer || !_currentScene)

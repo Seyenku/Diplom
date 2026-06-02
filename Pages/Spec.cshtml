@@ -239,7 +239,7 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
-    <script>
+    <script nonce="@KosmosCore.Helpers.CspNonce.Value(ViewContext.HttpContext)">
         (() => {
             const cards = Array.from(document.querySelectorAll('[data-spec-card]'));
             const searchInput = document.getElementById('spec-search');
