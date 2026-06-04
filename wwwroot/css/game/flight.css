@@ -223,13 +223,20 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Touch-controls — виртуальный джойстик + кнопка ускорения
-   ═══════════════════════════════════════════════════════════════════ */
-.flight-joystick,
-.flight-boost-btn {
+   Touch-controls — зоны (без кнопки буста)
+   ═══════════════════════════════════════════════════════════════════
+   Идея: вместо отдельной кнопки ускорения и фиксированной базы джойстика —
+   две полупрозрачные «зоны».
+     • flight-joystick-zone: касание здесь спавнит базу под пальцем, стик
+       следует за движением (floating joystick). При отпускании скрывается.
+     • flight-boost-zone: любое касание-удержание = ускорение. Покрывает
+       весь экран (portrait, кроме joystick-зоны сверху) или правую половину
+       (landscape).
+*/
+.flight-joystick-zone,
+.flight-boost-zone {
     display: none;
     position: absolute;
-    z-index: 40;
     pointer-events: auto;
     touch-action: none;
     user-select: none;
@@ -238,23 +245,60 @@
 }
 
 /* Видимы только на touch-устройствах И только при схеме «Клавиатура / джойстик».
-   При схеме «Мышь / тач» (data-scheme="mouse") тач-pointer-управление активно
-   через касания canvas — джойстик и кнопка спрятаны, чтобы не конфликтовать. */
+   При «Мышь / тач» работает point-to-fly через canvas, зоны скрыты. */
 @media (hover: none) and (pointer: coarse) {
-    .flight-hud[data-scheme="keyboard"] .flight-joystick,
-    .flight-hud[data-scheme="keyboard"] .flight-boost-btn {
-        display: flex;
+    .flight-hud[data-scheme="keyboard"] .flight-joystick-zone,
+    .flight-hud[data-scheme="keyboard"] .flight-boost-zone,
+    .flight-hud[data-scheme="keyboard"] .flight-boost-hint {
+        display: block;
     }
 }
 
-/* Joystick base — круг слева внизу */
-.flight-joystick {
-    bottom: calc(1.25rem + env(safe-area-inset-bottom));
-    left:   calc(1.25rem + env(safe-area-inset-left));
-    width:  120px;
+/* Boost-zone сидит на всём «полотне» с низким z-index. Joystick-zone
+   накрывает свою область с более высоким z-index — первой ловит pointerdown
+   в перекрытии. */
+.flight-boost-zone {
+    inset: 0;
+    z-index: 5;
+    background: transparent;
+}
+
+/* Portrait: вся область кроме joystick-зоны (joystick перекрывает bottom-left). */
+.flight-joystick-zone {
+    z-index: 11;
+    /* Bottom-left большая зона под большой палец. Размеры подобраны так,
+       чтобы не перекрывать HUD сверху и оставить простор для buoost-зоны. */
+    bottom: 0;
+    left: 0;
+    width: 60vw;
+    height: 55vh;
+    background: transparent;
+}
+
+/* Landscape: левая половина = joystick, правая = boost (не перекрываются). */
+@media (orientation: landscape) {
+    .flight-joystick-zone {
+        bottom: 0;
+        left: 0;
+        width: 50vw;
+        height: 100%;
+    }
+    .flight-boost-zone {
+        inset: 0 0 0 50vw;
+    }
+}
+
+/* База + стик: видны только пока зона активна (data-active="true"). */
+.flight-joystick-base {
+    position: absolute;
+    width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.7));
+    /* Центр базы выставляется JS-ом через CSS-переменные. */
+    left: var(--base-x, -1000px);
+    top:  var(--base-y, -1000px);
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.7));
     border: 2px solid rgba(79, 195, 247, 0.35);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -262,11 +306,15 @@
         0 10px 28px rgba(0, 0, 0, 0.5),
         inset 0 1px 0 rgba(255, 255, 255, 0.06),
         0 0 24px rgba(79, 195, 247, 0.18);
-    align-items: center;
-    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 120ms ease-out;
 }
 
-/* Стик внутри */
+.flight-joystick-zone[data-active="true"] .flight-joystick-base {
+    opacity: 1;
+}
+
 .flight-joystick-stick {
     position: absolute;
     top: 50%;
@@ -280,74 +328,49 @@
         0 6px 16px rgba(79, 195, 247, 0.45),
         inset 0 2px 6px rgba(255, 255, 255, 0.3);
     transform: translate(-50%, -50%);
-    transition: background 0.15s ease;
     pointer-events: none;
 }
 
-.flight-joystick:active .flight-joystick-stick {
-    background: linear-gradient(135deg, #7dd3fc, #a5b4fc);
-}
-
-/* Boost button — круг справа внизу */
-.flight-boost-btn {
-    bottom: calc(1.5rem + env(safe-area-inset-bottom));
-    right:  calc(1.5rem + env(safe-area-inset-right));
-    width:  88px;
-    height: 88px;
-    border-radius: 50%;
-    border: 2px solid rgba(251, 191, 36, 0.5);
-    background: radial-gradient(circle at 35% 30%,
-        rgba(251, 191, 36, 0.95),
-        rgba(245, 158, 11, 0.9));
-    color: #1a1208;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
+/* Подсказка о бусте — показывается первые ~3 сек или пока игрок не использовал. */
+.flight-boost-hint {
+    display: none;
+    position: absolute;
+    z-index: 12;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    color: #fbbf24;
     font-family: var(--font-display);
-    font-size: 2rem;
-    box-shadow:
-        0 8px 24px rgba(251, 146, 60, 0.45),
-        inset 0 2px 6px rgba(255, 255, 255, 0.35),
-        0 0 22px rgba(251, 191, 36, 0.3);
-    transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.flight-boost-btn-icon {
-    line-height: 1;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
     pointer-events: none;
-    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 16px rgba(251, 191, 36, 0.2);
+    animation: flight-boost-hint-pulse 1800ms ease-in-out infinite;
 }
 
-.flight-boost-btn--active {
-    transform: scale(0.92);
-    background: radial-gradient(circle at 35% 30%,
-        rgba(254, 215, 90, 1),
-        rgba(251, 146, 60, 0.95));
-    box-shadow:
-        0 4px 16px rgba(251, 146, 60, 0.65),
-        inset 0 2px 6px rgba(255, 255, 255, 0.5),
-        0 0 32px rgba(251, 191, 36, 0.55);
+@media (orientation: landscape) {
+    .flight-boost-hint {
+        top: auto;
+        bottom: 1rem;
+        left: 75vw; /* центр правой половины */
+    }
 }
 
-/* Landscape mobile — компактнее и ближе к краям */
-@media (orientation: landscape) and (max-height: 540px) {
-    .flight-joystick {
-        width: 96px;
-        height: 96px;
-        bottom: calc(0.75rem + env(safe-area-inset-bottom));
-        left:   calc(0.75rem + env(safe-area-inset-left));
-    }
-    .flight-joystick-stick {
-        width: 44px;
-        height: 44px;
-    }
-    .flight-boost-btn {
-        width: 72px;
-        height: 72px;
-        font-size: 1.6rem;
-        bottom: calc(0.75rem + env(safe-area-inset-bottom));
-        right:  calc(0.75rem + env(safe-area-inset-right));
-    }
+@keyframes flight-boost-hint-pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1);    opacity: 0.85; }
+    50%      { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
+}
+
+/* Подсказка скрывается после первого активного буста (JS снимает .flight-boost-hint--show). */
+.flight-boost-hint--hidden {
+    display: none !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

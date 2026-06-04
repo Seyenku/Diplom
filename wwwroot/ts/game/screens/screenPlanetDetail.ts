@@ -113,7 +113,12 @@ window._planetDetail = {
             const cost = planet.unlockCost ?? 0;
             const bal = ((store.player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
             if (bal < cost) {
-                (window as any).showNotification(`Недостаточно кристаллов для попытки открытия.\nНужно: ${cost}, есть: ${bal}.`, 'error');
+                const meta = CLUSTER_META[crystalType];
+                const label = meta?.shortLabel ?? 'этого типа';
+                (window as any).showNotification(
+                    `Недостаточно кристаллов «${label}»!\nНужно: ${cost}, есть: ${bal}.\nСоберите кристаллы в полёте через карту галактики.`,
+                    'warning'
+                );
                 return;
             }
             dispatch('SPEND_CRYSTALS', { spent: { [crystalType]: cost } as Record<CrystalType, number> });
@@ -585,31 +590,28 @@ function _updateUnlockButton(
     const playerCrystals = ((player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
     const emoji = CLUSTER_META[crystalType]?.emoji ?? '💎';
 
+    // Кнопка обрабатывается через data-action="planetDetail.startMiniGame"
+    // (см. _ScreenPlanetDetail.cshtml + делегированный listener в main.ts).
+    // Не назначаем btn.onclick — иначе оба обработчика срабатывают
+    // одновременно и пользователь видит два уведомления (или дважды
+    // тратит кристаллы при достаточном балансе).
     if (discovered) {
-        // Планета открыта — просто «пробная посадка» (старая мини-игра)
         btn.disabled = false;
         btn.style.opacity = '1';
         btn.title = '';
         btn.textContent = '🎮 Пробная посадка';
-        btn.onclick = () => window._planetDetail?.startMiniGame();
     } else if (playerCrystals >= cost) {
-        // Достаточно кристаллов — предлагаем исследование
         btn.disabled = false;
         btn.style.opacity = '1';
         btn.title = `Потратить ${cost} ${emoji} и начать исследование`;
         btn.textContent = `🚀 Исследовать — ${cost} ${emoji}`;
-        btn.onclick = () => window._planetDetail?.startMiniGame();
     } else {
-        // Недостаточно кристаллов
+        // Не нажимаем disabled, чтобы пользователь мог получить уведомление,
+        // но визуально отмечаем «недоступно».
         btn.disabled = false;
         btn.style.opacity = '0.5';
         btn.title = `Нужно ещё ${cost - playerCrystals} кристаллов`;
         btn.textContent = `🔒 Исследовать — ${cost} ${emoji}`;
-        btn.onclick = () => {
-            const meta = CLUSTER_META[crystalType];
-            const label = meta?.shortLabel ?? 'этого типа';
-            (window as any).showNotification(`Недостаточно кристаллов «${label}»!\nНужно: ${cost}, есть: ${playerCrystals}.\nСоберите кристаллы в полёте через карту галактики.`, 'warning');
-        };
     }
 }
 

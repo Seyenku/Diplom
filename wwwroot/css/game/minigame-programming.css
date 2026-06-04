@@ -527,3 +527,49 @@
         min-height: 150px;
     }
 }
+
+/* Mobile portrait — узкий экран. */
+@media (max-width: 480px) {
+    .prog-header {
+        padding: 0.5rem 0.75rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .prog-header-title { font-size: 0.7rem; flex-basis: 100%; text-align: center; }
+    .prog-header-info {
+        gap: 0.75rem;
+        width: 100%;
+        justify-content: space-between;
+    }
+    .prog-header-stat p:first-child { font-size: 0.55rem; }
+    .prog-header-stat p:last-child  { font-size: 0.85rem; }
+
+    .prog-terminal { min-height: 120px; font-size: 0.7rem; }
+
+    .prog-submit-btn {
+        min-height: 48px;
+        font-size: 0.95rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .prog-cutscene-text h2 { font-size: 1rem; }
+    .prog-cutscene-text p  { font-size: 0.85rem; line-height: 1.4; }
+    #prog-cutscene-ui      { padding: 1.25rem 1rem; }
+
+    #prog-phase-result   { padding: 1.5rem 1rem; }
+    .prog-result-icon    { font-size: 3rem; }
+    .prog-result-title   { font-size: 1.1rem; }
+    .prog-result-text    { font-size: 0.85rem; line-height: 1.4; }
+}
+
+/* Landscape phone — низкий экран. */
+@media (orientation: landscape) and (max-height: 540px) {
+    .prog-header              { padding: 0.4rem 0.75rem; }
+    .prog-header-title        { font-size: 0.7rem; }
+    .prog-header-stat p:last-child { font-size: 0.85rem; }
+    #prog-cutscene-ui         { padding: 0.75rem 1rem; gap: 0.5rem; }
+    .prog-cutscene-text h2    { font-size: 0.95rem; }
+    .prog-cutscene-text p     { font-size: 0.8rem; }
+    .prog-submit-btn          { min-height: 44px; }
+    .prog-terminal            { min-height: 80px; max-height: 120px; }
+}

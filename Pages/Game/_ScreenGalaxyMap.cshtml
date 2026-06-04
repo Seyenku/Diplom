@@ -34,8 +34,15 @@
             </div>
 
             <!-- Панель выбранного региона / туманности -->
-            <div id="nebula-info-panel" class="nebula-info-panel hidden" data-state="full">
-                <!-- Handle: drag-to-resize + tap-toggle через pointer events (galaxyUi.ts) -->
+            <div id="nebula-info-panel" class="nebula-info-panel hidden" data-state="full" data-collapsed="false">
+                @* Desktop-only: chevron, сворачивает панель в узкую «вкладку» (~56 px). *@
+                <button id="nebula-collapse-toggle" class="nebula-collapse-toggle" type="button"
+                        data-action="galaxyMap.toggleCollapsed"
+                        aria-label="Свернуть/развернуть панель туманности">
+                    <span class="nebula-collapse-icon" aria-hidden="true">‹</span>
+                </button>
+
+                @* Handle: drag-to-resize + tap-toggle через pointer events (galaxyUi.ts), только mobile *@
                 <button id="nebula-handle" class="nebula-handle" type="button"
                         aria-label="Перетащить или коснуться, чтобы изменить размер">
                     <span class="nebula-handle-grip"></span>
@@ -49,12 +56,15 @@
                             <div id="nebula-info-desc" class="nebula-info-desc"></div>
                         </div>
                     </div>
+                    @* Бейдж кол-ва планет: виден только в свёрнутом состоянии. *@
+                    <span id="nebula-collapsed-count" class="nebula-collapsed-count" aria-hidden="true">0</span>
                     <div class="nebula-info-stats">
                         <span id="nebula-info-crystal" class="nebula-info-stat">💎 Кристаллы: —</span>
                         <span id="nebula-info-planets" class="nebula-info-stat">🪐 Планет: —</span>
                     </div>
                     <button id="btn-nebula-fly" class="btn-game btn-primary nebula-fly-btn" data-action="galaxyMap.flyToRegion">
-                        🚀 Полёт
+                        <span class="nebula-fly-icon" aria-hidden="true">🚀</span>
+                        <span class="nebula-fly-label">Полёт</span>
                     </button>
                     <!-- Сетка планет региона -->
                     <div id="nebula-planet-grid" class="nebula-planet-grid"></div>

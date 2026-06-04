@@ -68,11 +68,18 @@
 
 .nebula-info-panel {
     position: absolute;
-    top: 0.75rem;
+    /* Отступ сверху = высота navbar'а + воздух (динамически считается JS-ом
+       с учётом UI-scale, см. stateManager._syncNavbarOverlaySpace).
+       В landscape phone (navbar сбоку) переменная сбрасывается на 0.75rem
+       автоматически правилом в navbar.css — поэтому здесь специально
+       обрабатывать не нужно.
+       Fallback 0.75rem — если JS ещё не успел инициализировать переменную. */
+    top: var(--navbar-overlay-space, 0.75rem);
     left: 0.75rem;
     z-index: 12;
     width: min(420px, 88vw);
-    max-height: calc(100% - 1.5rem);
+    /* Высота: всё, что осталось ниже navbar'а минус нижний воздух. */
+    max-height: calc(100% - var(--navbar-overlay-space, 0.75rem) - 0.75rem);
     background: rgba(5, 10, 26, 0.88);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -111,6 +118,137 @@
     cursor: pointer;
     padding: 0;
     flex-shrink: 0;
+}
+
+/* ── Collapse-toggle (desktop) ──────────────────────────────────────
+   На десктопе сворачивает панель в узкую «вкладку» у левого края.
+   На мобиле скрыт — там работает свой drag-handle и FAB. */
+.nebula-collapse-toggle {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.55);
+    color: rgba(203, 213, 225, 0.85);
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    z-index: 13;
+    transition: background 200ms ease, transform 200ms ease, color 200ms ease;
+}
+.nebula-collapse-toggle:hover {
+    background: rgba(79, 195, 247, 0.18);
+    color: #4fc3f7;
+}
+.nebula-collapse-icon {
+    display: block;
+    transition: transform 250ms ease;
+    transform: rotate(0);
+}
+/* В свёрнутом виде — стрелка показывает «развернуть вправо». */
+.nebula-info-panel[data-collapsed="true"] .nebula-collapse-icon {
+    transform: rotate(180deg);
+}
+
+/* Бейдж кол-ва планет — виден ТОЛЬКО в свёрнутом виде. */
+.nebula-collapsed-count {
+    display: none;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: #4fc3f7;
+    background: rgba(79, 195, 247, 0.12);
+    border: 1px solid rgba(79, 195, 247, 0.35);
+    border-radius: 999px;
+    padding: 0.2rem 0.5rem;
+    text-align: center;
+    margin: 0 auto;
+}
+
+/* ── Свёрнутая desktop-«вкладка» ─────────────────────────────────────
+   Срабатывает ВНЕ мобильных media-rules. Мобильные правила (≤720 portrait,
+   landscape phone) идут ниже и перебивают эти переходы. */
+.nebula-info-panel {
+    transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+.nebula-info-panel[data-collapsed="true"] {
+    width: 56px;
+    max-width: 56px;
+}
+
+.nebula-info-panel[data-collapsed="true"] .nebula-info-scroll {
+    padding: 0.6rem 0.4rem;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nebula-info-panel[data-collapsed="true"] .nebula-info-header {
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.nebula-info-panel[data-collapsed="true"] .nebula-info-name,
+.nebula-info-panel[data-collapsed="true"] .nebula-info-desc,
+.nebula-info-panel[data-collapsed="true"] .nebula-info-stats,
+.nebula-info-panel[data-collapsed="true"] .nebula-planet-grid {
+    display: none;
+}
+
+.nebula-info-panel[data-collapsed="true"] .nebula-collapsed-count {
+    display: block;
+}
+
+.nebula-info-panel[data-collapsed="true"] .nebula-info-icon {
+    font-size: 1.6rem;
+}
+
+/* Кнопка «Полёт» в свёрнутом виде — только иконка. */
+.nebula-info-panel[data-collapsed="true"] .nebula-fly-btn {
+    padding: 0.55rem;
+    min-width: 40px;
+    font-size: 1.2rem;
+    width: 100%;
+}
+.nebula-info-panel[data-collapsed="true"] .nebula-fly-label {
+    display: none;
+}
+
+/* Chevron перемещается в развёрнутом состоянии для удобства;
+   в свёрнутом остаётся в углу. */
+.nebula-info-panel[data-collapsed="true"] .nebula-collapse-toggle {
+    top: 0.3rem;
+    right: 0.3rem;
+    width: 26px;
+    height: 26px;
+}
+
+/* На мобильных collapse-toggle и compact-режим скрыты — там работает свой UX. */
+@media (max-width: 720px), (max-height: 540px) and (orientation: landscape),
+       (max-width: 900px) and (orientation: landscape) {
+    .nebula-collapse-toggle { display: none; }
+    /* Сбросить compact на мобилке, даже если localStorage хранит data-collapsed="true". */
+    .nebula-info-panel[data-collapsed="true"] {
+        width: min(420px, 88vw);
+        max-width: 100%;
+    }
+    .nebula-info-panel[data-collapsed="true"] .nebula-info-name,
+    .nebula-info-panel[data-collapsed="true"] .nebula-info-desc,
+    .nebula-info-panel[data-collapsed="true"] .nebula-info-stats,
+    .nebula-info-panel[data-collapsed="true"] .nebula-planet-grid {
+        display: block;
+    }
+    .nebula-info-panel[data-collapsed="true"] .nebula-collapsed-count { display: none; }
+    .nebula-info-panel[data-collapsed="true"] .nebula-fly-label { display: inline; }
 }
 
 .nebula-handle-grip {

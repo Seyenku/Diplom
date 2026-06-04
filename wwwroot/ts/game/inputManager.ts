@@ -10,20 +10,27 @@ let _pointerTarget: THREE.Vector2 | null = null;
 let _isMouseDown = false;
 let _canvas: HTMLElement | null = null;
 
-// ── Touch controls (виртуальный джойстик + кнопка буста) ─────────────────
+// ── Touch controls (floating joystick + boost-zone) ──────────────────────
+// Пользовательский UX: вместо фиксированной базы джойстика + отдельной кнопки
+// буста, мы используем две полупрозрачные «зоны». Joystick спавнится под
+// пальцем (floating), boost удерживается касанием в своей зоне (может быть
+// несколько одновременно — multi-touch).
 const _joystick = new THREE.Vector2(0, 0);
 let _joystickActive = false;
 let _joystickPointerId: number | null = null;
-let _joystickCenter = { x: 0, y: 0 };
-let _joystickMaxRadius = 50;
+let _joystickOrigin = { x: 0, y: 0 };
+const _JOYSTICK_MAX_RADIUS = 60;
 let _touchBoost = false;
-let _joystickEl: HTMLElement | null = null;
+const _boostPointers = new Set<number>();
+let _boostHintHidden = false;
+let _joystickZoneEl: HTMLElement | null = null;
+let _joystickBaseEl: HTMLElement | null = null;
 let _stickEl: HTMLElement | null = null;
-let _boostEl: HTMLElement | null = null;
+let _boostZoneEl: HTMLElement | null = null;
+let _boostHintEl: HTMLElement | null = null;
 let _touchHandlers: Array<{ el: HTMLElement; type: string; fn: EventListener }> = [];
-/** Включены ли виртуальные тач-контролы (joystick + boost-btn).
- *  Когда true — mouse-схема (зажать палец на экране) полностью отключается,
- *  чтобы не конкурировать с джойстиком. */
+/** Включены ли виртуальные тач-контролы. Когда true — mouse-схема (зажать
+ *  палец на экране) полностью отключается, чтобы не конкурировать с зонами. */
 let _touchControlsActive = false;
 
 export function init(canvasId?: string): void {
@@ -191,48 +198,65 @@ export function isBoostPressed(): boolean {
 // ── Touch controls API ─────────────────────────────────────────────────────
 
 /**
- * Активирует виртуальный джойстик и кнопку буста в DOM.
- * Безопасно вызывать многократно — повторно не подписывается.
+ * Активирует тач-контролы: floating joystick в своей зоне и boost-zone
+ * (touch-and-hold = буст). Безопасно вызывать многократно.
+ *
+ * @param joystickZoneId  DIV, в котором ловится первое касание для джойстика
+ * @param baseId          DIV «основы» джойстика — позиция выставляется через CSS-vars
+ * @param stickId         DIV «стика» внутри базы — JS двигает через transform
+ * @param boostZoneId     DIV, любое касание в котором = буст (multi-touch ОК)
+ * @param hintId          (опц.) DIV-подсказка про буст; скрывается после первого
  */
-export function attachTouchControls(joystickId: string, stickId: string, boostId: string): void {
-    detachTouchControls(); // на всякий случай очищаем перед re-attach
+export function attachTouchControls(
+    joystickZoneId: string,
+    baseId: string,
+    stickId: string,
+    boostZoneId: string,
+    hintId?: string
+): void {
+    detachTouchControls();
 
-    _joystickEl = document.getElementById(joystickId);
-    _stickEl    = document.getElementById(stickId);
-    _boostEl    = document.getElementById(boostId);
+    _joystickZoneEl = document.getElementById(joystickZoneId);
+    _joystickBaseEl = document.getElementById(baseId);
+    _stickEl        = document.getElementById(stickId);
+    _boostZoneEl    = document.getElementById(boostZoneId);
+    _boostHintEl    = hintId ? document.getElementById(hintId) : null;
 
-    if (!_joystickEl || !_stickEl || !_boostEl) return;
+    if (!_joystickZoneEl || !_joystickBaseEl || !_stickEl || !_boostZoneEl) return;
 
     const onJoyDown = (e: Event) => _onJoystickDown(e as PointerEvent);
     const onJoyMove = (e: Event) => _onJoystickMove(e as PointerEvent);
     const onJoyUp   = (e: Event) => _onJoystickUp(e as PointerEvent);
 
-    _joystickEl.addEventListener('pointerdown',   onJoyDown);
-    _joystickEl.addEventListener('pointermove',   onJoyMove);
-    _joystickEl.addEventListener('pointerup',     onJoyUp);
-    _joystickEl.addEventListener('pointercancel', onJoyUp);
-    _joystickEl.addEventListener('pointerleave',  onJoyUp);
+    _joystickZoneEl.addEventListener('pointerdown',         onJoyDown);
+    _joystickZoneEl.addEventListener('pointermove',         onJoyMove);
+    _joystickZoneEl.addEventListener('pointerup',           onJoyUp);
+    _joystickZoneEl.addEventListener('pointercancel',       onJoyUp);
+    _joystickZoneEl.addEventListener('lostpointercapture',  onJoyUp);
     _touchHandlers.push(
-        { el: _joystickEl, type: 'pointerdown',   fn: onJoyDown },
-        { el: _joystickEl, type: 'pointermove',   fn: onJoyMove },
-        { el: _joystickEl, type: 'pointerup',     fn: onJoyUp },
-        { el: _joystickEl, type: 'pointercancel', fn: onJoyUp },
-        { el: _joystickEl, type: 'pointerleave',  fn: onJoyUp },
+        { el: _joystickZoneEl, type: 'pointerdown',        fn: onJoyDown },
+        { el: _joystickZoneEl, type: 'pointermove',        fn: onJoyMove },
+        { el: _joystickZoneEl, type: 'pointerup',          fn: onJoyUp },
+        { el: _joystickZoneEl, type: 'pointercancel',      fn: onJoyUp },
+        { el: _joystickZoneEl, type: 'lostpointercapture', fn: onJoyUp },
     );
 
-    const onBoostDown = (_e: Event) => { _touchBoost = true;  _boostEl?.classList.add('flight-boost-btn--active'); };
-    const onBoostUp   = (_e: Event) => { _touchBoost = false; _boostEl?.classList.remove('flight-boost-btn--active'); };
+    const onBoostDown = (e: Event) => _onBoostDown(e as PointerEvent);
+    const onBoostUp   = (e: Event) => _onBoostUp(e as PointerEvent);
 
-    _boostEl.addEventListener('pointerdown',   onBoostDown);
-    _boostEl.addEventListener('pointerup',     onBoostUp);
-    _boostEl.addEventListener('pointercancel', onBoostUp);
-    _boostEl.addEventListener('pointerleave',  onBoostUp);
+    _boostZoneEl.addEventListener('pointerdown',        onBoostDown);
+    _boostZoneEl.addEventListener('pointerup',          onBoostUp);
+    _boostZoneEl.addEventListener('pointercancel',      onBoostUp);
+    _boostZoneEl.addEventListener('lostpointercapture', onBoostUp);
     _touchHandlers.push(
-        { el: _boostEl, type: 'pointerdown',   fn: onBoostDown },
-        { el: _boostEl, type: 'pointerup',     fn: onBoostUp },
-        { el: _boostEl, type: 'pointercancel', fn: onBoostUp },
-        { el: _boostEl, type: 'pointerleave',  fn: onBoostUp },
+        { el: _boostZoneEl, type: 'pointerdown',        fn: onBoostDown },
+        { el: _boostZoneEl, type: 'pointerup',          fn: onBoostUp },
+        { el: _boostZoneEl, type: 'pointercancel',      fn: onBoostUp },
+        { el: _boostZoneEl, type: 'lostpointercapture', fn: onBoostUp },
     );
+
+    _boostHintHidden = false;
+    if (_boostHintEl) _boostHintEl.classList.remove('flight-boost-hint--hidden');
 
     _touchControlsActive = true;
 }
@@ -244,9 +268,11 @@ export function detachTouchControls(): void {
     _joystickActive = false;
     _joystickPointerId = null;
     _touchBoost = false;
-    _stickEl?.style.removeProperty('transform');
-    _boostEl?.classList.remove('flight-boost-btn--active');
-    _joystickEl = _stickEl = _boostEl = null;
+    _boostPointers.clear();
+    if (_joystickZoneEl) delete _joystickZoneEl.dataset.active;
+    if (_stickEl) _stickEl.style.removeProperty('transform');
+    if (_boostHintEl) _boostHintEl.classList.remove('flight-boost-hint--hidden');
+    _joystickZoneEl = _joystickBaseEl = _stickEl = _boostZoneEl = _boostHintEl = null;
     _touchControlsActive = false;
 }
 
@@ -256,16 +282,23 @@ export function areTouchControlsActive(): boolean {
 }
 
 function _onJoystickDown(e: PointerEvent): void {
-    if (!_joystickEl) return;
+    if (!_joystickZoneEl || !_joystickBaseEl) return;
+    // Игнорируем второй палец на joystick-зоне — только первый управляет.
+    if (_joystickActive) return;
     e.preventDefault();
     _joystickActive = true;
     _joystickPointerId = e.pointerId;
-    _joystickEl.setPointerCapture?.(e.pointerId);
+    _joystickZoneEl.setPointerCapture?.(e.pointerId);
 
-    // Центр и радиус берём с актуальных размеров базы джойстика
-    const rect = _joystickEl.getBoundingClientRect();
-    _joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    _joystickMaxRadius = Math.min(rect.width, rect.height) / 2 - 6; // 6px зазор для стика
+    _joystickOrigin = { x: e.clientX, y: e.clientY };
+
+    // Позиция базы — относительно joystick-зоны (она же содержащий элемент).
+    const zoneRect = _joystickZoneEl.getBoundingClientRect();
+    const relX = e.clientX - zoneRect.left;
+    const relY = e.clientY - zoneRect.top;
+    _joystickBaseEl.style.setProperty('--base-x', `${relX}px`);
+    _joystickBaseEl.style.setProperty('--base-y', `${relY}px`);
+    _joystickZoneEl.dataset.active = 'true';
 
     _updateJoystick(e.clientX, e.clientY);
 }
@@ -281,14 +314,15 @@ function _onJoystickUp(e: PointerEvent): void {
     _joystickActive = false;
     _joystickPointerId = null;
     _joystick.set(0, 0);
+    if (_joystickZoneEl) delete _joystickZoneEl.dataset.active;
     if (_stickEl) _stickEl.style.transform = 'translate(-50%, -50%)';
 }
 
 function _updateJoystick(clientX: number, clientY: number): void {
-    const dx = clientX - _joystickCenter.x;
-    const dy = clientY - _joystickCenter.y;
+    const dx = clientX - _joystickOrigin.x;
+    const dy = clientY - _joystickOrigin.y;
     const len = Math.sqrt(dx * dx + dy * dy);
-    const r = Math.min(len, _joystickMaxRadius);
+    const r = Math.min(len, _JOYSTICK_MAX_RADIUS);
     const angle = Math.atan2(dy, dx);
     const sx = Math.cos(angle) * r;
     const sy = Math.sin(angle) * r;
@@ -299,6 +333,23 @@ function _updateJoystick(clientX: number, clientY: number): void {
     // Нормализуем для игровых координат:
     //  X: вправо положительно
     //  Y: вверх положительно (в DOM вниз → меняем знак)
-    _joystick.x = sx / _joystickMaxRadius;
-    _joystick.y = -sy / _joystickMaxRadius;
+    _joystick.x = sx / _JOYSTICK_MAX_RADIUS;
+    _joystick.y = -sy / _JOYSTICK_MAX_RADIUS;
+}
+
+function _onBoostDown(e: PointerEvent): void {
+    e.preventDefault();
+    _boostPointers.add(e.pointerId);
+    _touchBoost = true;
+    if (!_boostHintHidden && _boostHintEl) {
+        _boostHintHidden = true;
+        _boostHintEl.classList.add('flight-boost-hint--hidden');
+    }
+}
+
+function _onBoostUp(e: PointerEvent): void {
+    _boostPointers.delete(e.pointerId);
+    if (_boostPointers.size === 0) {
+        _touchBoost = false;
+    }
 }

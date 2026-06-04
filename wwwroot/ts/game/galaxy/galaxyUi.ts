@@ -90,6 +90,42 @@ export function setNebulaState(state: NebulaPanelState): void {
     else                       _setOffset(0);
 }
 
+// ── Desktop collapse (узкая «вкладка» у левого края) ─────────────────────
+const _COLLAPSE_STORAGE_KEY = 'stellar_vocation_nebula_collapsed';
+
+/** Программно ставит свёрнутое/развёрнутое состояние и сохраняет в localStorage. */
+export function setNebulaCollapsed(collapsed: boolean): void {
+    const panel = document.getElementById('nebula-info-panel');
+    if (!panel) return;
+    panel.dataset.collapsed = collapsed ? 'true' : 'false';
+    try { localStorage.setItem(_COLLAPSE_STORAGE_KEY, collapsed ? '1' : '0'); } catch { /* ignore */ }
+
+    // a11y: меняем aria-label на тоггле, чтобы скринридер озвучивал состояние.
+    const toggle = document.getElementById('nebula-collapse-toggle');
+    if (toggle) {
+        toggle.setAttribute('aria-label',
+            collapsed ? 'Развернуть панель туманности' : 'Свернуть панель туманности');
+        toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+}
+
+/** Тоггл по нажатию на chevron. Вызывается из window._galaxyMap (см. galaxyScreen). */
+export function toggleNebulaCollapsed(): void {
+    const panel = document.getElementById('nebula-info-panel');
+    if (!panel) return;
+    setNebulaCollapsed(panel.dataset.collapsed !== 'true');
+}
+
+/** Восстанавливает состояние из localStorage при показе панели. */
+function _restoreCollapseFromStorage(): void {
+    try {
+        const stored = localStorage.getItem(_COLLAPSE_STORAGE_KEY);
+        setNebulaCollapsed(stored === '1');
+    } catch {
+        setNebulaCollapsed(false);
+    }
+}
+
 /** Циклическое переключение по тапу на handle (если drag не было).
  *  Toggle между fully-open и fully-closed. */
 export function cycleNebulaState(): void {
@@ -253,6 +289,10 @@ export function showNebulaPanel(
     document.getElementById('nebula-info-crystal')!.textContent = `${meta.crystalEmoji} Кристаллы: ${playerCrystals}`;
     document.getElementById('nebula-info-planets')!.textContent = `🪐 Планет: ${planetCount}`;
 
+    // Бейдж в свёрнутом виде показывает только число планет.
+    const collapsedCount = document.getElementById('nebula-collapsed-count');
+    if (collapsedCount) collapsedCount.textContent = String(planetCount);
+
     // FAB-счётчик показывает кол-во планет в текущей туманности
     const fabCount = document.getElementById('nebula-fab-count');
     const fabIcon  = document.getElementById('nebula-fab-icon');
@@ -267,6 +307,11 @@ export function showNebulaPanel(
 
     // Изначально открываем полностью (offset = 0)
     setNebulaState('full');
+
+    // Восстанавливаем свёрнутое/развёрнутое состояние из localStorage —
+    // только для desktop layout'а. На мобиле CSS перебивает data-collapsed,
+    // так что атрибут безвреден.
+    _restoreCollapseFromStorage();
 }
 
 export function hideNebulaPanel(): void {
@@ -331,9 +376,10 @@ export function renderPlanetGrid(
                 ? `🔓 ${p.unlockCost} ${meta.crystalEmoji}`
                 : `🔒 ${p.unlockCost} ${meta.crystalEmoji}`;
 
+        // data-action вместо inline onclick — CSP блокирует unsafe-inline.
         return `<div class="nebula-planet-card ${stateClass}"
                      style="--accent:${meta.colorHex};"
-                     onclick="window._galaxyMap?.openPlanet('${p.id}')">
+                     data-action="galaxyMap.openPlanet" data-arg="${p.id}">
             <span class="nebula-planet-name">${p.name}</span>
             <span class="nebula-planet-cost">${statusText}</span>
         </div>`;

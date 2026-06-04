@@ -87,6 +87,11 @@ window._galaxyMap = {
         Ui.setNebulaState('collapsed');
     },
 
+    /** Desktop: тоггл узкой «вкладки» (chevron в углу панели). */
+    toggleCollapsed() {
+        Ui.toggleNebulaCollapsed();
+    },
+
     openPlanet(planetId: string) {
         if (!_cameraState || _cameraState.state === 'zooming-to-planet') return;
 

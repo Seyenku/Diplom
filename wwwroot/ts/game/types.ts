@@ -246,6 +246,7 @@ declare global {
             toggleNebulaState: () => void;
             expandNebula: () => void;
             collapseNebula: () => void;
+            toggleCollapsed: () => void;
         };
         _planetDetail: {
             startMiniGame: () => void;

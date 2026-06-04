@@ -716,7 +716,10 @@
 }
 
 @media (max-width: 480px) {
-    .ach-stats { grid-template-columns: 1fr; }
+    /* В portrait сохраняем 2×2 (как в landscape) — пользователю проще
+       читать карточки сводки, чем длинный вертикальный список.
+       В landscape phone (узкая высота) можно дать одну колонку. */
+    .ach-stats { grid-template-columns: 1fr 1fr; }
     .ach-badges-grid { grid-template-columns: 1fr; gap: 0.5rem; }
     .ach-badge { min-height: 64px; padding: 0.7rem 0.8rem; }
     .ach-radar-svg { width: min(280px, 92%); }
@@ -725,6 +728,11 @@
 }
 
 /* ── Reduced motion ───────────────────────────────────── */
+@media (max-width: 480px) and (orientation: landscape) {
+    /* Landscape phone — экран по высоте маленький; одна колонка читается лучше. */
+    .ach-stats { grid-template-columns: 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ach-hero-progress-fill::after,
     .ach-stat,

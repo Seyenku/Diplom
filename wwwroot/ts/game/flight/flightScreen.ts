@@ -212,7 +212,14 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     const hudEl = document.getElementById('flight-hud');
     if (hudEl) hudEl.dataset.scheme = scheme;
     if (scheme === 'keyboard') {
-        attachTouchControls('flight-joystick', 'flight-joystick-stick', 'flight-boost-btn');
+        // Floating joystick + boost-zone (без отдельной кнопки буста).
+        attachTouchControls(
+            'flight-joystick-zone',
+            'flight-joystick-base',
+            'flight-joystick-stick',
+            'flight-boost-zone',
+            'flight-boost-hint'
+        );
     }
 
     playMusic('ambient_flight');

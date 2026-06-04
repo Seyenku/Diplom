@@ -54,15 +54,19 @@
             <!-- renderControlHints() -->
         </div>
 
-        <!-- Виртуальные тач-контролы: джойстик слева, кнопка ускорения справа.
-             Видны только на touch-устройствах через CSS @@media. -->
-        <div id="flight-joystick" class="flight-joystick" aria-hidden="true">
-            <div id="flight-joystick-stick" class="flight-joystick-stick"></div>
+        @* Тач-контролы: зоны вместо кнопок.
+           - Boost zone покрывает весь экран (portrait) / правую половину (landscape).
+             Любое касание в ней удерживается = ускорение.
+           - Joystick zone лежит поверх в области большого пальца. Касание = база
+             джойстика спавнится под пальцем (floating), стик следует за движением.
+           Видимы только на touch-устройствах и при схеме "Клавиатура / джойстик". *@
+        <div id="flight-boost-zone" class="flight-boost-zone" aria-hidden="true"></div>
+        <div id="flight-joystick-zone" class="flight-joystick-zone" aria-hidden="true">
+            <div id="flight-joystick-base" class="flight-joystick-base">
+                <div id="flight-joystick-stick" class="flight-joystick-stick"></div>
+            </div>
         </div>
-        <button id="flight-boost-btn" class="flight-boost-btn" type="button"
-                aria-label="Ускорение">
-            <span class="flight-boost-btn-icon">⚡</span>
-        </button>
+        <div id="flight-boost-hint" class="flight-boost-hint" aria-hidden="true">⚡ Удерживай для ускорения</div>
 
         <!-- Комбо-множитель -->
         <div id="flight-combo" class="flight-combo hidden">×1</div>

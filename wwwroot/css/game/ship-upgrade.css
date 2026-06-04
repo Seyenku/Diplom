@@ -252,6 +252,18 @@
     gap: clamp(0.75rem, 1.5vw, 1.2rem);
 }
 
+/* На десктопе strip — обычный column-flex, отображает все треки стопкой. */
+.ship-tracks-strip {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.75rem, 1.5vw, 1.2rem);
+}
+
+/* Точки-индикаторы скрыты на десктопе, видны только в карусели мобайла. */
+.ship-tracks-dots {
+    display: none;
+}
+
 .ship-tracks-loading {
     text-align: center;
     color: var(--color-text-muted);
@@ -577,6 +589,55 @@
     .ship-hero-craft { min-height: 130px; }
     .ship-hero-stats { grid-template-columns: 1fr 1fr; }
     .ship-track-cards { grid-template-columns: 1fr; }
+
+    /* Карусель на мобиле: 4 трека располагаются горизонтально, scroll-snap
+       по одному треку на экран. Скроллбар прячем, навигация через свайп + точки. */
+    .ship-tracks-strip {
+        flex-direction: row;
+        gap: 0.75rem;
+        overflow-x: auto;
+        overflow-y: visible;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        /* Чуть-чуть «peek» соседнего трека, чтобы было видно, что листается */
+        padding-right: 8%;
+    }
+    .ship-tracks-strip::-webkit-scrollbar { display: none; }
+
+    .ship-tracks-strip > .ship-track {
+        flex: 0 0 92%;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .ship-tracks-dots {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .ship-tracks-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.18);
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: width 200ms ease, background-color 200ms ease;
+        --dot-color: #4fc3f7;
+    }
+    .ship-tracks-dot[data-active="true"] {
+        width: 24px;
+        border-radius: 4px;
+        background: var(--dot-color);
+    }
+    .ship-tracks-dot:focus-visible {
+        outline: 2px solid var(--dot-color);
+        outline-offset: 2px;
+    }
 }
 
 @media (max-width: 480px) {

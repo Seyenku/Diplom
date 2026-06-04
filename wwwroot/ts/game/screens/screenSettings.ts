@@ -81,7 +81,8 @@ window._settings = {
             setQuality(value as QualityLevel);
         } else if (key === 'soundVolume') {
             setSfxVolume(parsed as number);
-            playSfx('ui_hover'); // короткий цыр для проверки громкости
+            // звук-сэмпл для проверки громкости играется ОДИН раз — на отпускании
+            // слайдера (см. _onSliderRelease ниже), а не на каждый input-tick.
         } else if (key === 'musicVolume') {
             setMusicVolume(parsed as number);
         } else if (key === 'controlScheme') {
@@ -182,7 +183,21 @@ export async function init(store: Readonly<import('../types.js').GameStore>): Pr
     // (раньше было два действия — обновление стейта и метки — теперь оба внутри).
     document.querySelectorAll<HTMLInputElement>('[data-setting-key]').forEach(el => {
         el.addEventListener('input', _onSliderInput);
+        // Только soundVolume получает «сэмпл громкости» на отпускании —
+        // одиночный звук вместо спама на каждый input-tick.
+        if (el.dataset.settingKey === 'soundVolume') {
+            el.addEventListener('change', _onSoundSliderRelease);
+            el.addEventListener('pointerup', _onSoundSliderRelease);
+            el.addEventListener('touchend', _onSoundSliderRelease);
+            el.addEventListener('keyup', _onSoundSliderRelease);
+        }
     });
+}
+
+function _onSoundSliderRelease(): void {
+    // Сэмплер финальной громкости — один короткий «ui_hover» на финальном
+    // значении (sfxGain уже выставлен через update()).
+    playSfx('ui_hover');
 }
 
 function _onSliderInput(this: HTMLInputElement): void {
@@ -208,6 +223,12 @@ export function destroy(): void {
     }
     document.querySelectorAll<HTMLInputElement>('[data-setting-key]').forEach(el => {
         el.removeEventListener('input', _onSliderInput);
+        if (el.dataset.settingKey === 'soundVolume') {
+            el.removeEventListener('change', _onSoundSliderRelease);
+            el.removeEventListener('pointerup', _onSoundSliderRelease);
+            el.removeEventListener('touchend', _onSoundSliderRelease);
+            el.removeEventListener('keyup', _onSoundSliderRelease);
+        }
     });
 }
 

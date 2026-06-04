@@ -86,7 +86,64 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     _updateStats();
 }
 
-export function destroy(): void {}
+let _carouselObserver: IntersectionObserver | null = null;
+let _carouselDotHandlers: Array<{ el: HTMLElement; fn: EventListener }> = [];
+
+export function destroy(): void {
+    if (_carouselObserver) {
+        _carouselObserver.disconnect();
+        _carouselObserver = null;
+    }
+    _carouselDotHandlers.forEach(h => h.el.removeEventListener('click', h.fn));
+    _carouselDotHandlers = [];
+}
+
+/** Настраивает поведение карусели на мобиле: клик по точке → плавный скролл к
+ *  соответствующему треку; IntersectionObserver → активная точка отражает,
+ *  какой трек сейчас в кадре. На десктопе скролл не активен (треки stacked),
+ *  но обработчики безвредны и облегчают возможный resize. */
+function _setupCarousel(): void {
+    // Отписываемся от предыдущей итерации (если render вызвался повторно)
+    if (_carouselObserver) { _carouselObserver.disconnect(); _carouselObserver = null; }
+    _carouselDotHandlers.forEach(h => h.el.removeEventListener('click', h.fn));
+    _carouselDotHandlers = [];
+
+    const strip = document.querySelector('.ship-tracks-strip') as HTMLElement | null;
+    const dots  = Array.from(document.querySelectorAll<HTMLElement>('.ship-tracks-dot'));
+    if (!strip || dots.length === 0) return;
+
+    const tracks = Array.from(strip.querySelectorAll<HTMLElement>('.ship-track'));
+
+    // Клик по точке — скролл к треку
+    dots.forEach((dot, i) => {
+        const fn: EventListener = () => {
+            const target = tracks[i];
+            if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        };
+        dot.addEventListener('click', fn);
+        _carouselDotHandlers.push({ el: dot, fn });
+    });
+
+    // Активная точка по тому, какой трек сейчас более чем наполовину в кадре strip'а.
+    _carouselObserver = new IntersectionObserver(entries => {
+        // Берём самую «видимую» секцию из всех пересечений в этом батче.
+        let bestIdx = -1, bestRatio = 0;
+        entries.forEach(e => {
+            if (e.intersectionRatio > bestRatio) {
+                bestRatio = e.intersectionRatio;
+                bestIdx = tracks.indexOf(e.target as HTMLElement);
+            }
+        });
+        if (bestIdx >= 0 && bestRatio >= 0.5) {
+            dots.forEach((d, i) => {
+                if (i === bestIdx) d.dataset.active = 'true';
+                else delete d.dataset.active;
+            });
+        }
+    }, { root: strip, threshold: [0.5, 0.75] });
+
+    tracks.forEach(t => _carouselObserver!.observe(t));
+}
 
 // ── Рендер треков и карточек ────────────────────────────────────────────────
 
@@ -107,7 +164,21 @@ function _renderUpgrades(
     const order = ['engine', 'shield', 'scanner', 'capacity'];
     const cats = order.filter(c => groups[c]?.length);
 
-    tree.innerHTML = cats.map(cat => _renderTrack(cat, groups[cat], installed, crystals)).join('');
+    const stripHtml = cats.map(cat => _renderTrack(cat, groups[cat], installed, crystals)).join('');
+    const dotsHtml = cats.map((cat, i) => {
+        const meta = CATEGORY_META[cat] ?? { title: cat, color: '#4fc3f7' } as CategoryMeta;
+        return `<button type="button" class="ship-tracks-dot"
+                        data-track-dot="${i}"
+                        ${i === 0 ? 'data-active="true"' : ''}
+                        style="--dot-color:${meta.color};"
+                        aria-label="${_escape(meta.title)}"
+                        title="${_escape(meta.title)}"></button>`;
+    }).join('');
+
+    tree.innerHTML = `
+        <div class="ship-tracks-strip">${stripHtml}</div>
+        <div class="ship-tracks-dots" role="tablist" aria-label="Категории апгрейдов">${dotsHtml}</div>
+    `;
 
     // Общий счётчик апгрейдов
     const counter = document.getElementById('ship-progress-counter');
@@ -115,6 +186,8 @@ function _renderUpgrades(
         const total = upgrades.length;
         counter.textContent = `${installed.size} / ${total}`;
     }
+
+    _setupCarousel();
 }
 
 function _renderTrack(
@@ -223,7 +296,7 @@ function _upgradeCard(
                     type="button"
                     class="ship-up-btn"
                     data-state="${btnState}"
-                    ${btnDisabled ? 'disabled' : `onclick="window._shipUpgrade?.buyUpgrade('${_escape(u.id)}')"`}>
+                    ${btnDisabled ? 'disabled' : `data-action="shipUpgrade.buyUpgrade" data-arg="${_escape(u.id)}"`}>
                 ${btnText}
             </button>
         </article>
