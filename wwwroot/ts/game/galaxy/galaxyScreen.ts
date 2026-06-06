@@ -118,6 +118,15 @@ window._galaxyMap = {
             void overlay.offsetWidth;
             overlay.classList.add('fade-in');
         }
+    },
+
+    openPlanetFromList(planetId: string) {
+        if (_cameraState?.state === 'zooming-to-planet') return;
+        transition(Screen.PLANET_DETAIL as ScreenId, {
+            planetId,
+            regionId: _focusedCluster ?? undefined,
+            crystalType: _focusedCluster ?? undefined,
+        });
     }
 };
 

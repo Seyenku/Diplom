@@ -243,6 +243,7 @@ declare global {
             resetCamera: () => void;
             flyToRegion: () => void;
             openPlanet: (planetId: string) => void;
+            openPlanetFromList: (planetId: string) => void;
             toggleNebulaState: () => void;
             expandNebula: () => void;
             collapseNebula: () => void;
@@ -262,6 +263,7 @@ declare global {
         _vocationConst: {
             exportPdf: () => void;
             showPath: () => void;
+            openPlanet: (planetId: string) => void;
         };
 _settings: {
             update: (key: string, value: string | number | boolean) => void;

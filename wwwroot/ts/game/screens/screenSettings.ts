@@ -15,6 +15,8 @@ let _currentBinds = {
     right: 'KeyD',
     boost: 'Space'
 };
+let _soundPreviewTimer: ReturnType<typeof window.setTimeout> | null = null;
+let _lastSoundPreviewAt = 0;
 
 function _formatKey(code: string): string {
     if (code.startsWith('Key')) return code.substring(3);
@@ -197,7 +199,16 @@ export async function init(store: Readonly<import('../types.js').GameStore>): Pr
 function _onSoundSliderRelease(): void {
     // Сэмплер финальной громкости — один короткий «ui_hover» на финальном
     // значении (sfxGain уже выставлен через update()).
-    playSfx('ui_hover');
+    if (_soundPreviewTimer) {
+        window.clearTimeout(_soundPreviewTimer);
+    }
+    _soundPreviewTimer = window.setTimeout(() => {
+        _soundPreviewTimer = null;
+        const now = performance.now();
+        if (now - _lastSoundPreviewAt < 220) return;
+        _lastSoundPreviewAt = now;
+        playSfx('ui_hover');
+    }, 120);
 }
 
 function _onSliderInput(this: HTMLInputElement): void {
@@ -217,6 +228,10 @@ function _onSliderInput(this: HTMLInputElement): void {
 }
 
 export function destroy(): void {
+    if (_soundPreviewTimer) {
+        window.clearTimeout(_soundPreviewTimer);
+        _soundPreviewTimer = null;
+    }
     if (_bindingAction) {
         document.removeEventListener('keydown', _onKeyDownBind, true);
         _bindingAction = null;

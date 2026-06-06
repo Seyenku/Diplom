@@ -88,6 +88,7 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
 let _carouselObserver: IntersectionObserver | null = null;
 let _carouselDotHandlers: Array<{ el: HTMLElement; fn: EventListener }> = [];
+let _activeTrackCategory = 'engine';
 
 export function destroy(): void {
     if (_carouselObserver) {
@@ -102,6 +103,33 @@ export function destroy(): void {
  *  соответствующему треку; IntersectionObserver → активная точка отражает,
  *  какой трек сейчас в кадре. На десктопе скролл не активен (треки stacked),
  *  но обработчики безвредны и облегчают возможный resize. */
+function _setActiveTrack(index: number, shouldScroll = false): void {
+    const strip = document.querySelector('.ship-tracks-strip') as HTMLElement | null;
+    if (!strip) return;
+
+    const tracks = Array.from(strip.querySelectorAll<HTMLElement>('.ship-track'));
+    const dots = Array.from(document.querySelectorAll<HTMLElement>('.ship-tracks-dot'));
+    const target = tracks[index];
+    if (!target) return;
+
+    const category = target.dataset.trackCategory;
+    if (category) _activeTrackCategory = category;
+
+    tracks.forEach((track, i) => {
+        if (i === index) track.dataset.active = 'true';
+        else delete track.dataset.active;
+    });
+    dots.forEach((dot, i) => {
+        dot.setAttribute('aria-pressed', i === index ? 'true' : 'false');
+        if (i === index) dot.dataset.active = 'true';
+        else delete dot.dataset.active;
+    });
+
+    if (shouldScroll) {
+        target.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    }
+}
+
 function _setupCarousel(): void {
     // Отписываемся от предыдущей итерации (если render вызвался повторно)
     if (_carouselObserver) { _carouselObserver.disconnect(); _carouselObserver = null; }
@@ -113,13 +141,12 @@ function _setupCarousel(): void {
     if (!strip || dots.length === 0) return;
 
     const tracks = Array.from(strip.querySelectorAll<HTMLElement>('.ship-track'));
+    const activeIndex = Math.max(0, tracks.findIndex(t => t.dataset.trackCategory === _activeTrackCategory));
+    _setActiveTrack(activeIndex, false);
 
     // Клик по точке — скролл к треку
     dots.forEach((dot, i) => {
-        const fn: EventListener = () => {
-            const target = tracks[i];
-            if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-        };
+        const fn: EventListener = () => _setActiveTrack(i, true);
         dot.addEventListener('click', fn);
         _carouselDotHandlers.push({ el: dot, fn });
     });
@@ -163,16 +190,25 @@ function _renderUpgrades(
     // Порядок треков: engine → shield → scanner → capacity
     const order = ['engine', 'shield', 'scanner', 'capacity'];
     const cats = order.filter(c => groups[c]?.length);
+    if (!cats.includes(_activeTrackCategory)) {
+        _activeTrackCategory = cats[0] ?? 'engine';
+    }
 
-    const stripHtml = cats.map(cat => _renderTrack(cat, groups[cat], installed, crystals)).join('');
+    const stripHtml = cats.map((cat, i) => _renderTrack(cat, groups[cat], installed, crystals, i)).join('');
     const dotsHtml = cats.map((cat, i) => {
-        const meta = CATEGORY_META[cat] ?? { title: cat, color: '#4fc3f7' } as CategoryMeta;
+        const meta = CATEGORY_META[cat] ?? { title: cat, sub: '', icon: '⚙', color: '#4fc3f7' } as CategoryMeta;
+        const active = cat === _activeTrackCategory;
         return `<button type="button" class="ship-tracks-dot"
                         data-track-dot="${i}"
-                        ${i === 0 ? 'data-active="true"' : ''}
+                        data-track-category="${_escape(cat)}"
+                        ${active ? 'data-active="true"' : ''}
                         style="--dot-color:${meta.color};"
+                        aria-pressed="${active ? 'true' : 'false'}"
                         aria-label="${_escape(meta.title)}"
-                        title="${_escape(meta.title)}"></button>`;
+                        title="${_escape(meta.title)}">
+                    <span class="ship-tracks-dot-icon" aria-hidden="true">${meta.icon}</span>
+                    <span class="ship-tracks-dot-label">${_escape(meta.title)}</span>
+                </button>`;
     }).join('');
 
     tree.innerHTML = `
@@ -194,7 +230,8 @@ function _renderTrack(
     cat: string,
     items: UpgradeDto[],
     installed: Set<string>,
-    crystals: Partial<Record<CrystalType, number>>
+    crystals: Partial<Record<CrystalType, number>>,
+    index: number
 ): string {
     const meta = CATEGORY_META[cat] ?? { title: cat.toUpperCase(), sub: '', icon: '⚙', color: '#4fc3f7' };
     const installedInCat = items.filter(u => installed.has(u.id)).length;
@@ -207,7 +244,11 @@ function _renderTrack(
     const cards = items.map((u, i) => _upgradeCard(u, i, cat, installed.has(u.id), crystals)).join('');
 
     return `
-        <section class="ship-track" style="--cat-color:${meta.color};">
+        <section class="ship-track"
+                 data-track-category="${_escape(cat)}"
+                 data-track-index="${index}"
+                 ${cat === _activeTrackCategory ? 'data-active="true"' : ''}
+                 style="--cat-color:${meta.color};">
             <header class="ship-track-head">
                 <div class="ship-track-head-info">
                     <span class="ship-track-icon" aria-hidden="true">${meta.icon}</span>

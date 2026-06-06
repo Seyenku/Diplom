@@ -725,12 +725,18 @@
     .ach-radar-svg { width: min(280px, 92%); }
     .ach-export-btn { padding: 0.45rem 0.8rem; font-size: 0.7rem; }
     .ach-counter { font-size: 0.7rem; padding: 0.3rem 0.7rem; }
+    .ach-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+    .ach-stat { min-width: 0; padding: 0.72rem; border-radius: 0.8rem; gap: 0.35rem; }
+    .ach-stat-icon { font-size: 1.15rem; }
+    .ach-stat-tag { font-size: 0.52rem; padding: 0.12rem 0.38rem; letter-spacing: 0.07em; }
+    .ach-stat-value { font-size: 1.42rem; }
+    .ach-stat-label { font-size: 0.64rem; line-height: 1.2; }
 }
 
 /* ── Reduced motion ───────────────────────────────────── */
 @media (max-width: 480px) and (orientation: landscape) {
     /* Landscape phone — экран по высоте маленький; одна колонка читается лучше. */
-    .ach-stats { grid-template-columns: 1fr; }
+    .ach-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

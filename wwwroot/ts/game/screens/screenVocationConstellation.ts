@@ -7,7 +7,16 @@ import { GameStore, PlanetDto } from '../types.js';
 
 window._vocationConst = {
     exportPdf() { (window as any).showNotification('Экспорт PDF будет доступен в следующей версии.', 'info'); },
-    showPath()  { (window as any).showNotification('Отображение пути развития — в разработке.', 'info'); }
+    showPath()  { (window as any).showNotification('Отображение пути развития — в разработке.', 'info'); },
+    openPlanet(planetId: string) {
+        const catalog = (getStore().sessionData?.catalog ?? []) as PlanetDto[];
+        const planet = catalog.find(p => p.id === planetId);
+        transition(Screen.PLANET_DETAIL, {
+            planetId,
+            regionId: planet?.clusterId,
+            crystalType: planet?.crystalType,
+        });
+    },
 };
 
 interface RankedPlanet {
@@ -90,11 +99,21 @@ function _renderList(ranked: RankedPlanet[]): void {
         <div class="game-card" style="display:flex;align-items:center;gap:1rem;">
             <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--color-primary);min-width:28px;">#${i + 1}</div>
             <div style="flex:1;">
-                <p style="font-weight:600;">${planet.name}</p>
+                <p style="font-weight:600;">${_escapeHtml(planet.name)}</p>
                 <p style="font-size:0.8rem;color:var(--color-text-muted);">Совпадение: ${Math.round(score * 100)}%</p>
             </div>
             <button class="btn-game btn-secondary" style="padding:6px 14px;font-size:0.8rem;"
-                    data-spa="goto" data-screen="planet-detail">Подробнее</button>
+                    data-action="vocationConst.openPlanet" data-arg="${_escapeHtml(planet.id)}">Подробнее</button>
         </div>`
     ).join('');
+}
+
+function _escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    }[ch] ?? ch));
 }

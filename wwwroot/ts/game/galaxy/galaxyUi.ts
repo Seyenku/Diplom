@@ -379,7 +379,7 @@ export function renderPlanetGrid(
         // data-action вместо inline onclick — CSP блокирует unsafe-inline.
         return `<div class="nebula-planet-card ${stateClass}"
                      style="--accent:${meta.colorHex};"
-                     data-action="galaxyMap.openPlanet" data-arg="${p.id}">
+                     data-action="galaxyMap.openPlanetFromList" data-arg="${p.id}">
             <span class="nebula-planet-name">${p.name}</span>
             <span class="nebula-planet-cost">${statusText}</span>
         </div>`;

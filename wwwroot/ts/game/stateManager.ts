@@ -190,6 +190,15 @@ const WEBGL_OWNING_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
     Screen.MAIN_MENU, Screen.FLIGHT, Screen.GALAXY_MAP, Screen.PLANET_DETAIL,
 ]);
 
+const PUBLIC_SCREENS_WITHOUT_PLAYER: ReadonlySet<ScreenId> = new Set<ScreenId>([
+    Screen.MAIN_MENU, Screen.CHAR_CREATION, Screen.SETTINGS, Screen.OFFLINE_ERROR,
+]);
+
+function _guardScreenForPlayer(screenId: ScreenId): ScreenId {
+    if (_store.player || PUBLIC_SCREENS_WITHOUT_PLAYER.has(screenId)) return screenId;
+    return Screen.CHAR_CREATION;
+}
+
 on('SCREEN_CHANGED', () => {
     const btns = document.querySelectorAll<HTMLElement>('.nav-btn[data-screen]');
     btns.forEach(btn => {
@@ -290,12 +299,11 @@ async function _resolveScreen(screenId: ScreenId): Promise<ScreenModule | undefi
 let _activeModule: ScreenModule | null = null;
 
 export async function transition(screenId: ScreenId, payload: Partial<SessionData> = {}, skipPushState = false, isBack = false): Promise<void> {
-    if (screenId === _store.currentScreen && Object.keys(payload).length === 0) return;
+    const requestedScreenId = screenId;
+    screenId = _guardScreenForPlayer(screenId);
+    if (screenId !== requestedScreenId) payload = {};
 
-    // Если переходим к настройкам без сохраненной сессии (нет игрока) -> перенаправляем на создание персонажа
-    if (screenId === Screen.SETTINGS && !_store.player) {
-        screenId = Screen.CHAR_CREATION;
-    }
+    if (screenId === _store.currentScreen && Object.keys(payload).length === 0) return;
 
     // Уничтожаем текущий модуль
     try { _activeModule?.destroy?.(); } catch (e) { console.error(e); }

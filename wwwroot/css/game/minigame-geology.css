@@ -554,3 +554,67 @@
     .geo-submit-btn          { min-height: 44px; }
     .geo-strata-canvas       { height: 100px; }
 }
+
+@supports (height: 100dvh) {
+    #screen-minigame-geology {
+        height: 100dvh;
+        min-height: 100svh;
+        max-height: 100dvh;
+    }
+}
+
+#geo-phase-cutscene,
+#geo-phase-analysis,
+#geo-phase-result,
+.geo-metrics-col,
+.geo-strata-col,
+.geo-method-col,
+.geo-method-list {
+    min-height: 0;
+}
+
+@media (max-width: 480px) {
+    #geo-phase-analysis {
+        padding: 0.65rem;
+        gap: 0.65rem;
+    }
+
+    #geo-cutscene-ui {
+        padding: 1.15rem 0.85rem !important;
+        gap: 0.75rem !important;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+    #geo-phase-analysis {
+        grid-template-columns: minmax(150px, 0.9fr) minmax(210px, 1.05fr) minmax(170px, 0.95fr);
+        grid-template-rows: 1fr;
+        overflow: hidden;
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
+    }
+
+    #geo-cutscene-ui {
+        padding: 0.65rem 0.85rem !important;
+        gap: 0.45rem !important;
+    }
+
+    .geo-metrics-col,
+    .geo-strata-col,
+    .geo-method-col {
+        overflow-y: auto;
+        min-height: 0;
+    }
+
+    .geo-strata-canvas {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 86px;
+    }
+
+    .geo-metric-card,
+    .geo-method-option {
+        padding: 0.5rem;
+        gap: 0.45rem;
+    }
+}

@@ -55,6 +55,7 @@ let _resizeObs: ResizeObserver | null = null;
 let _currentPlanet: PlanetDto | null = null;
 let _activeTextureProfile: TextureProfile | null = null;
 let _activeTextureUrls: string[] = [];
+let _lastInsufficientNoticeAt = 0;
 
 // ── Reading mode ────────────────────────────────────────────────────────────
 type DetailMode = 'overview' | 'reading';
@@ -113,12 +114,7 @@ window._planetDetail = {
             const cost = planet.unlockCost ?? 0;
             const bal = ((store.player?.crystals ?? {}) as Record<string, number>)[crystalType] ?? 0;
             if (bal < cost) {
-                const meta = CLUSTER_META[crystalType];
-                const label = meta?.shortLabel ?? 'этого типа';
-                (window as any).showNotification(
-                    `Недостаточно кристаллов «${label}»!\nНужно: ${cost}, есть: ${bal}.\nСоберите кристаллы в полёте через карту галактики.`,
-                    'warning'
-                );
+                _showInsufficientCrystalsNotice(crystalType, cost, bal);
                 return;
             }
             dispatch('SPEND_CRYSTALS', { spent: { [crystalType]: cost } as Record<CrystalType, number> });
@@ -129,6 +125,19 @@ window._planetDetail = {
         transition(targetScreen);
     },
 };
+
+function _showInsufficientCrystalsNotice(crystalType: CrystalType, cost: number, bal: number): void {
+    const now = performance.now();
+    if (now - _lastInsufficientNoticeAt < 750) return;
+    _lastInsufficientNoticeAt = now;
+
+    const meta = CLUSTER_META[crystalType];
+    const label = meta?.shortLabel ?? 'этого типа';
+    (window as any).showNotification(
+        `Недостаточно кристаллов «${label}»!\nНужно: ${cost}, есть: ${bal}.\nСоберите кристаллы в полёте через карту галактики.`,
+        'warning'
+    );
+}
 
 function _getMiniGameScreen(clusterId: string): ScreenId {
     switch (clusterId) {
