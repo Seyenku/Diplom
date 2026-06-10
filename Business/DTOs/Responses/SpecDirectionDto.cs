@@ -14,6 +14,8 @@ public class SpecDirectionDto
     public string? Description  { get; set; }
     public string? Disciplines  { get; set; }           // Читаемые дисциплины
     public string? Spheres      { get; set; }           // Сферы трудоустройства
+    public List<int> DisciplineIds { get; set; } = new();
+    public List<int> SphereIds     { get; set; } = new();
 
     // Вычисляемые через JOIN
     public string? Exams       { get; set; }            // Вступительные испытания (STRING_AGG)

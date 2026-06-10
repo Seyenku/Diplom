@@ -75,13 +75,37 @@
             </div>
 
             <div class="admin-form-row">
-                <label asp-for="Input.Disciplines">Дисциплины</label>
-                <textarea asp-for="Input.Disciplines" rows="3"></textarea>
+                <label>Дисциплины</label>
+                <div class="admin-choice-grid">
+                    @if (Model.Disciplines.Count == 0)
+                    {
+                        <p class="admin-choice-empty">Справочник дисциплин пуст.</p>
+                    }
+                    @foreach (var discipline in Model.Disciplines)
+                    {
+                        <label class="admin-choice-chip">
+                            <input type="checkbox" name="Input.DisciplineIds" value="@discipline.Id" checked="@(Model.Input.DisciplineIds.Contains(discipline.Id) ? "checked" : null)" />
+                            <span>@discipline.Name</span>
+                        </label>
+                    }
+                </div>
             </div>
 
             <div class="admin-form-row">
-                <label asp-for="Input.Spheres">Сферы трудоустройства</label>
-                <textarea asp-for="Input.Spheres" rows="3"></textarea>
+                <label>Сферы трудоустройства</label>
+                <div class="admin-choice-grid">
+                    @if (Model.Spheres.Count == 0)
+                    {
+                        <p class="admin-choice-empty">Справочник сфер трудоустройства пуст.</p>
+                    }
+                    @foreach (var sphere in Model.Spheres)
+                    {
+                        <label class="admin-choice-chip">
+                            <input type="checkbox" name="Input.SphereIds" value="@sphere.Id" checked="@(Model.Input.SphereIds.Contains(sphere.Id) ? "checked" : null)" />
+                            <span>@sphere.Name</span>
+                        </label>
+                    }
+                </div>
             </div>
 
             <button type="submit" class="admin-primary-btn">@(Model.Input.ProgramId > 0 ? "Сохранить изменения" : "Создать направление")</button>

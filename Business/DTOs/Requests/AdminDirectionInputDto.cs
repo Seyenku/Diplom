@@ -8,6 +8,6 @@ public class AdminDirectionInputDto
     public int FormId { get; set; }
     public float YearsEduc { get; set; }
     public string? Description { get; set; }
-    public List<string> Disciplines { get; set; } = new();
-    public List<string> Spheres { get; set; } = new();
+    public List<int> DisciplineIds { get; set; } = new();
+    public List<int> SphereIds { get; set; } = new();
 }

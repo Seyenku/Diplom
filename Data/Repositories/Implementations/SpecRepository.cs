@@ -96,6 +96,38 @@ public class SpecRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, I
                     program.AdmissionHistory = history;
             }
 
+            var programIds = programs.Select(p => p.ProgramId).ToArray();
+
+            const string sqlDisciplineIds = @"
+                SELECT ProgramId, DisciplineId
+                FROM dbo.Program_Disciplines_Map
+                WHERE ProgramId IN @ProgramIds";
+
+            const string sqlSphereIds = @"
+                SELECT ProgramId, SphereId
+                FROM dbo.Program_Spheres_Map
+                WHERE ProgramId IN @ProgramIds";
+
+            var disciplineRows = await db.QueryAsync<ProgramDisciplineRow>(
+                new CommandDefinition(sqlDisciplineIds, new { ProgramIds = programIds }, cancellationToken: ct));
+            var sphereRows = await db.QueryAsync<ProgramSphereRow>(
+                new CommandDefinition(sqlSphereIds, new { ProgramIds = programIds }, cancellationToken: ct));
+
+            var disciplineIdsByProgram = disciplineRows
+                .GroupBy(x => x.ProgramId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.DisciplineId).ToList());
+            var sphereIdsByProgram = sphereRows
+                .GroupBy(x => x.ProgramId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.SphereId).ToList());
+
+            foreach (var program in programs)
+            {
+                if (disciplineIdsByProgram.TryGetValue(program.ProgramId, out var disciplineIds))
+                    program.DisciplineIds = disciplineIds;
+                if (sphereIdsByProgram.TryGetValue(program.ProgramId, out var sphereIds))
+                    program.SphereIds = sphereIds;
+            }
+
             var result = programs.AsReadOnly();
             cache.Set(CacheKey, (IReadOnlyList<SpecDirectionDto>)result, TimeSpan.FromMinutes(30));
             return result;
@@ -112,6 +144,24 @@ public class SpecRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, I
         const string sql = "SELECT Id, Name FROM dbo.EduForms ORDER BY Id";
         using var db = dbFactory();
         var result = await db.QueryAsync<EduForm>(
+            new CommandDefinition(sql, cancellationToken: ct));
+        return result.ToList().AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<Discipline>> GetDisciplinesAsync(CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, Name FROM dbo.Disciplines ORDER BY Name";
+        using var db = dbFactory();
+        var result = await db.QueryAsync<Discipline>(
+            new CommandDefinition(sql, cancellationToken: ct));
+        return result.ToList().AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<Sphere>> GetSpheresAsync(CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, Name FROM dbo.Spheres ORDER BY Name";
+        using var db = dbFactory();
+        var result = await db.QueryAsync<Sphere>(
             new CommandDefinition(sql, cancellationToken: ct));
         return result.ToList().AsReadOnly();
     }
@@ -134,8 +184,8 @@ public class SpecRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, I
             new { direction.Code, direction.FormId, direction.YearsEduc, direction.Description },
             tx, cancellationToken: ct));
 
-        await SyncDisciplinesAsync(programId, direction.Disciplines, tx, ct);
-        await SyncSpheresAsync(programId, direction.Spheres, tx, ct);
+        await SyncDisciplinesAsync(programId, direction.DisciplineIds, tx, ct);
+        await SyncSpheresAsync(programId, direction.SphereIds, tx, ct);
 
         tx.Commit();
         cache.Remove(CacheKey);
@@ -169,8 +219,8 @@ public class SpecRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, I
             "DELETE FROM dbo.Program_Spheres_Map WHERE ProgramId = @ProgramId;",
             new { direction.ProgramId }, tx, cancellationToken: ct));
 
-        await SyncDisciplinesAsync(direction.ProgramId, direction.Disciplines, tx, ct);
-        await SyncSpheresAsync(direction.ProgramId, direction.Spheres, tx, ct);
+        await SyncDisciplinesAsync(direction.ProgramId, direction.DisciplineIds, tx, ct);
+        await SyncSpheresAsync(direction.ProgramId, direction.SphereIds, tx, ct);
 
         tx.Commit();
         cache.Remove(CacheKey);
@@ -196,44 +246,40 @@ public class SpecRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, I
         return tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { Code = code, Title = title }, tx, cancellationToken: ct));
     }
 
-    private static async Task SyncDisciplinesAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
+    private static async Task SyncDisciplinesAsync(int programId, IEnumerable<int> disciplineIds, IDbTransaction tx, CancellationToken ct)
     {
         const string sql = @"
-            DECLARE @Id INT;
-            SELECT @Id = Id FROM dbo.Disciplines WHERE Name = @Name;
-            IF @Id IS NULL
-            BEGIN
-                INSERT INTO dbo.Disciplines (Name) VALUES (@Name);
-                SET @Id = CAST(SCOPE_IDENTITY() AS INT);
-            END
-            IF NOT EXISTS (SELECT 1 FROM dbo.Program_Disciplines_Map WHERE ProgramId = @ProgramId AND DisciplineId = @Id)
-                INSERT INTO dbo.Program_Disciplines_Map (ProgramId, DisciplineId) VALUES (@ProgramId, @Id);";
+            IF EXISTS (SELECT 1 FROM dbo.Disciplines WHERE Id = @DisciplineId)
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM dbo.Program_Disciplines_Map
+                   WHERE ProgramId = @ProgramId AND DisciplineId = @DisciplineId
+               )
+                INSERT INTO dbo.Program_Disciplines_Map (ProgramId, DisciplineId)
+                VALUES (@ProgramId, @DisciplineId);";
 
-        foreach (var name in Normalize(names))
-            await tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
+        foreach (var disciplineId in NormalizeIds(disciplineIds))
+            await tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, DisciplineId = disciplineId }, tx, cancellationToken: ct));
     }
 
-    private static async Task SyncSpheresAsync(int programId, IEnumerable<string> names, IDbTransaction tx, CancellationToken ct)
+    private static async Task SyncSpheresAsync(int programId, IEnumerable<int> sphereIds, IDbTransaction tx, CancellationToken ct)
     {
         const string sql = @"
-            DECLARE @Id INT;
-            SELECT @Id = Id FROM dbo.Spheres WHERE Name = @Name;
-            IF @Id IS NULL
-            BEGIN
-                INSERT INTO dbo.Spheres (Name) VALUES (@Name);
-                SET @Id = CAST(SCOPE_IDENTITY() AS INT);
-            END
-            IF NOT EXISTS (SELECT 1 FROM dbo.Program_Spheres_Map WHERE ProgramId = @ProgramId AND SphereId = @Id)
-                INSERT INTO dbo.Program_Spheres_Map (ProgramId, SphereId) VALUES (@ProgramId, @Id);";
+            IF EXISTS (SELECT 1 FROM dbo.Spheres WHERE Id = @SphereId)
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM dbo.Program_Spheres_Map
+                   WHERE ProgramId = @ProgramId AND SphereId = @SphereId
+               )
+                INSERT INTO dbo.Program_Spheres_Map (ProgramId, SphereId)
+                VALUES (@ProgramId, @SphereId);";
 
-        foreach (var name in Normalize(names))
-            await tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, Name = name }, tx, cancellationToken: ct));
+        foreach (var sphereId in NormalizeIds(sphereIds))
+            await tx.Connection!.ExecuteAsync(new CommandDefinition(sql, new { ProgramId = programId, SphereId = sphereId }, tx, cancellationToken: ct));
     }
 
-    private static IEnumerable<string> Normalize(IEnumerable<string> names) =>
-        names.Select(n => n?.Trim() ?? string.Empty)
-             .Where(n => n.Length > 0)
-             .Distinct(StringComparer.OrdinalIgnoreCase);
+    private static IEnumerable<int> NormalizeIds(IEnumerable<int> ids) =>
+        ids.Where(id => id > 0).Distinct();
 
     private class AdmissionStatsRow
     {
@@ -243,5 +289,17 @@ public class SpecRepository(Func<IDbConnection> dbFactory, IMemoryCache cache, I
         public int     BudgetPlaces    { get; set; }
         public int     MinPassingScore { get; set; }
         public double? AvgEgeScore     { get; set; }
+    }
+
+    private class ProgramDisciplineRow
+    {
+        public int ProgramId { get; set; }
+        public int DisciplineId { get; set; }
+    }
+
+    private class ProgramSphereRow
+    {
+        public int ProgramId { get; set; }
+        public int SphereId { get; set; }
     }
 }
