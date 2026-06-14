@@ -60,13 +60,18 @@
             background:radial-gradient(ellipse at center, #a8c878 0%, #7a9e50 40%, transparent 70%);
             opacity:0;pointer-events:none;transition:opacity 0.25s ease-out;
         "></div>
+
+        <!-- Скип катсцены (появляется через 1.2 с, см. .mg-cutscene-skip) -->
+        <button type="button" class="mg-cutscene-skip" data-action="miniGameGeology.skipCutscene">
+            Пропустить ⏭
+        </button>
     </div>
 
 
     <!-- ═══════════════════════════════════════════════
          ФАЗА 2: АНАЛИЗ ПОРОДЫ
          ═══════════════════════════════════════════════ -->
-    <div id="geo-phase-analysis" class="hidden">
+    <div id="geo-phase-analysis" class="hidden mg-phase-fade-in">
 
         <!-- Колонка 1: Метрики породы -->
         <div class="geo-metrics-col">
@@ -130,6 +135,11 @@
         <div class="geo-strata-col">
             <p class="geo-section-title">🪨 Стратиграфический разрез</p>
             <canvas id="geo-strata-canvas" class="geo-strata-canvas"></canvas>
+            <!-- Легенда: что означают рамки и луч на разрезе -->
+            <div class="geo-strata-legend">
+                <span class="geo-legend-item"><i class="geo-legend-swatch geo-legend-swatch--anomaly"></i>аномальный слой</span>
+                <span class="geo-legend-item"><i class="geo-legend-swatch geo-legend-swatch--beam"></i>луч сканера</span>
+            </div>
             <div class="geo-sample-info">
                 <p id="geo-sample-name" class="geo-sample-name">Загрузка...</p>
                 <p id="geo-sample-desc" class="geo-sample-desc">Анализ данных зонда...</p>
@@ -168,13 +178,34 @@
     <!-- ═══════════════════════════════════════════════
          ФАЗА 3: РЕЗУЛЬТАТ
          ═══════════════════════════════════════════════ -->
-    <div id="geo-phase-result" class="hidden">
+    <div id="geo-phase-result" class="hidden mg-phase-fade-in">
         <div id="geo-result-icon" class="geo-result-icon">✅</div>
         <h2 id="geo-result-title" class="geo-result-title success">Проход открыт!</h2>
         <p id="geo-result-text" class="geo-result-text">Астероид расколот. Посадочная орбита свободна.</p>
+
+        <!-- Время / счёт / бейджи (заполняет renderResultExtras) -->
+        <div class="mg-result-stats">
+            <div class="mg-result-stat">
+                <span class="mg-result-stat-label">Время решения</span>
+                <span id="geo-result-time" class="mg-result-stat-value">—</span>
+            </div>
+            <div class="mg-result-stat" id="geo-result-score-wrap">
+                <span class="mg-result-stat-label">Счёт</span>
+                <span id="geo-result-score" class="mg-result-stat-value">—</span>
+            </div>
+        </div>
+        <div id="geo-result-badges" class="mg-result-badges"></div>
+
         <div id="geo-result-correct-wrap" class="geo-result-correct hidden">
             Правильный метод: <strong id="geo-result-correct-name"></strong>
         </div>
+
+        <!-- Образовательное объяснение -->
+        <div class="mg-result-explanation">
+            <p class="mg-result-explanation-title">💡 Как это можно было понять</p>
+            <p id="geo-result-explanation-text" class="mg-result-explanation-text"></p>
+        </div>
+
         <div class="geo-result-actions">
             <button id="geo-btn-return" class="btn-game btn-primary"
                     data-action="miniGameGeology.returnToPlanet">

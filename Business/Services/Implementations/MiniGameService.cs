@@ -14,6 +14,21 @@ public class MiniGameService : IMiniGameService
     private const int MaxScore = 1000;
     private const int MinTimeMs = 3_000;
 
+    // Формула счёта — зеркало клиентской (wwwroot/ts/game/screens/minigameShared.ts):
+    // первые 45 секунд (чтение условия) бесплатны, дальше −5 очков/с, пол 400.
+    // Бейджи считаются от СЕРВЕРНОГО счёта по timeMs — клиентскому score не доверяем.
+    private const int ScoreGraceMs = 45_000;
+    private const int ScoreDecayPerSec = 5;
+    private const int ScoreFloor = 400;
+    private const int SpeedMasterMaxMs = 25_000;
+
+    private static int ComputeScore(int timeMs)
+    {
+        if (timeMs <= ScoreGraceMs) return MaxScore;
+        var overSec = (timeMs - ScoreGraceMs) / 1000.0;
+        return Math.Max(ScoreFloor, (int)Math.Round(MaxScore - overSec * ScoreDecayPerSec));
+    }
+
     public MiniGameRewardDto CalculateReward(MiniGameResultDto result, PlanetDto? planet)
     {
         if (!result.Passed)
@@ -31,10 +46,12 @@ public class MiniGameService : IMiniGameService
         // No crystal rewards for landing.
         var crystals = new Dictionary<string, int>();
 
-        // Achievement badges are still supported.
+        // Achievement badges: perfect-run = решение в пределах грейса (≤45 с),
+        // speed-master = быстрое уверенное решение (≤25 с).
+        var serverScore = ComputeScore(result.TimeMs);
         var badges = new List<string>();
-        if (result.Score == MaxScore) badges.Add("perfect-run");
-        if (result.TimeMs < 15_000 && result.Score >= 800) badges.Add("speed-master");
+        if (serverScore == MaxScore) badges.Add("perfect-run");
+        if (result.TimeMs <= SpeedMasterMaxMs) badges.Add("speed-master");
 
         return new MiniGameRewardDto
         {

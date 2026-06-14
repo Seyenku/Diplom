@@ -22,6 +22,28 @@
     <!-- Список рекомендаций -->
     <div id="recommendations-list" style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:0.75rem;"></div>
 
+    <!-- CTA: от результата — к поступлению в СГУ -->
+    <div id="vocation-cta" class="game-card"
+         style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:0.75rem;border:1px solid var(--color-primary);background:rgba(99,102,241,0.08);">
+        <div>
+            <p style="font-weight:600;font-size:1rem;">🎓 Этим профессиям учат в СГУ им. Питирима Сорокина</p>
+            <p style="font-size:0.85rem;color:var(--color-text-muted);margin-top:0.25rem;line-height:1.5;">
+                Посмотри направления подготовки под твой результат — с экзаменами, проходными баллами
+                и бюджетными местами — и подай документы онлайн.
+            </p>
+        </div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <a id="vocation-cta-spec" href="/spec" target="_blank" rel="noopener"
+               class="btn-game btn-primary" style="flex:1;min-width:180px;text-align:center;text-decoration:none;">
+                Направления по результату
+            </a>
+            <a id="vocation-cta-admission" href="https://postupi.syktsu.ru/" target="_blank" rel="noopener noreferrer"
+               class="btn-game btn-secondary" style="flex:1;min-width:180px;text-align:center;text-decoration:none;">
+                Подать документы
+            </a>
+        </div>
+    </div>
+
     <!-- Кнопки -->
     <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;max-width:500px;width:100%;">
         <button id="btn-export-pdf" class="btn-game btn-primary" data-action="vocationConst.exportPdf" style="flex:1;min-width:160px;">

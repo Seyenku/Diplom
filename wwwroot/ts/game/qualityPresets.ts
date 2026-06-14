@@ -34,6 +34,10 @@ export interface QualityProfile {
     // Flight
     flightStarfieldCount: number;
     spawnChancePerFrame: number;
+    // Капы живых объектов поля: спавн лишь дозаполняет пул до этих значений,
+    // вышедшие из игры объекты рециркулируются (см. flightSpawner.recycleObject).
+    flightMaxAsteroids: number;
+    flightMaxCrystals: number;
 
     // Flight — Visual Effects
     flightPostProcessing: boolean;
@@ -43,9 +47,12 @@ export interface QualityProfile {
     flightShieldSphere: boolean;
     flightDynamicFOV: boolean;
     flightParallaxLayers: number;      // 1 / 2 / 3
+    // Слои параллакс-пыли [count, size, opacity]; mid при layers>=2, near при layers>=3
+    flightDustMid: [number, number, number];
+    flightDustNear: [number, number, number];
     flightDamageOverlay: boolean;
     flightVignette: boolean;
-    flightParticleMultiplier: number;  // 0.5 / 1.0 / 2.0
+    flightParticleMultiplier: number;  // 0.5 / 1.0 / 1.5
 
     /** Уровень текстурирования планет: off (solid color), surface (только базовая), full (+ облака + normal). */
     planetTextures: 'off' | 'surface' | 'full';
@@ -69,6 +76,8 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         planetRingSegments:   16,
         flightStarfieldCount: 800,
         spawnChancePerFrame:  0.025,
+        flightMaxAsteroids:   50,
+        flightMaxCrystals:    24,
         // VFX — всё выключено
         flightPostProcessing: false,
         flightSpeedLines:     false,
@@ -77,6 +86,8 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         flightShieldSphere:   false,
         flightDynamicFOV:     false,
         flightParallaxLayers: 1,
+        flightDustMid:        [260, 1.3, 0.20],
+        flightDustNear:       [60, 2.0, 0.10],
         flightDamageOverlay:  false,
         flightVignette:       false,
         flightParticleMultiplier: 0.5,
@@ -95,6 +106,8 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         planetRingSegments:   32,
         flightStarfieldCount: 2500,
         spawnChancePerFrame:  0.04,
+        flightMaxAsteroids:   90,
+        flightMaxCrystals:    40,
         // VFX — основной набор
         flightPostProcessing: true,
         flightSpeedLines:     true,
@@ -103,6 +116,8 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         flightShieldSphere:   true,
         flightDynamicFOV:     true,
         flightParallaxLayers: 2,
+        flightDustMid:        [260, 1.3, 0.20],
+        flightDustNear:       [60, 2.0, 0.10],
         flightDamageOverlay:  true,
         flightVignette:       true,
         flightParticleMultiplier: 1.0,
@@ -121,17 +136,23 @@ const PRESETS: Record<QualityLevel, QualityProfile> = {
         planetRingSegments:   48,
         flightStarfieldCount: 4000,
         spawnChancePerFrame:  0.06,
-        // VFX — всё включено
+        flightMaxAsteroids:   120,
+        flightMaxCrystals:    55,
+        // VFX — всё включено, но без визуального перегруза:
+        // плотность дымки/линий ниже исторических значений (200 линий и
+        // 300+120 крупных частиц читались как «туман» и съедали контраст).
         flightPostProcessing: true,
         flightSpeedLines:     true,
-        flightSpeedLinesCount: 200,
+        flightSpeedLinesCount: 120,
         flightEngineTrail:    true,
         flightShieldSphere:   true,
         flightDynamicFOV:     true,
         flightParallaxLayers: 3,
+        flightDustMid:        [220, 1.2, 0.18],
+        flightDustNear:       [60, 2.0, 0.10],
         flightDamageOverlay:  true,
         flightVignette:       true,
-        flightParticleMultiplier: 2.0,
+        flightParticleMultiplier: 1.5,
         planetTextures:       'full',
     },
 };

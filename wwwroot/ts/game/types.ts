@@ -131,6 +131,8 @@ export interface LiveOpsDto {
     minigameDurationS: number;
     unlockBaseCost: number;
     crystalFlightBonus: number;
+    /** Портал подачи документов (воронка абитуриента). */
+    admissionUrl?: string;
 }
 
 export interface SessionData {
@@ -272,18 +274,26 @@ _settings: {
         };
         _flightScreen: {
             restart: () => void;
+            togglePause: () => void;
         };
         _miniGameMedicine: {
             submitDiagnosis: () => void;
             returnToPlanet: () => void;
+            skipCutscene: () => void;
+            selectDiagnosis: (id: string) => void;
         };
         _miniGameProgramming: {
             submitPatch: () => void;
             returnToPlanet: () => void;
+            skipCutscene: () => void;
+            selectPatch: (id: string) => void;
+            flushLogs: () => void;
         };
         _miniGameGeology: {
             submitMethod: () => void;
             returnToPlanet: () => void;
+            skipCutscene: () => void;
+            selectMethod: (id: string) => void;
         };
     }
 }

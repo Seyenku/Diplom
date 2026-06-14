@@ -34,6 +34,8 @@ export interface CollisionResult {
     healAmount: number;
     hitAsteroid: boolean;
     cargoOverflow: boolean;
+    /** Кристаллов потеряно из-за полного трюма (для статистики полёта). */
+    crystalsLost: number;
 }
 
 /**
@@ -47,6 +49,7 @@ export function checkCollisions(params: CollisionParams): CollisionResult {
         healAmount: 0,
         hitAsteroid: false,
         cargoOverflow: false,
+        crystalsLost: 0,
     };
 
     const sp = params.shipModel.position;
@@ -59,24 +62,27 @@ export function checkCollisions(params: CollisionParams): CollisionResult {
     let cargo = params.currentCargo;
     const remaining = (): number => Math.max(0, capacity - cargo - res.crystalsEarned);
 
-    // Кристаллы
+    // Кристаллы. При полном трюме кристалл тоже исчезает (= потерян): если его
+    // оставить, магнит будет держать его у корабля и контакт повторится каждый
+    // кадр. Потери считаем в crystalsLost — уходят в статистику полёта.
     for (let i = params.crystals.length - 1; i >= 0; i--) {
         const c = params.crystals[i];
         if (sp.distanceToSquared(c.position) < crystalThresholdSq) {
             const want = params.combo;
             const earned = Math.min(want, remaining());
-            if (earned <= 0) {
-                res.cargoOverflow = true;
-                continue;
-            }
-            res.crystalsEarned += earned;
-            if (earned < want) res.cargoOverflow = true;
 
-            if (container) {
-                spawnFloatingText(container, c.position, params.camera, `+${earned}`, params.crystalColorHex);
+            if (earned > 0) {
+                res.crystalsEarned += earned;
+                if (container) {
+                    spawnFloatingText(container, c.position, params.camera, `+${earned}`, params.crystalColorHex);
+                }
+                playSfx('crystal_collect');
+                spawnCollectParticles(params.scene, c.position, params.crystalColorHex);
             }
-            playSfx('crystal_collect');
-            spawnCollectParticles(params.scene, c.position, params.crystalColorHex);
+            if (earned < want) {
+                res.cargoOverflow = true;
+                res.crystalsLost += want - earned;
+            }
 
             params.scene.remove(c);
             params.crystals.splice(i, 1);
@@ -92,15 +98,16 @@ export function checkCollisions(params: CollisionParams): CollisionResult {
             if (bType === 'mega') {
                 const want = 5 * params.combo;
                 const earned = Math.min(want, remaining());
-                if (earned <= 0) {
-                    res.cargoOverflow = true;
-                    continue;
+                if (earned > 0) {
+                    res.crystalsEarned += earned;
+                    if (container) spawnFloatingText(container, b.position, params.camera, `+${earned} ★`, 0xfbbf24);
+                    spawnCollectParticles(params.scene, b.position, 0xfbbf24);
+                    playSfx('crystal_collect');
                 }
-                if (earned < want) res.cargoOverflow = true;
-                res.crystalsEarned += earned;
-                if (container) spawnFloatingText(container, b.position, params.camera, `+${earned} ★`, 0xfbbf24);
-                spawnCollectParticles(params.scene, b.position, 0xfbbf24);
-                playSfx('crystal_collect');
+                if (earned < want) {
+                    res.cargoOverflow = true;
+                    res.crystalsLost += want - earned;
+                }
             } else if (bType === 'repair') {
                 res.healAmount += 0.25; // 25% of max health
                 if (container) spawnFloatingText(container, b.position, params.camera, '+25% 🛡', 0x4ade80);

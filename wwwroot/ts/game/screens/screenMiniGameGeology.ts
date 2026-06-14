@@ -13,11 +13,15 @@
  * Провал → Кристаллы потеряны (уже списаны в screenPlanetDetail), возврат
  */
 
-import { dispatch, goBack, getStore } from '../stateManager.js';
-import { GameStore, MiniGameRewardDto, CrystalType } from '../types.js';
+import { dispatch, goBack } from '../stateManager.js';
+import { GameStore, MiniGameRewardDto } from '../types.js';
 import { playSfx, playMusic } from '../audioManager.js';
 import { createGeoCutscene, GeoCutsceneApi } from './geoCutscene3d.js';
 import { createGeoSplitCutscene } from './geoSplitCutscene3d.js';
+import {
+    computeScore, setSubmitReady, staggerReveal, animateBarFill, animateNumericText,
+    flashAnswerFeedback, fadeSwapPhase, renderResultExtras,
+} from './minigameShared.js';
 
 // ── Типы ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +44,8 @@ interface RockSample {
     description: string;
     methodName: string;
     methodCommand: string;
+    /** Образовательное объяснение: какие метрики/слои указывали на этот метод. */
+    explanation: string;
     strata: StratumLayer[];
     metrics: {
         hardness: RockMetric;
@@ -58,6 +64,7 @@ const SAMPLES: readonly RockSample[] = [
         description: 'Метаморфическая порода высочайшей твёрдости. Плотная структура без газовых включений. Стандартные буры разрушаются немедленно.',
         methodName: '💎 Алмазный бур с термо-нагревом',
         methodCommand: 'drill --diamond --thermal-preheat',
+        explanation: 'Твёрдость 9/10 по Моосу — почти как алмаз, при этом температура (−40 °C), радиация и пористость в норме. Опасных аномалий нет, проблема только в прочности: такую породу возьмёт лишь алмазный бур с термо-нагревом.',
         strata: [
             { label: 'Реголит',  color: '#4a3f30', heightPct: 15, anomaly: false },
             { label: 'Кварцит',  color: '#c8b89a', heightPct: 45, anomaly: true  },
@@ -77,6 +84,7 @@ const SAMPLES: readonly RockSample[] = [
         description: 'Пористая порода с раскалёнными газовыми кавернами. Любой механический удар вызывает детонацию. Требуется бесконтактный метод.',
         methodName: '🔥 Плазменный резак',
         methodCommand: 'plasma-cut --mode=contact --temp=6000K',
+        explanation: 'Пористость 68% и температура +850 °C: на разрезе видны раскалённые газовые каверны. Любой механический удар по такой породе вызовет детонацию, поэтому бурить можно только бесконтактным плазменным резаком.',
         strata: [
             { label: 'Реголит',  color: '#4a3f30', heightPct: 12, anomaly: false },
             { label: 'Туф',      color: '#8b5e3c', heightPct: 30, anomaly: true  },
@@ -96,6 +104,7 @@ const SAMPLES: readonly RockSample[] = [
         description: 'Хрупкая порода с урановыми пластами. Вибрация вызывает распад и выброс. Только низкоамплитудный ультразвук обеспечит безопасное резонансное разрушение.',
         methodName: '🔊 Ультразвуковой резонанс',
         methodCommand: 'sonic --freq=42kHz --amplitude=low',
+        explanation: 'Радиация 18 мЗв/ч — в десятки раз выше нормы, а порода мягкая (2/10) и пористая: на разрезе выделяется урановый пласт. Вибрация обычного бура спровоцирует распад и выброс — безопасен только низкоамплитудный ультразвуковой резонанс.',
         strata: [
             { label: 'Реголит',  color: '#4a3f30', heightPct: 10, anomaly: false },
             { label: 'Сланец',   color: '#5a6040', heightPct: 30, anomaly: true  },
@@ -115,6 +124,7 @@ const SAMPLES: readonly RockSample[] = [
         description: 'Твёрдая вулканическая порода, скованная криогенным льдом. Алмазный бур треснет при первом контакте без прогрева. Термический прожиг плавит лёд и открывает трещины.',
         methodName: '🌡️ Термический прожиг',
         methodCommand: 'thermal-lance --temp=+2500C --duration=8s',
+        explanation: 'Ключ — сочетание −180 °C и твёрдости 8/10: твёрдая порода скована криогенным льдом (голубой слой на разрезе). Холодный алмазный бур треснет при контакте; сначала нужен термический прожиг, который растопит лёд и раскроет трещины.',
         strata: [
             { label: 'Реголит',  color: '#3a4050', heightPct: 15, anomaly: false },
             { label: 'Лёд',      color: '#8ab8d8', heightPct: 20, anomaly: true  },
@@ -134,6 +144,7 @@ const SAMPLES: readonly RockSample[] = [
         description: 'Плотная металлическая порода с умеренными показателями. Стабильная структура без аномалий — идеальный кандидат для направленного взрыва с шапочным зарядом.',
         methodName: '💣 Направленный взрыв',
         methodCommand: 'detonator --shaped-charge --depth=2m',
+        explanation: 'Все показатели умеренные: твёрдость 6/10 и нагрев +200 °C в рабочих пределах, радиации и пустот нет. Стабильная плотная структура без опасных аномалий — единственная порода, где безопасен и эффективен направленный взрыв.',
         strata: [
             { label: 'Реголит',  color: '#4a3f30', heightPct: 12, anomaly: false },
             { label: 'Железняк', color: '#706060', heightPct: 55, anomaly: true  },
@@ -149,10 +160,21 @@ const SAMPLES: readonly RockSample[] = [
     },
 ];
 
+// Короткие подсказки к методам — делают связь «метрика → метод» выводимой,
+// а не угадываемой (выводятся третьей строкой карточки, работают на таче).
+const METHOD_HINTS: Record<string, string> = {
+    quartzite:        'Для сверхтвёрдых монолитов; уязвим к глубокой заморозке',
+    volcanic_tuff:    'Бесконтактный — для пористых и взрывоопасных пород',
+    radioactive_shale:'Мягкое разрушение без ударов — когда опасна вибрация',
+    cryogenic_basalt: 'Растапливает лёд и мерзлоту, раскрывает трещины',
+    meteorite_iron:   'Для стабильных плотных пород без аномалий',
+};
+
 const ALL_METHODS = SAMPLES.map(s => ({
     id:      s.id,
     name:    s.methodName,
     command: s.methodCommand,
+    hint:    METHOD_HINTS[s.id] ?? '',
 }));
 
 // ── Состояние модуля ─────────────────────────────────────────────────────────
@@ -182,6 +204,19 @@ window._miniGameGeology = {
     },
     returnToPlanet() {
         goBack();
+    },
+    skipCutscene() {
+        if (_phase !== 'cutscene' || !_cutscene3d) return;
+        playSfx('ui_click');
+        _cutscene3d.stop(); // резолвит play() → существующий .then() перейдёт к анализу
+    },
+    selectMethod(id: string) {
+        if (_phase !== 'analysis') return;
+        _selectedMethodId = id;
+        document.querySelectorAll('.geo-method-option').forEach(el => el.classList.remove('selected'));
+        document.getElementById(`method-opt-${id}`)?.classList.add('selected');
+        setSubmitReady(document.getElementById('geo-submit-btn') as HTMLButtonElement | null, true);
+        playSfx('ui_click');
     },
 };
 
@@ -291,6 +326,14 @@ function _startAnalysis(): void {
     _renderMetrics(_currentSample);
     _renderStrataCanvas(_currentSample);
     _renderMethodList();
+
+    setSubmitReady(document.getElementById('geo-submit-btn') as HTMLButtonElement | null, false);
+
+    const phaseEl = document.getElementById('geo-phase-analysis');
+    if (phaseEl) {
+        staggerReveal(phaseEl, '.geo-metric-card');
+        staggerReveal(phaseEl, '.geo-method-option', 60);
+    }
 }
 
 function _renderMetrics(s: RockSample): void {
@@ -304,8 +347,8 @@ function _setMetric(id: 'hardness' | 'temp' | 'rad' | 'pore', m: RockMetric): vo
     const card  = document.getElementById(`metric-${id}`);
     const valEl = document.getElementById(`metric-${id}-val`);
     const barEl = document.getElementById(`metric-${id}-bar`);
-    if (valEl) { valEl.textContent = m.value; valEl.className = `geo-metric-value ${m.level}`; }
-    if (barEl) { barEl.style.width = `${m.bar}%`; barEl.className = `geo-metric-bar-fill ${m.level}`; }
+    if (valEl) { valEl.className = `geo-metric-value ${m.level}`; animateNumericText(valEl, m.value); }
+    if (barEl) { barEl.className = `geo-metric-bar-fill ${m.level}`; animateBarFill(barEl, m.bar); }
     if (card)  { card.className = `geo-metric-card ${m.level}`; }
 }
 
@@ -421,26 +464,20 @@ function _renderMethodList(): void {
     const list = document.getElementById('geo-method-list');
     if (!list) return;
 
+    // Выбор — через data-action-мост (inline onclick блокируется CSP).
     const shuffled = [...ALL_METHODS].sort(() => Math.random() - 0.5);
     list.innerHTML = shuffled.map(m => `
         <div class="geo-method-option" id="method-opt-${m.id}"
-             onclick="window.__geoSelectMethod('${m.id}')">
+             data-action="miniGameGeology.selectMethod" data-arg="${m.id}">
             <div class="geo-method-radio"></div>
             <div class="geo-method-text">
                 <span class="geo-method-name">${m.name}</span>
                 <span class="geo-method-command">${_escapeHtml(m.command)}</span>
+                <span class="geo-method-hint">${_escapeHtml(m.hint)}</span>
             </div>
         </div>
     `).join('');
-
-    (window as any).__geoSelectMethod = (id: string) => {
-        _selectedMethodId = id;
-        document.querySelectorAll('.geo-method-option').forEach(el => el.classList.remove('selected'));
-        document.getElementById(`method-opt-${id}`)?.classList.add('selected');
-        const btn = document.getElementById('geo-submit-btn') as HTMLButtonElement | null;
-        if (btn) btn.disabled = false;
-        playSfx('ui_click');
-    };
+    list.style.pointerEvents = '';
 }
 
 // ── Обработка ответа ─────────────────────────────────────────────────────────
@@ -448,41 +485,52 @@ function _renderMethodList(): void {
 async function _handleMethodSubmit(): Promise<void> {
     if (!_currentSample || !_selectedMethodId) return;
 
-    const isCorrect = _selectedMethodId === _currentSample.id;
-    const btn = document.getElementById('geo-submit-btn') as HTMLButtonElement | null;
-    if (btn) btn.disabled = true;
+    const sample = _currentSample;
+    const isCorrect = _selectedMethodId === sample.id;
+    const timeMs = Math.max(3000, Date.now() - _analysisStartTime);
+    const score = computeScore(timeMs);
 
-    document.querySelectorAll('.geo-method-option').forEach(el => {
-        (el as HTMLElement).style.pointerEvents = 'none';
-    });
+    // Блокируем повторный сабмит и дальнейший выбор вариантов
+    setSubmitReady(document.getElementById('geo-submit-btn') as HTMLButtonElement | null, false);
+    const list = document.getElementById('geo-method-list');
+    if (list) list.style.pointerEvents = 'none';
+
+    const selectedEl = document.getElementById(`method-opt-${_selectedMethodId}`);
+    const correctEl  = document.getElementById(`method-opt-${sample.id}`);
+
+    dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
 
     if (isCorrect) {
-        _stopStrataCanvas();
-
-        // Показываем overlay с прогресс-баром
-        _show('geo-split-overlay');
-
-        // Запрашиваем награду параллельно с анимацией
-        const [, reward] = await Promise.all([
-            _playDrillingAndSplit(),
-            _fetchReward(),
-        ]);
-
+        // Сначала фидбек по ответу, потом сцена бурения и раскола
+        await flashAnswerFeedback(selectedEl, correctEl, true);
         if (_isDestroyed) return;
 
-        playSfx('planet_unlock');
+        _stopStrataCanvas();
         if (_planetId) dispatch('DISCOVER_PLANET', { planetId: _planetId });
-        if (reward?.valid && reward.crystals) dispatch('EARN_CRYSTALS', { earned: reward.crystals });
-        if (reward?.badges?.length) reward.badges.forEach(b => dispatch('ADD_BADGE', { badge: b }));
-        dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
 
+        // Показываем overlay с прогресс-баром; награду запрашиваем параллельно
+        _show('geo-split-overlay');
+        const [, reward] = await Promise.all([
+            _playDrillingAndSplit(),
+            _fetchReward(score, timeMs),
+        ]);
+        if (_isDestroyed) return;
+
+        let badges: string[] = [];
+        if (reward?.valid && reward.crystals) dispatch('EARN_CRYSTALS', { earned: reward.crystals });
+        if (reward?.badges?.length) {
+            badges = reward.badges;
+            reward.badges.forEach(b => dispatch('ADD_BADGE', { badge: b }));
+        }
+
+        playSfx('planet_unlock');
         _hide('geo-split-overlay');
-        await _sleep(300);
-        if (!_isDestroyed) _showResult(true, _currentSample!.methodName);
+        await fadeSwapPhase('geo-phase-analysis', () => _showResult(true, sample, timeMs, score, badges));
     } else {
+        await flashAnswerFeedback(selectedEl, correctEl, false);
+        if (_isDestroyed) return;
         playSfx('minigame_crash');
-        dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
-        _showResult(false, _currentSample.methodName);
+        await fadeSwapPhase('geo-phase-analysis', () => _showResult(false, sample, timeMs, null, []));
     }
 }
 
@@ -521,7 +569,7 @@ function _animateDrillProgress(durationMs: number): Promise<void> {
     });
 }
 
-async function _fetchReward(): Promise<MiniGameRewardDto | null> {
+async function _fetchReward(score: number, timeMs: number): Promise<MiniGameRewardDto | null> {
     try {
         const resp = await fetch('/game?handler=MiniGameResult', {
             method: 'POST',
@@ -533,8 +581,8 @@ async function _fetchReward(): Promise<MiniGameRewardDto | null> {
             },
             body: JSON.stringify({
                 planetId: _planetId,
-                score: 1000,
-                timeMs: Math.max(3000, Date.now() - _analysisStartTime),
+                score,
+                timeMs,
                 passed: true,
             }),
         });
@@ -547,7 +595,7 @@ async function _fetchReward(): Promise<MiniGameRewardDto | null> {
 
 // ── Результат ────────────────────────────────────────────────────────────────
 
-function _showResult(success: boolean, correctName: string): void {
+function _showResult(success: boolean, sample: RockSample, timeMs: number, score: number | null, badges: string[]): void {
     _phase = 'result';
     _setPhaseLabel('Результат');
     _showOnly('geo-phase-result');
@@ -570,9 +618,15 @@ function _showResult(success: boolean, correctName: string): void {
         if (title) { title.textContent = 'Неверный метод! Бур повреждён.'; title.className = 'geo-result-title failure'; }
         if (text)  text.textContent = 'Выбранный метод оказался непригоден для данной породы. Оборудование повреждено. Кристаллы затрачены. Соберите новые и повторите попытку.';
         if (correctWrap) correctWrap.classList.remove('hidden');
-        if (correctEl)   correctEl.textContent = correctName;
+        if (correctEl)   correctEl.textContent = sample.methodName;
         if (returnBtn)   returnBtn.textContent = '← Вернуться к планете';
     }
+
+    renderResultExtras({
+        prefix: 'geo', success, timeMs, score, badges,
+        explanation: sample.explanation,
+        accentColor: '#7a9e50',
+    });
 }
 
 // ── Утилиты ──────────────────────────────────────────────────────────────────

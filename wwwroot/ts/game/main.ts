@@ -215,8 +215,6 @@ document.addEventListener('click', (e) => {
         if (target) transition(target);
     } else if (action === 'goBack') {
         import('./stateManager.js').then(m => m.goBack());
-    } else if (action === 'pause') {
-        transition(Screen.PAUSE ?? Screen.SETTINGS);
     } else if (action === 'newGame') {
         transition(Screen.CHAR_CREATION);
     } else if (action === 'continueGame') {

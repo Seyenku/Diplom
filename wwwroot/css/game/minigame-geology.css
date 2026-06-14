@@ -618,3 +618,57 @@
         gap: 0.45rem;
     }
 }
+
+/* ── Легенда стратиграфии и подсказки методов (UX-доработка) ──────────────── */
+
+.geo-strata-legend {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+}
+
+.geo-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.geo-legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.geo-legend-swatch--anomaly {
+    border: 2px solid rgba(248, 113, 113, 0.8);
+    animation: geo-legend-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes geo-legend-pulse {
+    0%, 100% { border-color: rgba(248, 113, 113, 0.35); }
+    50%      { border-color: rgba(248, 113, 113, 0.85); }
+}
+
+.geo-legend-swatch--beam {
+    height: 4px;
+    align-self: center;
+    background: linear-gradient(90deg, transparent, rgba(168, 200, 120, 0.9), transparent);
+}
+
+.geo-method-hint {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    line-height: 1.35;
+    margin-top: 0.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .geo-legend-swatch--anomaly {
+        animation: none;
+    }
+}

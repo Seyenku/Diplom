@@ -75,8 +75,12 @@ let _dragHandlers: { type: string; fn: (e: Event) => void }[] = [];
 const DRAG_SENSITIVITY = 0.005;
 const INERTIA_DECAY = 0.92;
 const INERTIA_MIN = 0.0002;
-const IDLE_BEFORE_AUTO_MS = 1500;
+const IDLE_BEFORE_AUTO_MS = 500;
 const CLICK_DRAG_THRESHOLD_PX = 5;
+// Авто-вращение разгоняется плавно (~0.8 с до полной скорости), а не включается
+// рывком после паузы.
+const AUTO_BLEND_STEP = 0.02;
+let _autoBlend = 0;
 
 // ── Реактивное обновление UI при изменении баланса кристаллов ────────────────
 
@@ -344,6 +348,7 @@ function _attachDragHandlers(canvas: HTMLCanvasElement): void {
         _accumDragPx = 0;
         _rotVelY = 0;
         _rotVelX = 0;
+        _autoBlend = 0;
         canvas.style.cursor = 'grabbing';
         try { canvas.setPointerCapture(e.pointerId); } catch { /* noop */ }
     };
@@ -380,6 +385,10 @@ function _attachDragHandlers(canvas: HTMLCanvasElement): void {
     };
 
     const onPointerUp = (e: PointerEvent): void => {
+        // Без предшествующего pointerdown на канвасе (например, кнопку мыши
+        // отпустили над планетой после нажатия на карточке) — игнорируем:
+        // иначе случайно переключается режим и замирает авто-вращение.
+        if (!_isDragging) return;
         if (_dragPointerId !== null && _dragPointerId !== e.pointerId) return;
         const wasClick = _accumDragPx < CLICK_DRAG_THRESHOLD_PX;
         _isDragging = false;
@@ -398,6 +407,9 @@ function _attachDragHandlers(canvas: HTMLCanvasElement): void {
     };
 
     const onPointerCancel = (): void => {
+        // pointerleave прилетает при простом уводе мыши с канваса (ховер!) —
+        // без активного drag вращение прерывать нельзя.
+        if (!_isDragging) return;
         _isDragging = false;
         _dragPointerId = null;
         _idleSinceMs = performance.now();
@@ -476,9 +488,19 @@ function _planetRenderLoop(): void {
         _rotVelY *= INERTIA_DECAY;
         _rotVelX *= INERTIA_DECAY;
     } else if (sinceIdle > IDLE_BEFORE_AUTO_MS) {
-        // Авто-rotation с параллаксом (разные скорости для surface и cloud)
-        if (_planetMesh) _planetMesh.rotation.y += surfSpeed;
-        if (_cloudMesh)  _cloudMesh.rotation.y  += cloudSpeed;
+        // Авто-rotation с параллаксом; скорость нарастает плавно (ease-in),
+        // чтобы после паузы планета не дёргалась с места.
+        _autoBlend = Math.min(1, _autoBlend + AUTO_BLEND_STEP);
+        const eased = _autoBlend * _autoBlend;
+        if (_planetMesh) _planetMesh.rotation.y += surfSpeed * eased;
+        if (_cloudMesh)  _cloudMesh.rotation.y  += cloudSpeed * eased;
+    }
+
+    // В reading-режиме мягко выравниваем «накрученный» наклон — маленькая
+    // планета в углу смотрится аккуратнее без перекоса по X.
+    if (_mode === 'reading' && !_isDragging) {
+        if (_planetMesh && Math.abs(_planetMesh.rotation.x) > 0.001) _planetMesh.rotation.x *= 0.94;
+        if (_cloudMesh && Math.abs(_cloudMesh.rotation.x) > 0.001) _cloudMesh.rotation.x *= 0.94;
     }
 
     _planetRenderer.render(_planetScene, _planetCamera);
@@ -496,6 +518,7 @@ function _cleanup3D(): void {
     _rotVelX = 0;
     _accumDragPx = 0;
     _idleSinceMs = 0;
+    _autoBlend = 0;
 
     // Сбрасываем reading-mode (чтобы следующий вход на экран начался с overview)
     _mode = 'overview';

@@ -16,10 +16,10 @@ import { getDevice } from '../deviceProfile.js';
 import { FLIGHT_SHIP_CONFIG, updateShipPhysics } from '../systems/shipController.js';
 import { loadShipGroup } from '../systems/shipLoader.js';
 import { createComposer, disposeComposer } from '../systems/postProcessing.js';
-import { disposeParticlePool } from '../systems/particleEffects.js';
+import { disposeParticlePool, spawnFloatingText } from '../systems/particleEffects.js';
 
 import { FlightVfxState, initVfx, updateVfx, disposeVfx } from './flightVfx.js';
-import { SpawnerState, initSpawner, spawnWave, disposeSpawner, FIELD_W, FIELD_H } from './flightSpawner.js';
+import { SpawnerState, initSpawner, spawnWave, recycleObject, disposeSpawner, FIELD_W, FIELD_H } from './flightSpawner.js';
 import { checkCollisions, IFRAMES_DURATION, HIT_STUN_DURATION } from './flightCollisions.js';
 import * as Ui from './flightUi.js';
 
@@ -33,8 +33,8 @@ registerSceneBuilder('flight', () => {
     
     const profile = getProfile();
     addStarfield(scene, profile.flightStarfieldCount, 0.6);
-    if (profile.flightParallaxLayers >= 2) _addFlightDustLayer(scene, 'mid', 300, 1.5, 0.25);
-    if (profile.flightParallaxLayers >= 3) _addFlightDustLayer(scene, 'near', 120, 3.0, 0.15);
+    if (profile.flightParallaxLayers >= 2) _addFlightDustLayer(scene, 'mid', ...profile.flightDustMid);
+    if (profile.flightParallaxLayers >= 3) _addFlightDustLayer(scene, 'near', ...profile.flightDustNear);
     
     scene.add(new THREE.AmbientLight(0x334155, 0.6));
     const dirLight = new THREE.DirectionalLight(0x4fc3f7, 1.2);
@@ -117,7 +117,13 @@ let _shield = BASE_SHIELD;
 let _maxShield = BASE_SHIELD;
 let _collected = 0;
 let _crystalType: CrystalType = 'programming';
+let _crystalCssColor = '#4fc3f7';
 let _overflowNotified = false;
+let _lostOverflow = 0;     // потеряно кристаллов из-за полного трюма (за полёт)
+let _overflowFxCd = 0;     // кулдаун floating-text «Трюм полон!»
+let _paused = false;
+let _radarCd = 0;          // троттлинг отрисовки радара
+let _speedCd = 0;          // троттлинг индикатора скорости
 
 let _combo = 1;
 let _maxCombo = 1;
@@ -159,9 +165,41 @@ window._flightScreen = {
         const res = document.getElementById('flight-results');
         if (hud) hud.classList.remove('hidden');
         if (res) res.classList.add('hidden');
+        _setPaused(false);
         _startAccelerating();
+    },
+    togglePause() {
+        if (_state !== 'playing' && _state !== 'accelerating') return;
+        _setPaused(!_paused);
     }
 };
+
+/** Пауза: останавливаем RAF-цикл целиком (логика, таймеры и рендер замирают).
+ *  При резюме сбрасываем _lastTime, иначе dt-скачок прокрутит таймер полёта. */
+function _setPaused(paused: boolean): void {
+    if (_paused === paused) return;
+    _paused = paused;
+
+    const overlay = document.getElementById('flight-pause-overlay');
+    if (overlay) overlay.classList.toggle('hidden', !paused);
+
+    if (paused) {
+        if (_animId) cancelAnimationFrame(_animId);
+        _animId = null;
+    } else if (_state === 'playing' || _state === 'accelerating') {
+        _lastTime = performance.now();
+        _lastFrameRenderMs = 0;
+        _animId = requestAnimationFrame(_gameLoop);
+    }
+    playSfx('ui_click');
+}
+
+function _onKeyDown(e: KeyboardEvent): void {
+    if (e.code !== 'Escape') return;
+    if (_state !== 'playing' && _state !== 'accelerating') return;
+    e.preventDefault();
+    _setPaused(!_paused);
+}
 
 export async function init(store: Readonly<GameStore>): Promise<void> {
     const sd = store.sessionData;
@@ -176,7 +214,9 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
     WAVE_DURATION_S = totalDuration / WAVE_COUNT;
 
     _crystalType = sd.crystalType || 'programming';
-    
+    const ctHex = CRYSTAL_COLORS[_crystalType]?.color ?? 0x4fc3f7;
+    _crystalCssColor = '#' + ctHex.toString(16).padStart(6, '0');
+
     // Статы апгрейдов
     const st = store.player?.shipStats;
     _speedBonus = st?.speedBonus ?? 0;
@@ -222,11 +262,14 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
         );
     }
 
+    document.addEventListener('keydown', _onKeyDown);
+
     playMusic('ambient_flight');
     _startAccelerating();
 }
 
 export function destroy(): void {
+    document.removeEventListener('keydown', _onKeyDown);
     offQualityChange(_onQualityChanged);
     _cleanup();
 }
@@ -265,6 +308,8 @@ function _startAccelerating(): void {
     _cleanupState();
     _state = 'accelerating';
     _throttle = 0;
+    _paused = false;
+    document.getElementById('flight-pause-overlay')?.classList.add('hidden');
 
     // Показываем HUD сразу
     const hudEl = document.getElementById('flight-hud');
@@ -325,6 +370,7 @@ const FRAME_TARGET_MS_LOW = 33;
 let _lastFrameRenderMs = 0;
 
 function _gameLoop(now: number): void {
+    if (_paused) return;
     if (_state !== 'accelerating' && _state !== 'playing' && _state !== 'results') return;
 
     // На слабых устройствах пропускаем «лишние» кадры до целевой частоты.
@@ -340,6 +386,7 @@ function _gameLoop(now: number): void {
 
     if (_iFramesRemaining > 0) _iFramesRemaining -= rawDt;
     if (_hitStunRemaining > 0) _hitStunRemaining -= rawDt;
+    if (_overflowFxCd > 0) _overflowFxCd -= rawDt;
 
     const timeScale = _hitStunRemaining > 0 ? 0.2 : 1.0;
     const dt = rawDt * timeScale;
@@ -361,7 +408,7 @@ function _gameLoop(now: number): void {
 
         // VFX масштабируются с throttle
         if (_vfxState) {
-            updateVfx(_vfxState, dt, rawDt, false, 0, _maxShield, _maxShield, 0, 0, _shipModel, getProfile(), false, easedThrottle);
+            updateVfx(_vfxState, dt, rawDt, false, 0, _maxShield, _maxShield, 0, 1.0, _shipModel, getProfile(), false, easedThrottle);
         }
 
         // Рендер
@@ -449,6 +496,17 @@ function _gameLoop(now: number): void {
                     _overflowNotified = true;
                     (window as any).showNotification?.(`Трюм полон (${_capacity})! Часть кристаллов потеряна.`, 'warning');
                 }
+                if (res.crystalsLost > 0) {
+                    _lostOverflow += res.crystalsLost;
+                    // Floating text с кулдауном — контакт при полном трюме может
+                    // повторяться часто, спамить надписью нельзя.
+                    const container = document.getElementById('screen-flight');
+                    if (container && _overflowFxCd <= 0) {
+                        _overflowFxCd = 1.5;
+                        const sp2 = _shipModel.position;
+                        spawnFloatingText(container, new THREE.Vector3(sp2.x, sp2.y + 1.2, sp2.z), cam, 'Трюм полон!', 0xf87171);
+                    }
+                }
                 if (res.damageTaken > 0) {
                     _shield = Math.max(0, _shield - res.damageTaken);
                     _iFramesRemaining = IFRAMES_DURATION;
@@ -472,12 +530,32 @@ function _gameLoop(now: number): void {
         if (Math.random() < waveChance && _spawnerState) {
             const sx = _shipModel?.position.x ?? 0;
             const sy = _shipModel?.position.y ?? 0;
-            spawnWave(_spawnerState, window.__threeScene!, _currentWave, sx, sy, _asteroids, _crystals, _bonuses);
+            spawnWave(
+                _spawnerState, window.__threeScene!, _currentWave, sx, sy,
+                _velocity.x, _velocity.y,
+                BASE_OBJ_SPEED * (WAVE_SPEED_MULT[_currentWave] ?? 1.8),
+                profile.flightMaxAsteroids, profile.flightMaxCrystals,
+                _asteroids, _crystals, _bonuses
+            );
+        }
+
+        // Мини-радар и скорость — с троттлингом, рисовать каждый кадр незачем.
+        _radarCd -= rawDt;
+        _speedCd -= rawDt;
+        if (_radarCd <= 0) {
+            _radarCd = 0.1;
+            Ui.updateRadar(_shipModel?.position.x ?? 0, _asteroids, _crystals, _bonuses, _crystalCssColor);
+        }
+        if (_speedCd <= 0) {
+            _speedCd = 0.15;
+            const maxV = FLIGHT_SHIP_CONFIG.maxSpeed * (1 + _speedBonus / 100);
+            Ui.updateSpeedIndicator(maxV > 0 ? (_velocity.length() / maxV) * 100 : 0);
         }
     }
 
     if (_vfxState) {
-        updateVfx(_vfxState, dt, rawDt, _boostActive, _hitStunRemaining, _shield, _maxShield, _elapsed, _currentWave, _shipModel, getProfile(), _state === 'playing', 1.0);
+        updateVfx(_vfxState, dt, rawDt, _boostActive, _hitStunRemaining, _shield, _maxShield, _elapsed,
+            WAVE_SPEED_MULT[_currentWave] ?? 1.8, _shipModel, getProfile(), _state === 'playing', 1.0);
     }
 
     const scene = window.__threeScene;
@@ -525,7 +603,10 @@ function _moveObjects(dt: number): void {
         const distSq = dx * dx + dy * dy + dz * dz;
         if (distSq < cMagnetRSq && distSq > 0.01) {
             const dist = Math.sqrt(distSq);
-            const pull = (1 - dist / cMagnetR) * 8 * dt / dist;
+            // pull=1 — перенос ровно в точку корабля; больше нельзя, иначе на
+            // низком FPS (большой dt) кристалл перелетает цель и осциллирует.
+            let pull = (1 - dist / cMagnetR) * 8 * dt / dist;
+            if (pull > 1) pull = 1;
             obj.position.x += dx * pull;
             obj.position.y += dy * pull;
             obj.position.z += dz * pull;
@@ -547,31 +628,45 @@ function _moveObjects(dt: number): void {
         const distSq = dx * dx + dy * dy + dz * dz;
         if (distSq < bMagnetRSq && distSq > 0.01) {
             const dist = Math.sqrt(distSq);
-            const pull = (1 - dist / bMagnetR) * 10 * dt / dist;
+            let pull = (1 - dist / bMagnetR) * 10 * dt / dist;
+            if (pull > 1) pull = 1;
             obj.position.x += dx * pull;
             obj.position.y += dy * pull;
             obj.position.z += dz * pull;
         }
     }
 
-    // In-place свёртка через swap-pop вместо filter (без аллокации новых массивов).
-    for (let i = _asteroids.length - 1; i >= 0; i--) {
+    // Рециркуляция вместо удаления: вышедший из игры объект переставляется
+    // вперёд по курсу корабля (пул фиксированного размера, без GC-мусора).
+    // Боковой рецикл — только в зоне подлёта (z > NEAR_Z): дальние объекты,
+    // заспавненные с упреждением, намеренно стоят в стороне от текущей позиции.
+    const NEAR_Z = -40;
+    const SIDE_X = 24;
+    const SIDE_Y = 15;
+    const sx = sp?.x ?? 0;
+    const sy = sp?.y ?? 0;
+    const approach = BASE_OBJ_SPEED * waveMult;
+
+    for (let i = 0; i < _asteroids.length; i++) {
         const a = _asteroids[i];
-        if (a.position.z > 10) {
-            scene.remove(a);
-            if (!(a as any).userData._hit) _dodged++;
-            _asteroids[i] = _asteroids[_asteroids.length - 1];
-            _asteroids.pop();
+        const past = a.position.z > 10;
+        const aside = a.position.z > NEAR_Z &&
+            (Math.abs(a.position.x - sx) > SIDE_X || Math.abs(a.position.y - sy) > SIDE_Y);
+        if (past || aside) {
+            if (past && !(a as any).userData._hit) _dodged++;
+            (a as any).userData._hit = false;
+            recycleObject(a, sx, sy, _velocity.x, _velocity.y, approach);
         }
     }
-    for (let i = _crystals.length - 1; i >= 0; i--) {
+    for (let i = 0; i < _crystals.length; i++) {
         const c = _crystals[i];
-        if (c.position.z > 10) {
-            scene.remove(c);
-            _crystals[i] = _crystals[_crystals.length - 1];
-            _crystals.pop();
+        const aside = c.position.z > NEAR_Z &&
+            (Math.abs(c.position.x - sx) > SIDE_X || Math.abs(c.position.y - sy) > SIDE_Y);
+        if (c.position.z > 10 || aside) {
+            recycleObject(c, sx, sy, _velocity.x, _velocity.y, approach);
         }
     }
+    // Бонусы остаются одноразовыми — их редкость не должна зависеть от рецикла.
     for (let i = _bonuses.length - 1; i >= 0; i--) {
         const b = _bonuses[i];
         if (b.position.z > 10) {
@@ -584,12 +679,18 @@ function _moveObjects(dt: number): void {
 
 function _endFlight(): void {
     _state = 'results';
-    
+
     if (globalRenderer) globalRenderer.domElement.style.transform = '';
     if (_shipModel) _shipModel.visible = true;
 
-    if (_collected > 0) {
-        dispatch('EARN_CRYSTALS', { earned: { [_crystalType]: _collected } as Record<CrystalType, number> });
+    // LiveOps-множитель награды (событийный буст, настраивается в админке/БД).
+    // Применяется к итогу, а не на сборе: ёмкость трюма ограничивает физический
+    // сбор, бонус — чистый множитель награды.
+    const bonusMult = getStore().sessionData?.liveOps?.crystalFlightBonus ?? 1;
+    const totalEarned = _collected > 0 ? Math.max(_collected, Math.round(_collected * bonusMult)) : 0;
+
+    if (totalEarned > 0) {
+        dispatch('EARN_CRYSTALS', { earned: { [_crystalType]: totalEarned } as Record<CrystalType, number> });
         playSfx('flight_end_success');
     } else {
         playSfx('flight_end_fail');
@@ -601,7 +702,8 @@ function _endFlight(): void {
         energy: _energy, maxEnergy: BOOST_MAX_ENERGY,
         currentWave: _currentWave, waveCount: WAVE_COUNT, elapsed: _elapsed,
         waveDurationS: WAVE_DURATION_S, combo: _combo, maxCombo: _maxCombo,
-        dodged: _dodged, crystalType: _crystalType
+        dodged: _dodged, crystalType: _crystalType,
+        bonusMult, totalEarned, lost: _lostOverflow
     });
 }
 
@@ -629,6 +731,10 @@ function _cleanupState(): void {
     _velocity.set(0, 0);
     _throttle = 0;
     _overflowNotified = false;
+    _lostOverflow = 0;
+    _overflowFxCd = 0;
+    _radarCd = 0;
+    _speedCd = 0;
     _energy = BOOST_MAX_ENERGY;
     _boostActive = false;
 
@@ -658,6 +764,8 @@ function _cleanup(): void {
     if (_animId) cancelAnimationFrame(_animId);
     _animId = null;
     _state = 'idle';
+    _paused = false;
+    document.getElementById('flight-pause-overlay')?.classList.add('hidden');
 
     // Подсказки управления скрываем при выходе из экрана
     Ui.setControlHintsVisible(false);

@@ -819,3 +819,53 @@
         min-width: 8rem;
     }
 }
+
+/* ── Пауза, радар, заметки результатов (доработка режима) ─────────────────── */
+
+.flight-pause-btn {
+    background: rgba(5, 10, 26, 0.75);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.6rem;
+    min-height: 1.9rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    line-height: 1;
+    transition: background var(--transition-ui);
+}
+
+.flight-pause-btn:hover {
+    background: rgba(99, 102, 241, 0.25);
+}
+
+.flight-radar {
+    position: absolute;
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    width: 64px;
+    height: 64px;
+    pointer-events: none; /* тач-зоны буста под радаром продолжают работать */
+    opacity: 0.9;
+}
+
+.flight-results-note {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.flight-results-note--bonus {
+    color: #fbbf24;
+}
+
+.flight-results-note--lost {
+    color: #f87171;
+}
+
+@media (max-width: 600px), (orientation: landscape) and (max-height: 540px) {
+    .flight-radar {
+        width: 52px;
+        height: 52px;
+    }
+}

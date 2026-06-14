@@ -29,6 +29,9 @@
   <ItemGroup>
     <Content Remove="wwwroot\js\game\**\*.js.map" />
     <Content Remove="wwwroot\js\game\dist\**\*.map" />
+    <Content Remove="wwwroot\ts\**" />
+    <!-- Страницы используют wwwroot\css\bootstrap.min.css; дистрибутив в lib (~9 МБ) не подключён -->
+    <Content Remove="wwwroot\lib\bootstrap\**" />
   </ItemGroup>
   <ItemGroup>
     <None Include="wwwroot\ts\game\gltfLoader.ts" />

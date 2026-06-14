@@ -13,10 +13,14 @@
  * Провал → Кристаллы потеряны (уже списаны в screenPlanetDetail), возврат
  */
 
-import { dispatch, goBack, getStore } from '../stateManager.js';
-import { GameStore, MiniGameRewardDto, CrystalType } from '../types.js';
+import { dispatch, goBack } from '../stateManager.js';
+import { GameStore, MiniGameRewardDto } from '../types.js';
 import { playSfx, playMusic } from '../audioManager.js';
 import { createProgCutscene, ProgCutsceneApi } from './progCutscene3d.js';
+import {
+    computeScore, setSubmitReady, staggerReveal, animateBarFill, animateNumericText,
+    flashAnswerFeedback, fadeSwapPhase, renderResultExtras,
+} from './minigameShared.js';
 
 // ── Типы ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +35,8 @@ interface SystemFault {
     name: string;
     patchName: string;
     patchCommand: string;
+    /** Образовательное объяснение: какие метрики и логи указывали на этот сбой. */
+    explanation: string;
     logs: string[];
     successLogs: string[];
     metrics: {
@@ -49,6 +55,7 @@ const FAULTS: readonly SystemFault[] = [
         name: 'Утечка памяти',
         patchName: '🧹 Сборщик мусора',
         patchCommand: 'gc --force --deep-clean',
+        explanation: 'RAM заполнена на 15.7 из 16 ГБ — единственная критическая метрика. В логах OutOfMemoryException и зависший GC: память не освобождается сама. Принудительная глубокая сборка мусора очищает кучу и перезапускает навигацию.',
         logs: [
             'OutOfMemoryException: heap size exceeded 15.7 GB',
             'GC stalled for 8420 ms — unable to reclaim memory',
@@ -73,6 +80,7 @@ const FAULTS: readonly SystemFault[] = [
         name: 'Бесконечный цикл',
         patchName: '🛑 Аварийный останов потока',
         patchCommand: 'kill -9 thread:main_nav',
+        explanation: 'CPU застрял на 99%, хотя память, сеть и диск в норме. StackOverflowError в recalcRoute() и заблокированный поток main_nav — программа крутится в бесконечном цикле, который лечится только аварийным остановом потока.',
         logs: [
             'StackOverflowError in NavComputer.recalcRoute()',
             'Thread:main_nav blocked — CPU 100% for 12 seconds',
@@ -97,6 +105,7 @@ const FAULTS: readonly SystemFault[] = [
         name: 'DDoS-атака',
         patchName: '🛡️ Активация файрвола',
         patchCommand: 'firewall --enable --block-all',
+        explanation: 'Сеть деградировала до 9999 мс при нормальных CPU и RAM, а в логах 48 291 попытка подключения за 10 секунд и сканирование портов — атака извне. Файрвол блокирует вредоносный трафик и возвращает канал связи.',
         logs: [
             'Connection refused: 48291 attempts in last 10 seconds',
             'Port scan detected from 192.168.0.0/8 range',
@@ -121,6 +130,7 @@ const FAULTS: readonly SystemFault[] = [
         name: 'Повреждение файловой системы',
         patchName: '💿 Восстановление ФС',
         patchCommand: 'fsck --repair /dev/nav0',
+        explanation: 'Диск читает 0 МБ/с — остальные метрики в норме. Ошибки ввода-вывода, повреждённый inode и несовпадение CRC в логах указывают на разрушенную файловую систему: её восстанавливает fsck --repair.',
         logs: [
             'I/O Error: read failed at block 0x4F2A (inode 8192)',
             'Inode corrupted: /nav/routes/sector_7.dat',
@@ -145,6 +155,7 @@ const FAULTS: readonly SystemFault[] = [
         name: 'Вирус-майнер',
         patchName: '🦠 Антивирусная изоляция',
         patchCommand: 'quarantine --scan --purge',
+        explanation: 'Подняты сразу ВСЕ четыре метрики: CPU 95%, память, сеть и диск. Так выглядит чужой процесс, пожирающий ресурсы: [cryptod] и крипто-хэши в логах выдают вирус-майнер. Антивирусный карантин изолирует и удаляет его.',
         logs: [
             'Unknown process [cryptod] consuming 72% CPU',
             'Crypto hash detected: SHA-3 brute-force activity',
@@ -186,6 +197,7 @@ let _diagnosisStartTime = 0;
 let _cutsceneTimer: ReturnType<typeof setTimeout> | null = null;
 let _progressTimer: ReturnType<typeof setInterval> | null = null;
 let _logTimers: ReturnType<typeof setTimeout>[] = [];
+let _logQueue: string[] = []; // невыведенные строки лога (для flushLogs по тапу)
 let _cutscene3d: ProgCutsceneApi | null = null;
 let _isDestroyed = false;
 
@@ -198,6 +210,25 @@ window._miniGameProgramming = {
     },
     returnToPlanet() {
         goBack();
+    },
+    skipCutscene() {
+        if (_phase !== 'cutscene' || !_cutscene3d) return;
+        playSfx('ui_click');
+        _cutscene3d.stop(); // резолвит play() → существующий .then() перейдёт к диагностике
+    },
+    selectPatch(id: string) {
+        if (_phase !== 'diagnosis') return;
+        _selectedPatchId = id;
+        document.querySelectorAll('.prog-patch-option').forEach(el => el.classList.remove('selected'));
+        document.getElementById(`patch-opt-${id}`)?.classList.add('selected');
+        setSubmitReady(document.getElementById('prog-submit-btn') as HTMLButtonElement | null, true);
+        playSfx('ui_click');
+    },
+    // Микро-интерактив: тап по терминалу мгновенно выводит оставшиеся строки лога
+    flushLogs() {
+        if (_phase !== 'diagnosis' || _logQueue.length === 0) return;
+        while (_logQueue.length > 0) _emitNextLog();
+        playSfx('ui_click');
     },
 };
 
@@ -291,6 +322,14 @@ function _startDiagnosis(): void {
     _renderMetrics(_currentFault);
     _renderLogs(_currentFault.logs);
     _renderPatchList();
+
+    setSubmitReady(document.getElementById('prog-submit-btn') as HTMLButtonElement | null, false);
+
+    const phaseEl = document.getElementById('prog-phase-diagnosis');
+    if (phaseEl) {
+        staggerReveal(phaseEl, '.prog-metric-card');
+        staggerReveal(phaseEl, '.prog-patch-option', 60);
+    }
 }
 
 function _renderMetrics(fault: SystemFault): void {
@@ -306,12 +345,12 @@ function _setMetric(id: 'cpu' | 'ram' | 'net' | 'disk', m: SystemMetric): void {
     const barEl = document.getElementById(`metric-${id}-bar`);
 
     if (valEl) {
-        valEl.textContent = m.value;
         valEl.className = `prog-metric-value ${m.level}`;
+        animateNumericText(valEl, m.value);
     }
     if (barEl) {
-        barEl.style.width = `${m.bar}%`;
         barEl.className = `prog-metric-bar-fill ${m.level}`;
+        animateBarFill(barEl, m.bar);
     }
     if (card) {
         card.className = `prog-metric-card ${m.level}`;
@@ -323,20 +362,31 @@ function _renderLogs(logs: string[]): void {
     if (!terminal) return;
     terminal.innerHTML = '';
 
-    logs.forEach((line, i) => {
+    // Очередь: строки выводятся таймерами по одной, тап по терминалу
+    // (flushLogs) высыпает остаток мгновенно.
+    _logQueue = [...logs];
+    logs.forEach((_, i) => {
         const timer = setTimeout(() => {
             if (_isDestroyed) return;
-            const el = document.createElement('div');
-            el.className = 'prog-log-line';
-            const levelClass = _logLevelClass(line);
-            const time = _fmtTime();
-            el.innerHTML = `<span class="prog-log-time">[${time}]</span> <span class="prog-log-level ${levelClass}">${levelClass.toUpperCase()}</span> ${_escapeHtml(line)}`;
-            terminal.appendChild(el);
-            terminal.scrollTop = terminal.scrollHeight;
+            _emitNextLog();
             playSfx('ui_click');
         }, i * 400);
         _logTimers.push(timer);
     });
+}
+
+/** Выводит головную строку очереди логов в терминал (no-op при пустой очереди). */
+function _emitNextLog(): void {
+    const line = _logQueue.shift();
+    if (line === undefined) return;
+    const terminal = document.getElementById('prog-log-output');
+    if (!terminal) return;
+    const el = document.createElement('div');
+    el.className = 'prog-log-line';
+    const levelClass = _logLevelClass(line);
+    el.innerHTML = `<span class="prog-log-time">[${_fmtTime()}]</span> <span class="prog-log-level ${levelClass}">${levelClass.toUpperCase()}</span> ${_escapeHtml(line)}`;
+    terminal.appendChild(el);
+    terminal.scrollTop = terminal.scrollHeight;
 }
 
 function _renderPatchList(): void {
@@ -345,9 +395,10 @@ function _renderPatchList(): void {
 
     const shuffled = [...ALL_PATCHES].sort(() => Math.random() - 0.5);
 
+    // Выбор — через data-action-мост (inline onclick блокируется CSP).
     list.innerHTML = shuffled.map(p => `
         <div class="prog-patch-option" id="patch-opt-${p.id}"
-             onclick="window.__progSelectPatch('${p.id}')">
+             data-action="miniGameProgramming.selectPatch" data-arg="${p.id}">
             <div class="prog-patch-radio"></div>
             <div class="prog-patch-text">
                 <span class="prog-patch-name">${p.name}</span>
@@ -355,20 +406,7 @@ function _renderPatchList(): void {
             </div>
         </div>
     `).join('');
-
-    (window as any).__progSelectPatch = (id: string) => {
-        _selectedPatchId = id;
-
-        document.querySelectorAll('.prog-patch-option').forEach(el => {
-            el.classList.remove('selected');
-        });
-        document.getElementById(`patch-opt-${id}`)?.classList.add('selected');
-
-        const btn = document.getElementById('prog-submit-btn') as HTMLButtonElement | null;
-        if (btn) btn.disabled = false;
-
-        playSfx('ui_click');
-    };
+    list.style.pointerEvents = '';
 }
 
 // ── Обработка ответа ─────────────────────────────────────────────────────────
@@ -376,53 +414,55 @@ function _renderPatchList(): void {
 async function _handlePatchSubmit(): Promise<void> {
     if (!_currentFault || !_selectedPatchId) return;
 
-    const isCorrect = _selectedPatchId === _currentFault.id;
+    const fault = _currentFault;
+    const isCorrect = _selectedPatchId === fault.id;
+    const timeMs = Math.max(3000, Date.now() - _diagnosisStartTime);
+    const score = computeScore(timeMs);
 
-    const btn = document.getElementById('prog-submit-btn') as HTMLButtonElement | null;
-    if (btn) btn.disabled = true;
+    // Блокируем повторный сабмит и дальнейший выбор вариантов
+    setSubmitReady(document.getElementById('prog-submit-btn') as HTMLButtonElement | null, false);
+    const list = document.getElementById('prog-patch-list');
+    if (list) list.style.pointerEvents = 'none';
+
+    const selectedEl = document.getElementById(`patch-opt-${_selectedPatchId}`);
+    const correctEl  = document.getElementById(`patch-opt-${fault.id}`);
+
+    dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
 
     if (isCorrect) {
-        // Блокируем весь список патчей
-        document.querySelectorAll('.prog-patch-option').forEach(el => {
-            (el as HTMLElement).style.pointerEvents = 'none';
-        });
-
-        // Параллельно запускаем анимацию логов и запрос награды
-        const [, reward] = await Promise.all([
-            _appendSuccessLogs(_currentFault.successLogs),
-            _fetchReward(),
-        ]);
-
-        if (_isDestroyed) return;
-
-        playSfx('planet_unlock');
-
         if (_planetId) {
             dispatch('DISCOVER_PLANET', { planetId: _planetId });
         }
+
+        // Параллельно: фидбек по ответу, success-логи в терминале и запрос награды
+        const [, , reward] = await Promise.all([
+            flashAnswerFeedback(selectedEl, correctEl, true),
+            _appendSuccessLogs(fault.successLogs),
+            _fetchReward(score, timeMs),
+        ]);
+        if (_isDestroyed) return;
+
+        let badges: string[] = [];
         if (reward?.valid && reward.crystals) {
             dispatch('EARN_CRYSTALS', { earned: reward.crystals });
         }
         if (reward?.badges?.length) {
+            badges = reward.badges;
             reward.badges.forEach(b => dispatch('ADD_BADGE', { badge: b }));
         }
-        dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
 
-        // Небольшая пауза после последнего лога перед экраном результата
-        const finalDelay = setTimeout(() => {
-            if (!_isDestroyed) _showResult(true, _currentFault!.patchName);
-        }, 800);
-        _logTimers.push(finalDelay);
+        playSfx('planet_unlock');
+        await fadeSwapPhase('prog-phase-diagnosis', () => _showResult(true, fault, timeMs, score, badges));
     } else {
+        await flashAnswerFeedback(selectedEl, correctEl, false);
+        if (_isDestroyed) return;
         playSfx('minigame_crash');
-        dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
-        _showResult(false, _currentFault.patchName);
+        await fadeSwapPhase('prog-phase-diagnosis', () => _showResult(false, fault, timeMs, null, []));
     }
 }
 
-async function _fetchReward(): Promise<MiniGameRewardDto | null> {
+async function _fetchReward(score: number, timeMs: number): Promise<MiniGameRewardDto | null> {
     try {
-        const store = getStore();
         const resp = await fetch('/game?handler=MiniGameResult', {
             method: 'POST',
             headers: {
@@ -433,8 +473,8 @@ async function _fetchReward(): Promise<MiniGameRewardDto | null> {
             },
             body: JSON.stringify({
                 planetId: _planetId,
-                score: 1000,
-                timeMs: Math.max(3000, Date.now() - _diagnosisStartTime),
+                score,
+                timeMs,
                 passed: true,
             }),
         });
@@ -478,7 +518,7 @@ function _appendSuccessLogs(logs: string[]): Promise<void> {
 
 // ── Результат ────────────────────────────────────────────────────────────────
 
-function _showResult(success: boolean, correctName: string): void {
+function _showResult(success: boolean, fault: SystemFault, timeMs: number, score: number | null, badges: string[]): void {
     _phase = 'result';
     _setPhaseLabel('Результат');
     _showOnly('prog-phase-result');
@@ -501,9 +541,15 @@ function _showResult(success: boolean, correctName: string): void {
         if (title) { title.textContent = 'Неверный патч. Системы повреждены!'; title.className = 'prog-result-title failure'; }
         if (text)  text.textContent = 'Применённый патч не устранил сбой. Кристаллы затрачены на попытку. Соберите новые кристаллы и попробуйте снова.';
         if (correctWrap) correctWrap.classList.remove('hidden');
-        if (correctEl)   correctEl.textContent = correctName;
+        if (correctEl)   correctEl.textContent = fault.patchName;
         if (returnBtn)   returnBtn.textContent = '← Вернуться к планете';
     }
+
+    renderResultExtras({
+        prefix: 'prog', success, timeMs, score, badges,
+        explanation: fault.explanation,
+        accentColor: '#4fc3f7',
+    });
 }
 
 // ── Утилиты ──────────────────────────────────────────────────────────────────
@@ -571,6 +617,7 @@ function _clearTimers(): void {
     _clearProgressTimer();
     _logTimers.forEach(t => clearTimeout(t));
     _logTimers = [];
+    _logQueue = [];
 }
 
 function _clearProgressTimer(): void {

@@ -67,13 +67,18 @@
             pointer-events:none;
             transition:opacity 0.3s ease-out;
         "></div>
+
+        <!-- Скип катсцены (появляется через 1.2 с, см. .mg-cutscene-skip) -->
+        <button type="button" class="mg-cutscene-skip" data-action="miniGameMedicine.skipCutscene">
+            Пропустить ⏭
+        </button>
     </div>
 
 
     <!-- ═══════════════════════════════════════════════
          ФАЗА 2: ДИАГНОСТИКА
          ═══════════════════════════════════════════════ -->
-    <div id="med-phase-diagnosis" class="hidden">
+    <div id="med-phase-diagnosis" class="hidden mg-phase-fade-in">
 
         <!-- Колонка 1: Портрет капитана -->
         <div class="med-captain-col">
@@ -179,13 +184,34 @@
     <!-- ═══════════════════════════════════════════════
          ФАЗА 3: РЕЗУЛЬТАТ
          ═══════════════════════════════════════════════ -->
-    <div id="med-phase-result" class="hidden">
+    <div id="med-phase-result" class="hidden mg-phase-fade-in">
         <div id="med-result-icon" class="med-result-icon">✅</div>
         <h2 id="med-result-title" class="med-result-title success">Диагноз верный!</h2>
         <p id="med-result-text" class="med-result-text">Капитан получил необходимое лечение и возвращается в строй.</p>
+
+        <!-- Время / счёт / бейджи (заполняет renderResultExtras) -->
+        <div class="mg-result-stats">
+            <div class="mg-result-stat">
+                <span class="mg-result-stat-label">Время решения</span>
+                <span id="med-result-time" class="mg-result-stat-value">—</span>
+            </div>
+            <div class="mg-result-stat" id="med-result-score-wrap">
+                <span class="mg-result-stat-label">Счёт</span>
+                <span id="med-result-score" class="mg-result-stat-value">—</span>
+            </div>
+        </div>
+        <div id="med-result-badges" class="mg-result-badges"></div>
+
         <div id="med-result-correct-wrap" class="med-result-correct hidden">
             Правильный диагноз: <strong id="med-result-correct-name"></strong>
         </div>
+
+        <!-- Образовательное объяснение -->
+        <div class="mg-result-explanation">
+            <p class="mg-result-explanation-title">💡 Как это можно было понять</p>
+            <p id="med-result-explanation-text" class="mg-result-explanation-text"></p>
+        </div>
+
         <div class="med-result-actions">
             <button id="med-btn-return" class="btn-game btn-primary"
                     data-action="miniGameMedicine.returnToPlanet">

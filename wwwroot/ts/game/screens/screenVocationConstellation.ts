@@ -3,6 +3,7 @@
  */
 
 import { getStore, transition, Screen } from '../stateManager.js';
+import { telemetry } from '../telemetryCollector.js';
 import { GameStore, PlanetDto } from '../types.js';
 
 window._vocationConst = {
@@ -39,9 +40,37 @@ export async function init(store: Readonly<GameStore>): Promise<void> {
 
     _renderSvg(ranked);
     _renderList(ranked);
+    _wireFunnelCta(store, ranked);
 
     const placeholder = document.getElementById('constellation-placeholder');
     if (placeholder) (placeholder as HTMLElement).style.display = 'none';
+}
+
+/**
+ * Воронка абитуриента: результат игры → направления СГУ → подача документов.
+ * Ссылка «Направления» предзаполняет поиск на /spec именем топ-профессии
+ * (поиск индексирует поле Professions). Клики уходят в телеметрию —
+ * по ним измеряется конверсия игры в интерес к поступлению.
+ */
+function _wireFunnelCta(store: Readonly<GameStore>, ranked: RankedPlanet[]): void {
+    const topPlanet = ranked[0]?.planet;
+
+    const specLink = document.getElementById('vocation-cta-spec') as HTMLAnchorElement | null;
+    if (specLink && topPlanet) {
+        specLink.href = `/spec?q=${encodeURIComponent(topPlanet.name)}`;
+    }
+
+    const admissionLink = document.getElementById('vocation-cta-admission') as HTMLAnchorElement | null;
+    const liveOpsUrl = store.sessionData?.liveOps?.admissionUrl;
+    if (admissionLink && liveOpsUrl) {
+        admissionLink.href = liveOpsUrl;
+    }
+
+    for (const [el, target] of [[specLink, 'spec'], [admissionLink, 'admission']] as const) {
+        el?.addEventListener('click', () => {
+            telemetry.track('FUNNEL_CTA_CLICK', { target, topPlanet: topPlanet?.name ?? null });
+        });
+    }
 }
 
 export function destroy(): void {}
@@ -96,12 +125,15 @@ function _renderList(ranked: RankedPlanet[]): void {
     const el = document.getElementById('recommendations-list');
     if (!el) return;
     el.innerHTML = ranked.map(({ planet, score }, i) => `
-        <div class="game-card" style="display:flex;align-items:center;gap:1rem;">
+        <div class="game-card" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
             <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--color-primary);min-width:28px;">#${i + 1}</div>
-            <div style="flex:1;">
+            <div style="flex:1;min-width:140px;">
                 <p style="font-weight:600;">${_escapeHtml(planet.name)}</p>
                 <p style="font-size:0.8rem;color:var(--color-text-muted);">Совпадение: ${Math.round(score * 100)}%</p>
             </div>
+            <a class="btn-game btn-secondary" style="padding:6px 14px;font-size:0.8rem;text-decoration:none;"
+               href="/spec?q=${encodeURIComponent(planet.name)}" target="_blank" rel="noopener"
+               title="Направления подготовки СГУ для этой профессии">Где учиться</a>
             <button class="btn-game btn-secondary" style="padding:6px 14px;font-size:0.8rem;"
                     data-action="vocationConst.openPlanet" data-arg="${_escapeHtml(planet.id)}">Подробнее</button>
         </div>`

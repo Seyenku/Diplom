@@ -87,6 +87,12 @@ export interface FlightUiState {
     maxCombo: number;
     dodged: number;
     crystalType: CrystalType;
+    /** LiveOps-множитель награды (crystal_flight_bonus); 1 = без бонуса. */
+    bonusMult?: number;
+    /** Итог с учётом бонуса — попадает в стор и на экран результатов. */
+    totalEarned?: number;
+    /** Потеряно кристаллов из-за переполнения трюма. */
+    lost?: number;
 }
 
 export function updateHud(state: FlightUiState): void {
@@ -146,6 +152,70 @@ export function updateWaveProgress(
     if (label) label.textContent = `Волна ${currentWave + 1}/${waveCount}`;
 }
 
+// ── Мини-радар и скорость ──────────────────────────────────────────────────
+
+/** Структурный тип вместо THREE.Object3D — UI-модулю three не нужен. */
+interface RadarObj { position: { x: number; y: number; z: number } }
+
+const RADAR_RANGE_X = 30;  // мировых единиц на радиус радара по X
+const RADAR_RANGE_Z = 80;  // и по Z (вперёд = вверх на радаре)
+
+/** Рисует точки объектов вокруг корабля (вид сверху, корабль в центре). */
+export function updateRadar(
+    shipX: number,
+    asteroids: readonly RadarObj[],
+    crystals: readonly RadarObj[],
+    bonuses: readonly RadarObj[],
+    crystalCssColor: string
+): void {
+    const canvas = document.getElementById('flight-radar') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(5,10,26,0.55)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, cx - 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(148,163,184,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const plot = (objs: readonly RadarObj[], color: string, size: number): void => {
+        ctx.fillStyle = color;
+        for (let i = 0; i < objs.length; i++) {
+            const p = objs[i].position;
+            const px = cx + ((p.x - shipX) / RADAR_RANGE_X) * cx;
+            const py = cy + (p.z / RADAR_RANGE_Z) * cy; // z<0 (впереди) → выше центра
+            if (px < 2 || px > w - 2 || py < 2 || py > h - 2) continue;
+            ctx.fillRect(px - size / 2, py - size / 2, size, size);
+        }
+    };
+    plot(asteroids, '#94a3b8', 4);
+    plot(crystals, crystalCssColor, 4);
+    plot(bonuses, '#fbbf24', 5);
+
+    // Корабль — в центре
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+/** Скорость в % от максимальной (с бустом может быть > 100%). */
+export function updateSpeedIndicator(pct: number): void {
+    const el = document.getElementById('flight-speed');
+    if (!el) return;
+    el.textContent = `${Math.round(pct)}%`;
+    el.style.color = pct > 105 ? '#39ff14' : '';
+}
+
 export function updateComboDisplay(combo: number): void {
     const el = document.getElementById('flight-combo');
     if (!el) return;
@@ -196,14 +266,33 @@ export function showResults(state: FlightUiState): void {
     _setText('result-rating', rating);
     _setText('result-rating-label', RATING_LABELS[rating]);
 
-    // Stats — 4 значения в подготовленных слотах
+    // Stats — 4 значения в подготовленных слотах.
+    // В награде показываем итог с LiveOps-бонусом — ровно то, что ушло в стор.
+    const earned = state.totalEarned ?? state.collected;
     _setText('result-crystals',
-        state.collected > 0 ? `+${state.collected}` : '0');
+        earned > 0 ? `+${earned}` : '0');
     _setText('result-crystals-label',
-        state.collected > 0 ? `${ct.label} ${ct.emoji}` : 'Кристаллов');
+        earned > 0 ? `${ct.label} ${ct.emoji}` : 'Кристаллов');
     _setText('result-shield',  `${shieldPct}%`);
     _setText('result-combo',   `×${state.maxCombo}`);
     _setText('result-dodged',  String(state.dodged));
+
+    // Строка событийного бонуса (видна только при множителе ≠ 1)
+    const bonusEl = document.getElementById('result-bonus');
+    if (bonusEl) {
+        const mult = state.bonusMult ?? 1;
+        const showBonus = mult !== 1 && state.collected > 0;
+        bonusEl.classList.toggle('hidden', !showBonus);
+        if (showBonus) bonusEl.textContent = `×${mult} — событийный бонус кристаллов`;
+    }
+
+    // Потери при переполнении трюма (видны только если что-то потеряно)
+    const lostEl = document.getElementById('result-lost');
+    if (lostEl) {
+        const lost = state.lost ?? 0;
+        lostEl.classList.toggle('hidden', lost <= 0);
+        if (lost > 0) lostEl.textContent = `Потеряно при переполнении трюма: ${lost} 💎`;
+    }
 }
 
 export function updateAccelIndicator(throttle: number): void {

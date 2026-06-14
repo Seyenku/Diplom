@@ -29,9 +29,6 @@ export interface FlightVfxState {
 const BASE_OBJ_SPEED = 25;
 const ENGINE_TRAIL_COUNT = 60;
 
-// Волновые множители скорости из экрана (TODO: передавать через аргументы)
-const WAVE_SPEED_MULT = [1.0, 1.35, 1.8]; 
-
 export function initVfx(
     scene: THREE.Scene, 
     shipModel: THREE.Group | null, 
@@ -64,7 +61,9 @@ export function initVfx(
         if (tag) {
             state.dustLayers.push({
                 points: child as THREE.Points,
-                speedMult: tag === 'near' ? 8 : 3,
+                // near-слой летит быстрее дальнего, но не настолько, чтобы
+                // читаться как сплошной «туман» (исторически было 8).
+                speedMult: tag === 'near' ? 6 : 3,
             });
         }
     });
@@ -81,7 +80,7 @@ export function updateVfx(
     shield: number,
     maxShield: number,
     elapsed: number,
-    currentWave: number,
+    waveSpeedMult: number,
     shipModel: THREE.Group | null,
     profile: QualityProfile,
     isPlaying: boolean,
@@ -112,7 +111,7 @@ export function updateVfx(
     const shipY = shipModel?.position.y ?? 0;
 
     if (state.speedLinesMesh && state.speedLinesGeo) {
-        _updateSpeedLines(state, dt, boosting, currentWave, throttle, shipX, shipY);
+        _updateSpeedLines(state, dt, boosting, waveSpeedMult, throttle, shipX, shipY);
     }
     if (state.engineTrailPoints && state.engineTrailPositions && state.engineTrailAlphas) {
         _updateEngineTrail(state, dt, boosting, shipModel, throttle);
@@ -123,7 +122,7 @@ export function updateVfx(
         mat.uniforms.time.value = elapsed;
     }
 
-    _updateParallaxDust(state, dt, boosting, currentWave, throttle, shipX, shipY);
+    _updateParallaxDust(state, dt, boosting, waveSpeedMult, throttle, shipX, shipY);
 
     if (profile.flightDamageOverlay) {
         _updateDamageOverlay(shield, maxShield, isPlaying);
@@ -189,14 +188,12 @@ function _initSpeedLines(state: FlightVfxState, count: number, scene: THREE.Scen
     scene.add(state.speedLinesMesh);
 }
 
-function _updateSpeedLines(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number, shipX: number, shipY: number): void {
+function _updateSpeedLines(state: FlightVfxState, dt: number, boosting: boolean, waveSpeedMult: number, throttle: number, shipX: number, shipY: number): void {
     const geo = state.speedLinesGeo!;
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const arr = pos.array as Float32Array;
 
-    // Fallback to array bounds if wave is larger than mult list
-    const mult = WAVE_SPEED_MULT[currentWave] ?? WAVE_SPEED_MULT[WAVE_SPEED_MULT.length - 1];
-    const speed = (boosting ? 80 : 30) * mult * dt * throttle;
+    const speed = (boosting ? 80 : 30) * waveSpeedMult * dt * throttle;
     const lineLen = (boosting ? 3.0 : 0.8) * throttle;
 
     if (state.speedLinesMesh) {
@@ -323,13 +320,12 @@ function _triggerShieldRipple(state: FlightVfxState, hitPos: THREE.Vector3, elap
     mat.uniforms.hitPoint.value.copy(hitPos);
 }
 
-function _updateParallaxDust(state: FlightVfxState, dt: number, boosting: boolean, currentWave: number, throttle: number, shipX: number, shipY: number): void {
+function _updateParallaxDust(state: FlightVfxState, dt: number, boosting: boolean, waveSpeedMult: number, throttle: number, shipX: number, shipY: number): void {
     const boostMult = boosting ? 1.5 : 1.0;
-    const waveMult = WAVE_SPEED_MULT[currentWave] ?? WAVE_SPEED_MULT[WAVE_SPEED_MULT.length - 1];
 
     for (let l = 0; l < state.dustLayers.length; l++) {
         const layer = state.dustLayers[l];
-        const speed = BASE_OBJ_SPEED * layer.speedMult * waveMult * dt * boostMult * throttle;
+        const speed = BASE_OBJ_SPEED * layer.speedMult * waveSpeedMult * dt * boostMult * throttle;
         const pos = layer.points.geometry.attributes.position as THREE.BufferAttribute;
         const arr = pos.array as Float32Array;
         const count = arr.length / 3;

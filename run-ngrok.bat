@@ -25,7 +25,8 @@ if errorlevel 1 (
 REM --- 1. Start ASP.NET hidden, no browser, https on 7242 ---
 REM --no-launch-profile makes dotnet ignore launchSettings.json,
 REM so launchBrowser:true does not trigger.
-set "ASPNETCORE_ENVIRONMENT=Development"
+REM Production: dev exception pages must never be exposed through the public tunnel.
+set "ASPNETCORE_ENVIRONMENT=Production"
 set "ASPNETCORE_URLS=https://localhost:7242"
 
 echo Starting KosmosCore in background ^(https://localhost:7242^) ...

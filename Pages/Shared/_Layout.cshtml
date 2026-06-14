@@ -11,7 +11,8 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    @* viewport-fit=cover обязателен: без него env(safe-area-inset-*) в CSS всегда 0 на iOS *@
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>@ViewData["Title"] - KosmosCore</title>
 
     @* Security-заголовки ставятся в SecurityHeadersMiddleware на серверной стороне

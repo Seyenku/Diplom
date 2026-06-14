@@ -12,10 +12,14 @@
  * Провал → Кристаллы потеряны (уже списаны в screenPlanetDetail), возврат
  */
 
-import { dispatch, goBack, getStore } from '../stateManager.js';
-import { GameStore, MiniGameRewardDto, CrystalType } from '../types.js';
+import { dispatch, goBack } from '../stateManager.js';
+import { GameStore, MiniGameRewardDto } from '../types.js';
 import { playSfx, playMusic } from '../audioManager.js';
 import { createMedCutscene, MedCutsceneApi } from './medCutscene3d.js';
+import {
+    computeScore, setSubmitReady, staggerReveal, animateBarFill, animateNumericText,
+    flashAnswerFeedback, fadeSwapPhase, renderResultExtras,
+} from './minigameShared.js';
 
 // ── Типы травм ──────────────────────────────────────────────────────────────
 
@@ -33,6 +37,8 @@ interface Injury {
     name: string;
     description: string;
     symptoms: string;
+    /** Образовательное объяснение: какие показатели указывали на этот диагноз. */
+    explanation: string;
     vitals: {
         pulse:    VitalReading;
         pressure: VitalReading;
@@ -49,6 +55,7 @@ const INJURIES: readonly Injury[] = [
         name: 'Внутреннее кровотечение',
         description: 'Потеря крови. Бледность, слабость, падение давления.',
         symptoms: 'Бледность кожи, холодный пот, слабый учащённый пульс, снижение давления',
+        explanation: 'Давление упало до 80/50, а пульс подскочил до 122 — сердце качает быстрее, компенсируя потерю крови. Температура нормальная, значит это не инфекция. Низкое давление + частый слабый пульс + падающая сатурация (91%) — классическая картина внутреннего кровотечения.',
         vitals: {
             pulse:    { value: 122, display: '122 уд/мин', level: 'critical', bar: 85 },
             pressure: { value: 50,  display: '80/50 мм',   level: 'critical', bar: 20 },
@@ -61,6 +68,7 @@ const INJURIES: readonly Injury[] = [
         name: 'Сотрясение мозга',
         description: 'Травма головы. Показатели почти в норме, но капитан дезориентирован.',
         symptoms: 'Головокружение, тошнота, дезориентация, нарушение координации',
+        explanation: 'Все четыре показателя в норме — и это главная улика. Головокружение, тошнота и дезориентация при нормальных пульсе, давлении и сатурации означают, что пострадала голова, а не внутренние органы.',
         vitals: {
             pulse:    { value: 82,  display: '82 уд/мин',  level: 'normal',   bar: 60 },
             pressure: { value: 80,  display: '125/80 мм',  level: 'normal',   bar: 72 },
@@ -73,6 +81,7 @@ const INJURIES: readonly Injury[] = [
         name: 'Космическая инфекция',
         description: 'Заражение внеземным микроорганизмом. Высокая температура, озноб.',
         symptoms: 'Жар, озноб, учащённый пульс, слабость, сниженная сатурация',
+        explanation: 'Температура 39.6 °C — единственный критический показатель, плюс озноб и умеренно учащённый пульс (104). Травмы такого жара не дают: высокая температура — это иммунный ответ организма на заражение.',
         vitals: {
             pulse:    { value: 104, display: '104 уд/мин', level: 'warning',  bar: 78 },
             pressure: { value: 70,  display: '110/70 мм',  level: 'normal',   bar: 65 },
@@ -85,6 +94,7 @@ const INJURIES: readonly Injury[] = [
         name: 'Перелом ребра',
         description: 'Травма грудной клетки. Боль при дыхании, снижение сатурации.',
         symptoms: 'Острая боль при вдохе, учащённое дыхание, локальная болезненность',
+        explanation: 'Сатурация снизилась до 93%, потому что дышать больно и дыхание становится поверхностным. Пульс (112) и давление (132/85) слегка повышены от боли, температура в норме. Острая боль при вдохе + сниженный кислород — перелом ребра.',
         vitals: {
             pulse:    { value: 112, display: '112 уд/мин', level: 'warning',  bar: 80 },
             pressure: { value: 85,  display: '132/85 мм',  level: 'warning',  bar: 78 },
@@ -97,6 +107,7 @@ const INJURIES: readonly Injury[] = [
         name: 'Острый стресс',
         description: 'Сильный психологический шок. Учащённый пульс, высокое давление, тремор.',
         symptoms: 'Тремор рук, потливость, учащённый пульс, повышенное давление, паника',
+        explanation: 'Пульс 134 и ПОВЫШЕННОЕ давление 152/95 при нормальных температуре и сатурации — реакция «бей или беги». Ключевое отличие: при кровотечении давление падает, а здесь оно высокое — это паника, а не внутренняя травма.',
         vitals: {
             pulse:    { value: 134, display: '134 уд/мин', level: 'critical', bar: 95 },
             pressure: { value: 95,  display: '152/95 мм',  level: 'critical', bar: 95 },
@@ -137,6 +148,19 @@ window._miniGameMedicine = {
     },
     returnToPlanet() {
         goBack();
+    },
+    skipCutscene() {
+        if (_phase !== 'cutscene' || !_cutscene3d) return;
+        playSfx('ui_click');
+        _cutscene3d.stop(); // резолвит play() → существующий .then() перейдёт к диагностике
+    },
+    selectDiagnosis(id: string) {
+        if (_phase !== 'diagnosis') return;
+        _selectedDiagnosisId = id;
+        document.querySelectorAll('.med-diagnosis-option').forEach(el => el.classList.remove('selected'));
+        document.getElementById(`diag-opt-${id}`)?.classList.add('selected');
+        setSubmitReady(document.getElementById('med-submit-btn') as HTMLButtonElement | null, true);
+        playSfx('ui_click');
     },
 };
 
@@ -248,6 +272,16 @@ function _startDiagnosis(): void {
 
     // Список диагнозов
     _renderDiagnosisList();
+
+    // Кнопка неактивна до выбора варианта (после рестарта могла остаться активной)
+    setSubmitReady(document.getElementById('med-submit-btn') as HTMLButtonElement | null, false);
+
+    // Поочерёдное появление карточек показателей и вариантов
+    const phaseEl = document.getElementById('med-phase-diagnosis');
+    if (phaseEl) {
+        staggerReveal(phaseEl, '.med-vital-card');
+        staggerReveal(phaseEl, '.med-diagnosis-option', 60);
+    }
 }
 
 function _renderVitals(injury: Injury): void {
@@ -263,15 +297,24 @@ function _setVital(id: 'pulse' | 'pressure' | 'temp' | 'o2', v: VitalReading): v
     const barEl   = document.getElementById(`vital-${id}-bar`);
 
     if (valEl) {
-        valEl.textContent = v.display;
         valEl.className = `med-vital-value ${v.level}`;
+        animateNumericText(valEl, v.display);
     }
     if (barEl) {
-        barEl.style.width = `${v.bar}%`;
         barEl.className = `med-vital-bar-fill ${v.level}`;
+        animateBarFill(barEl, v.bar);
     }
     if (card) {
         card.className = `med-vital-card ${v.level}`;
+    }
+
+    // Микро-интерактив: иконка ❤️ бьётся с реальной частотой пульса пациента
+    if (id === 'pulse' && card) {
+        const icon = card.querySelector<HTMLElement>('.med-vital-icon');
+        if (icon && v.value > 0) {
+            icon.classList.add('mg-heartbeat');
+            icon.style.animationDuration = `${(60 / v.value).toFixed(2)}s`;
+        }
     }
 }
 
@@ -279,12 +322,13 @@ function _renderDiagnosisList(): void {
     const list = document.getElementById('med-diagnosis-list');
     if (!list) return;
 
-    // Перемешиваем список, чтобы правильный ответ не был всегда первым
+    // Перемешиваем список, чтобы правильный ответ не был всегда первым.
+    // Выбор — через data-action-мост (inline onclick блокируется CSP).
     const shuffled = [...ALL_DIAGNOSES].sort(() => Math.random() - 0.5);
 
     list.innerHTML = shuffled.map(d => `
         <div class="med-diagnosis-option" id="diag-opt-${d.id}"
-             onclick="window.__medSelectDiagnosis('${d.id}')">
+             data-action="miniGameMedicine.selectDiagnosis" data-arg="${d.id}">
             <div class="med-diagnosis-radio"></div>
             <div class="med-diagnosis-text">
                 <span class="med-diagnosis-name">${d.name}</span>
@@ -292,24 +336,7 @@ function _renderDiagnosisList(): void {
             </div>
         </div>
     `).join('');
-
-    // Глобальный обработчик выбора
-    (window as any).__medSelectDiagnosis = (id: string) => {
-        _selectedDiagnosisId = id;
-
-        // Снимаем выделение со всех
-        document.querySelectorAll('.med-diagnosis-option').forEach(el => {
-            el.classList.remove('selected');
-        });
-        // Выделяем выбранный
-        document.getElementById(`diag-opt-${id}`)?.classList.add('selected');
-
-        // Активируем кнопку
-        const btn = document.getElementById('med-submit-btn') as HTMLButtonElement | null;
-        if (btn) btn.disabled = false;
-
-        playSfx('ui_click');
-    };
+    list.style.pointerEvents = '';
 }
 
 // ── Обработка ответа ─────────────────────────────────────────────────────────
@@ -317,66 +344,80 @@ function _renderDiagnosisList(): void {
 async function _handleDiagnosisSubmit(): Promise<void> {
     if (!_currentInjury || !_selectedDiagnosisId) return;
 
-    const isCorrect = _selectedDiagnosisId === _currentInjury.id;
+    const injury = _currentInjury;
+    const isCorrect = _selectedDiagnosisId === injury.id;
+    const timeMs = Math.max(3000, Date.now() - _diagnosisStartTime);
+    const score = computeScore(timeMs);
 
-    // Блокируем кнопку повторного нажатия
-    const btn = document.getElementById('med-submit-btn') as HTMLButtonElement | null;
-    if (btn) btn.disabled = true;
+    // Блокируем повторный сабмит и дальнейший выбор вариантов
+    setSubmitReady(document.getElementById('med-submit-btn') as HTMLButtonElement | null, false);
+    const list = document.getElementById('med-diagnosis-list');
+    if (list) list.style.pointerEvents = 'none';
+
+    const selectedEl = document.getElementById(`diag-opt-${_selectedDiagnosisId}`);
+    const correctEl  = document.getElementById(`diag-opt-${injury.id}`);
+
+    dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
 
     if (isCorrect) {
-        playSfx('planet_unlock');
-
         // Открываем планету
         if (_planetId) {
             dispatch('DISCOVER_PLANET', { planetId: _planetId });
         }
 
-        // Запрашиваем награду на сервере
-        let reward: MiniGameRewardDto | null = null;
-        try {
-            const store = getStore();
-            const crystalType = (store.sessionData?.catalog ?? [])
-                .find((p: any) => p.id === _planetId)?.crystalType as CrystalType | undefined;
+        // Фидбек по ответу и запрос награды идут параллельно
+        const [, reward] = await Promise.all([
+            flashAnswerFeedback(selectedEl, correctEl, true),
+            _fetchReward(score, timeMs),
+        ]);
+        if (_isDestroyed) return;
 
-            const resp = await fetch('/game?handler=MiniGameResult', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'RequestVerificationToken':
-                        (document.querySelector('input[name="__RequestVerificationToken"]') as HTMLInputElement)?.value ?? '',
-                },
-                body: JSON.stringify({
-                    planetId: _planetId,
-                    score: 1000,
-                    timeMs: Math.max(3000, Date.now() - _diagnosisStartTime),
-                    passed: true,
-                }),
-            });
-            if (resp.ok) reward = await resp.json() as MiniGameRewardDto;
-        } catch (e) {
-            console.warn('[MedMiniGame] reward fetch failed:', e);
-        }
-
+        let badges: string[] = [];
         if (reward?.valid && reward.crystals) {
             dispatch('EARN_CRYSTALS', { earned: reward.crystals });
         }
         if (reward?.badges?.length) {
+            badges = reward.badges;
             reward.badges.forEach(b => dispatch('ADD_BADGE', { badge: b }));
         }
-        dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
 
-        _showResult(true, _currentInjury.name);
+        playSfx('planet_unlock');
+        await fadeSwapPhase('med-phase-diagnosis', () => _showResult(true, injury, timeMs, score, badges));
     } else {
+        await flashAnswerFeedback(selectedEl, correctEl, false);
+        if (_isDestroyed) return;
         playSfx('minigame_crash');
-        dispatch('INCREMENT_STAT', { key: 'miniGamesPlayed' });
-        _showResult(false, _currentInjury.name);
+        await fadeSwapPhase('med-phase-diagnosis', () => _showResult(false, injury, timeMs, null, []));
     }
+}
+
+async function _fetchReward(score: number, timeMs: number): Promise<MiniGameRewardDto | null> {
+    try {
+        const resp = await fetch('/game?handler=MiniGameResult', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'RequestVerificationToken':
+                    (document.querySelector('input[name="__RequestVerificationToken"]') as HTMLInputElement)?.value ?? '',
+            },
+            body: JSON.stringify({
+                planetId: _planetId,
+                score,
+                timeMs,
+                passed: true,
+            }),
+        });
+        if (resp.ok) return await resp.json() as MiniGameRewardDto;
+    } catch (e) {
+        console.warn('[MedMiniGame] reward fetch failed:', e);
+    }
+    return null;
 }
 
 // ── Результат ────────────────────────────────────────────────────────────────
 
-function _showResult(success: boolean, correctName: string): void {
+function _showResult(success: boolean, injury: Injury, timeMs: number, score: number | null, badges: string[]): void {
     _phase = 'result';
     _setPhaseLabel('Результат');
     _showOnly('med-phase-result');
@@ -399,9 +440,15 @@ function _showResult(success: boolean, correctName: string): void {
         if (title) { title.textContent = 'Неверный диагноз!'; title.className = 'med-result-title failure'; }
         if (text)  text.textContent = 'Капитан не получил нужного лечения. Кристаллы затрачены на попытку. Необходимо собрать новые кристаллы и попробовать снова.';
         if (correctWrap) correctWrap.classList.remove('hidden');
-        if (correctEl)   correctEl.textContent = correctName;
+        if (correctEl)   correctEl.textContent = injury.name;
         if (returnBtn)   returnBtn.textContent = '← Вернуться к планете';
     }
+
+    renderResultExtras({
+        prefix: 'med', success, timeMs, score, badges,
+        explanation: injury.explanation,
+        accentColor: '#f87171',
+    });
 }
 
 // ── Утилиты ──────────────────────────────────────────────────────────────────

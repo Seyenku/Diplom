@@ -34,6 +34,12 @@
     margin-right: auto;
 }
 
+.spec-header__actions {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+
 /* ── Search and paging controls ────────────────── */
 .spec-toolbar {
     --clay-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.90));

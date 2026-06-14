@@ -39,6 +39,12 @@
                     <span class="flight-stat-icon">⏱</span>
                     <span id="flight-timer" class="flight-stat-value">60</span>
                 </div>
+                <div class="flight-stat-group" title="Скорость (от максимальной)">
+                    <span class="flight-stat-icon">🚀</span>
+                    <span id="flight-speed" class="flight-stat-value">0%</span>
+                </div>
+                <button type="button" id="flight-pause-btn" class="flight-pause-btn"
+                        data-action="flightScreen.togglePause" title="Пауза (Esc)" aria-label="Пауза">⏸</button>
             </div>
             <!-- Прогресс-бар волны -->
             <div class="flight-wave-row">
@@ -70,6 +76,9 @@
 
         <!-- Комбо-множитель -->
         <div id="flight-combo" class="flight-combo hidden">×1</div>
+
+        <!-- Мини-радар: астероиды/кристаллы вокруг корабля (вид сверху, вперёд = вверх) -->
+        <canvas id="flight-radar" class="flight-radar" width="112" height="112" aria-hidden="true"></canvas>
     </div>
 
     <!-- Hit flash overlay (для фазы 2) -->
@@ -106,10 +115,36 @@
                 </div>
             </div>
 
+            <!-- Событийный бонус и потери — видны только когда есть что показать -->
+            <p id="result-bonus" class="flight-results-note flight-results-note--bonus hidden"></p>
+            <p id="result-lost" class="flight-results-note flight-results-note--lost hidden"></p>
+
             <div class="flight-results-actions">
                 <button type="button" class="flight-results-btn flight-results-btn--primary"
                         data-action="flightScreen.restart">
                     Ещё раз
+                </button>
+                <button type="button" class="flight-results-btn flight-results-btn--secondary"
+                        data-spa="goto" data-screen="galaxy-map">
+                    К карте
+                </button>
+            </div>
+        </article>
+    </div>
+
+    <!-- Оверлей паузы: RAF-цикл остановлен, переход экраном не используется,
+         т.к. transition() уничтожил бы модуль полёта -->
+    <div id="flight-pause-overlay" class="flight-results-overlay hidden" aria-modal="true" role="dialog">
+        <article class="flight-results-card">
+            <header class="flight-results-head">
+                <span class="flight-results-eyebrow">Пауза</span>
+                <div class="flight-results-rating">⏸</div>
+                <p class="flight-results-rating-label">Полёт приостановлен</p>
+            </header>
+            <div class="flight-results-actions">
+                <button type="button" class="flight-results-btn flight-results-btn--primary"
+                        data-action="flightScreen.togglePause">
+                    Продолжить
                 </button>
                 <button type="button" class="flight-results-btn flight-results-btn--secondary"
                         data-spa="goto" data-screen="galaxy-map">

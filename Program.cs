@@ -5,10 +5,12 @@ using KosmosCore.Business.Services.Implementations;
 using KosmosCore.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.IO.Compression;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,6 +70,40 @@ builder.Services.AddSession(options =>
     options.Cookie.SameSite    = SameSiteMode.Strict;
 });
 
+// --- Rate Limiting ---
+// Логин — защита от брутфорса (5 POST/мин с одного IP).
+// /game POST (телеметрия, мини-игры) — щит от спама очереди и БД (120/мин с IP).
+// Остальные запросы не лимитируются.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    {
+        if (!HttpMethods.IsPost(ctx.Request.Method))
+            return RateLimitPartition.GetNoLimiter("none");
+
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        if (ctx.Request.Path.StartsWithSegments("/login"))
+            return RateLimitPartition.GetFixedWindowLimiter($"login:{ip}", _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window      = TimeSpan.FromMinutes(1),
+                QueueLimit  = 0,
+            });
+
+        if (ctx.Request.Path.StartsWithSegments("/game"))
+            return RateLimitPartition.GetFixedWindowLimiter($"game:{ip}", _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window      = TimeSpan.FromMinutes(1),
+                QueueLimit  = 0,
+            });
+
+        return RateLimitPartition.GetNoLimiter("none");
+    });
+});
+
 // --- Razor Pages ---
 builder.Services.AddRazorPages();
 
@@ -96,6 +132,14 @@ builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = Compre
 
 var app = builder.Build();
 
+// За реверс-прокси (ngrok) Connection.RemoteIpAddress — это loopback-адрес агента.
+// Берём реальный IP клиента из X-Forwarded-For, иначе rate limiter считает всех
+// внешних пользователей одним клиентом. По умолчанию доверяем только loopback-прокси.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor,
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -108,6 +152,7 @@ app.UseResponseCompression();
 // до auth, чтобы они применялись ко всем ответам, включая редиректы.
 app.UseSecurityHeaders();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 // Origin-валидация CSRF — после auth, чтобы знать пользователя в логе.

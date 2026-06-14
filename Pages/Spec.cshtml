@@ -8,6 +8,10 @@
     <div class="spec-header">
         <h1 class="spec-title">Направления подготовки</h1>
         <p class="spec-subtitle">Перечень образовательных программ СГУ им. Питирима Сорокина, связанных с профессиями будущего</p>
+        <div class="spec-header__actions">
+            <a href="@Model.AdmissionUrl" target="_blank" rel="noopener noreferrer"
+               class="site-nav__btn site-nav__btn--accent">Подать документы</a>
+        </div>
     </div>
 
     @if (Model.Directions.Count == 0)
@@ -565,6 +569,15 @@
                 }
             }
 
+            // Предзаполнение поиска из ?q= — так экран «Созвездие призвания» в игре
+            // ведёт сюда сразу на направления, связанные с топ-профессией игрока.
+            const presetQuery = new URLSearchParams(window.location.search).get('q');
+            if (presetQuery) {
+                searchInput.value = presetQuery;
+                currentQuery = presetQuery;
+                if (clearButton) clearButton.hidden = false;
+            }
+
             searchInput.addEventListener('input', () => {
                 currentQuery = searchInput.value;
                 currentIndex = 0;
@@ -597,6 +610,14 @@
             });
 
             render();
+
+            // Если ?q= из игры ничему не соответствует — показываем все направления.
+            if (presetQuery && getFilteredCards().length === 0) {
+                searchInput.value = '';
+                currentQuery = '';
+                if (clearButton) clearButton.hidden = true;
+                render();
+            }
         })();
     </script>
 }

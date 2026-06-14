@@ -66,13 +66,18 @@
             pointer-events:none;
             transition:opacity 0.25s ease-out;
         "></div>
+
+        <!-- Скип катсцены (появляется через 1.2 с, см. .mg-cutscene-skip) -->
+        <button type="button" class="mg-cutscene-skip" data-action="miniGameProgramming.skipCutscene">
+            Пропустить ⏭
+        </button>
     </div>
 
 
     <!-- ═══════════════════════════════════════════════
          ФАЗА 2: ДИАГНОСТИКА (Terminal UI)
          ═══════════════════════════════════════════════ -->
-    <div id="prog-phase-diagnosis" class="hidden">
+    <div id="prog-phase-diagnosis" class="hidden mg-phase-fade-in">
 
         <!-- Колонка 1: Системные метрики -->
         <div class="prog-metrics-col">
@@ -136,10 +141,12 @@
             </div>
         </div>
 
-        <!-- Колонка 2: Журнал ошибок -->
+        <!-- Колонка 2: Журнал ошибок (тап — мгновенно показать все строки) -->
         <div class="prog-logs-col">
             <p class="prog-section-title">📋 Журнал ошибок</p>
-            <div id="prog-log-output" class="prog-terminal">
+            <div id="prog-log-output" class="prog-terminal"
+                 data-action="miniGameProgramming.flushLogs"
+                 title="Нажмите, чтобы показать все строки">
                 <!-- Строки логов вставляются через JS -->
             </div>
         </div>
@@ -162,13 +169,34 @@
     <!-- ═══════════════════════════════════════════════
          ФАЗА 3: РЕЗУЛЬТАТ
          ═══════════════════════════════════════════════ -->
-    <div id="prog-phase-result" class="hidden">
+    <div id="prog-phase-result" class="hidden mg-phase-fade-in">
         <div id="prog-result-icon" class="prog-result-icon">✅</div>
         <h2 id="prog-result-title" class="prog-result-title success">Патч применён!</h2>
         <p id="prog-result-text" class="prog-result-text">Системы восстановлены.</p>
+
+        <!-- Время / счёт / бейджи (заполняет renderResultExtras) -->
+        <div class="mg-result-stats">
+            <div class="mg-result-stat">
+                <span class="mg-result-stat-label">Время решения</span>
+                <span id="prog-result-time" class="mg-result-stat-value">—</span>
+            </div>
+            <div class="mg-result-stat" id="prog-result-score-wrap">
+                <span class="mg-result-stat-label">Счёт</span>
+                <span id="prog-result-score" class="mg-result-stat-value">—</span>
+            </div>
+        </div>
+        <div id="prog-result-badges" class="mg-result-badges"></div>
+
         <div id="prog-result-correct-wrap" class="prog-result-correct hidden">
             Правильный патч: <strong id="prog-result-correct-name"></strong>
         </div>
+
+        <!-- Образовательное объяснение -->
+        <div class="mg-result-explanation">
+            <p class="mg-result-explanation-title">💡 Как это можно было понять</p>
+            <p id="prog-result-explanation-text" class="mg-result-explanation-text"></p>
+        </div>
+
         <div class="prog-result-actions">
             <button id="prog-btn-return" class="btn-game btn-primary"
                     data-action="miniGameProgramming.returnToPlanet">

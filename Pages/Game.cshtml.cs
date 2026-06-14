@@ -21,17 +21,20 @@ namespace KosmosCore.Pages;
 /// (localStorage, см. stateManager._persistPlayer). Сервер хранит лишь телеметрию.
 /// </summary>
 [IgnoreAntiforgeryToken]
+[RequestSizeLimit(256 * 1024)] // POST-тела (телеметрия, результаты мини-игр) — типично < 30 КБ
 public class GameModel(
     IPlanetRepository planets,
     IGameSettingsRepository gameSettings,
     IMiniGameService miniGameService,
     ITelemetryQueue telemetryQueue,
+    IConfiguration configuration,
     ILogger<GameModel> logger) : PageModel
 {
     private readonly IPlanetRepository _planets = planets;
     private readonly IGameSettingsRepository _gameSettings = gameSettings;
     private readonly IMiniGameService _miniGameService = miniGameService;
     private readonly ITelemetryQueue _telemetryQueue = telemetryQueue;
+    private readonly IConfiguration _configuration = configuration;
     private readonly ILogger<GameModel> _logger = logger;
 
     /// <summary>JSON-строка начальных данных для клиентского bootstrapping.</summary>
@@ -78,12 +81,17 @@ public class GameModel(
         ViewData["GameInitData"] = InitialDataJson;
     }
 
-    private static LiveOpsDto BuildLiveOps(IReadOnlyDictionary<string, string> s)
+    private LiveOpsDto BuildLiveOps(IReadOnlyDictionary<string, string> s)
     {
         static int ParseInt(IReadOnlyDictionary<string, string> d, string key, int fallback) =>
             d.TryGetValue(key, out var v) && int.TryParse(v, out var n) ? n : fallback;
         static float ParseFloat(IReadOnlyDictionary<string, string> d, string key, float fallback) =>
             d.TryGetValue(key, out var v) && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : fallback;
+
+        // URL подачи документов: GameSettings (live-ops, без редеплоя) → appsettings → дефолт DTO.
+        var admissionUrl = s.TryGetValue("admission_url", out var u) && !string.IsNullOrWhiteSpace(u)
+            ? u
+            : _configuration["University:AdmissionUrl"];
 
         return new LiveOpsDto
         {
@@ -91,6 +99,7 @@ public class GameModel(
             MinigameDurationS  = ParseInt(s, "minigame_duration_s", 30),
             UnlockBaseCost     = ParseInt(s, "unlock_base_cost", 5),
             CrystalFlightBonus = ParseFloat(s, "crystal_flight_bonus", 1.0f),
+            AdmissionUrl       = string.IsNullOrWhiteSpace(admissionUrl) ? new LiveOpsDto().AdmissionUrl : admissionUrl,
         };
     }
 
@@ -154,10 +163,32 @@ public class GameModel(
     //  Кладём батч в фоновую очередь — клиент не ждёт DB.
     //  Реальную запись делает TelemetryWorker (BackgroundService).
     // ──────────────────────────────────────────────
+    // Эндпоинт анонимный — без жёстких лимитов один клиент может раздуть
+    // очередь (1024 батча) до гигабайтов и заспамить БД произвольными строками.
+    private const int MaxBatchEvents   = 200;
+    private const int MaxIdLength      = 64;    // SessionId, ActionType, CreatedAt
+    private const int MaxTargetLength  = 128;
+    private const int MaxDetailsLength = 4096;
+
     public IActionResult OnPostTelemetry([FromBody] TelemetryBatchDto? batch)
     {
         if (batch?.Events is null || batch.Events.Count == 0)
             return new JsonResult(new { ok = true, count = 0 }, JsonOptions);
+
+        if (batch.Events.Count > MaxBatchEvents)
+            return BadRequest($"Too many events in batch (max {MaxBatchEvents}).");
+
+        foreach (var e in batch.Events)
+        {
+            if (e.SessionId.Length > MaxIdLength ||
+                e.ActionType.Length > MaxIdLength ||
+                (e.CreatedAt?.Length ?? 0) > MaxIdLength ||
+                (e.TargetId?.Length ?? 0) > MaxTargetLength ||
+                (e.Details?.Length ?? 0) > MaxDetailsLength)
+            {
+                return BadRequest("Event field exceeds allowed length.");
+            }
+        }
 
         if (!_telemetryQueue.TryEnqueue(batch))
         {
