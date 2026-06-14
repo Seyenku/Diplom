@@ -14,6 +14,8 @@ public class DirectionsModel(ISpecRepository specRepository) : PageModel
 {
     public IReadOnlyList<SpecDirectionDto> Directions { get; private set; } = [];
     public IReadOnlyList<EduForm> EduForms { get; private set; } = [];
+    public IReadOnlyList<Discipline> Disciplines { get; private set; } = [];
+    public IReadOnlyList<Sphere> Spheres { get; private set; } = [];
 
     [BindProperty]
     public DirectionForm Input { get; set; } = new();
@@ -39,8 +41,8 @@ public class DirectionsModel(ISpecRepository specRepository) : PageModel
             FormId = form?.Id ?? EduForms.FirstOrDefault()?.Id ?? 0,
             YearsEduc = direction.YearsEduc,
             Description = direction.Description,
-            Disciplines = direction.Disciplines,
-            Spheres = direction.Spheres
+            DisciplineIds = direction.DisciplineIds,
+            SphereIds = direction.SphereIds
         };
     }
 
@@ -59,8 +61,8 @@ public class DirectionsModel(ISpecRepository specRepository) : PageModel
             FormId = Input.FormId,
             YearsEduc = Input.YearsEduc,
             Description = Input.Description?.Trim(),
-            Disciplines = SplitList(Input.Disciplines),
-            Spheres = SplitList(Input.Spheres)
+            DisciplineIds = Input.DisciplineIds,
+            SphereIds = Input.SphereIds
         };
 
         if (dto.ProgramId > 0)
@@ -88,14 +90,8 @@ public class DirectionsModel(ISpecRepository specRepository) : PageModel
     {
         Directions = await specRepository.GetAllDirectionsAsync(ct);
         EduForms = await specRepository.GetEduFormsAsync(ct);
-    }
-
-    private static List<string> SplitList(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return new List<string>();
-        return raw.Split(new[] { ',', '\n', ';' }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                  .Distinct(StringComparer.OrdinalIgnoreCase)
-                  .ToList();
+        Disciplines = await specRepository.GetDisciplinesAsync(ct);
+        Spheres = await specRepository.GetSpheresAsync(ct);
     }
 
     public class DirectionForm
@@ -117,7 +113,7 @@ public class DirectionsModel(ISpecRepository specRepository) : PageModel
         public float YearsEduc { get; set; } = 4;
 
         public string? Description { get; set; }
-        public string? Disciplines { get; set; }
-        public string? Spheres { get; set; }
+        public List<int> DisciplineIds { get; set; } = new();
+        public List<int> SphereIds { get; set; } = new();
     }
 }

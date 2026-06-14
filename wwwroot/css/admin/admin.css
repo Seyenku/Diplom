@@ -114,40 +114,13 @@
 .admin-main {
     flex-grow: 1;
     margin-left: 260px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
 
-.admin-topbar {
-    height: 64px;
-    background: #ffffff;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 0 32px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-[data-theme="dark"] .admin-topbar {
-    background: rgba(15, 23, 42, 0.82);
-    border-bottom-color: rgba(148, 163, 184, 0.16);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-}
-
 .theme-toggle--admin {
     margin-left: auto;
-}
-
-.admin-page-title {
-    font-family: var(--font-heading);
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0;
 }
 
 .admin-content-inner {
@@ -266,6 +239,14 @@
     padding: 14px 12px 22px;
 }
 
+.admin-sidebar-header > div:not(.admin-brand-mark) {
+    min-width: 0;
+}
+
+.admin-sidebar-header .theme-toggle--admin {
+    flex: 0 0 auto;
+}
+
 .admin-brand-mark {
     display: grid;
     width: 46px;
@@ -321,16 +302,9 @@
 
 .admin-main {
     margin-left: 284px;
+    width: calc(100% - 284px);
 }
 
-.admin-topbar {
-    height: 76px;
-    background: rgba(255, 255, 255, 0.68);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-}
-
-.admin-topbar__label,
 .admin-kicker {
     display: block;
     color: var(--color-accent);
@@ -341,8 +315,10 @@
 }
 
 .admin-content-inner {
-    width: min(1480px, 100%);
-    padding: 30px;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    padding: clamp(24px, 2vw, 36px);
 }
 
 .admin-dashboard-hero,
@@ -472,7 +448,7 @@
 
 .admin-crud-grid {
     display: grid;
-    grid-template-columns: minmax(340px, 0.82fr) minmax(520px, 1.18fr);
+    grid-template-columns: minmax(420px, 0.85fr) minmax(680px, 1.45fr);
     gap: 22px;
     align-items: start;
 }
@@ -553,6 +529,67 @@
 .admin-form-row span {
     color: var(--color-accent-coral);
     font-size: 12px;
+}
+
+.admin-choice-grid {
+    display: grid;
+    max-height: 230px;
+    gap: 8px;
+    overflow: auto;
+    padding: 10px;
+    border: 1px solid var(--clay-border);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.46);
+}
+
+.admin-choice-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 14px;
+    color: var(--color-text-primary);
+    background: rgba(255,255,255,0.58);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.admin-choice-chip:hover {
+    transform: translateY(-1px);
+    border-color: rgba(59, 130, 246, 0.34);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.admin-choice-chip input {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    accent-color: var(--color-accent);
+}
+
+.admin-choice-chip span {
+    color: inherit;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.admin-choice-chip:has(input:checked) {
+    border-color: rgba(59, 130, 246, 0.4);
+    background: var(--color-accent-light);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+}
+
+.admin-choice-empty {
+    margin: 0;
+    padding: 8px 4px;
+    color: var(--color-text-muted);
+    font-size: 13px;
 }
 
 .admin-primary-btn {
@@ -643,7 +680,6 @@
 }
 
 [data-theme="dark"] .admin-sidebar,
-[data-theme="dark"] .admin-topbar,
 [data-theme="dark"] .admin-dashboard-hero__badge,
 [data-theme="dark"] .admin-hero__stat,
 [data-theme="dark"] .admin-form-row input,
@@ -654,6 +690,17 @@
 
 [data-theme="dark"] .admin-table tbody tr:hover {
     background: rgba(125, 211, 252, 0.08);
+}
+
+[data-theme="dark"] .admin-choice-grid,
+[data-theme="dark"] .admin-choice-chip {
+    background: rgba(15, 23, 42, 0.42);
+    border-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme="dark"] .admin-choice-chip:hover,
+[data-theme="dark"] .admin-choice-chip:has(input:checked) {
+    background: rgba(59, 130, 246, 0.18);
 }
 
 @media (max-width: 1180px) {
@@ -677,11 +724,7 @@
 
     .admin-main {
         margin-left: 0;
-    }
-
-    .admin-topbar {
-        height: auto;
-        padding: 16px 20px;
+        width: 100%;
     }
 
     .admin-content-inner {

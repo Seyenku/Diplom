@@ -39,6 +39,10 @@
                     <h2>KosmosCore</h2>
                     <span>Личный кабинет</span>
                 </div>
+                <button class="theme-toggle theme-toggle--admin" type="button" data-theme-toggle aria-label="Темная тема" title="Темная тема">
+                    <span class="theme-toggle__sun" aria-hidden="true">☀</span>
+                    <span class="theme-toggle__moon" aria-hidden="true">☾</span>
+                </button>
             </div>
 
             <nav class="admin-nav" aria-label="Админ-навигация">
@@ -70,17 +74,6 @@
         </aside>
 
         <main class="admin-main">
-            <header class="admin-topbar">
-                <div>
-                    <span class="admin-topbar__label">KosmosCore</span>
-                    <h1 class="admin-page-title">@ViewData["Title"]</h1>
-                </div>
-                <button class="theme-toggle theme-toggle--admin" type="button" data-theme-toggle aria-label="Темная тема" title="Темная тема">
-                    <span class="theme-toggle__sun" aria-hidden="true">☀</span>
-                    <span class="theme-toggle__moon" aria-hidden="true">☾</span>
-                </button>
-            </header>
-
             <div class="admin-content-inner">
                 @RenderBody()
             </div>

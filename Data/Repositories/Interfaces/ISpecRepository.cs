@@ -9,6 +9,8 @@ public interface ISpecRepository
     /// <summary>Возвращает все направления подготовки с агрегированными данными.</summary>
     Task<IReadOnlyList<SpecDirectionDto>> GetAllDirectionsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EduForm>> GetEduFormsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Discipline>> GetDisciplinesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Sphere>> GetSpheresAsync(CancellationToken ct = default);
     Task CreateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default);
     Task UpdateDirectionAsync(AdminDirectionInputDto direction, CancellationToken ct = default);
     Task DeleteDirectionAsync(int programId, CancellationToken ct = default);
